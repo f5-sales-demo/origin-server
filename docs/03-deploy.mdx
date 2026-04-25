@@ -309,7 +309,13 @@ write_files:
           gzip_comp_level 4;
           gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 
-          upstream juice_shop { server 127.0.0.1:3000; keepalive 64; }
+          upstream juice_shop {
+              server 127.0.0.1:3001 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:3002 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:3003 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:3004 max_fails=3 fail_timeout=10s;
+              keepalive 64;
+          }
           upstream dvwa        { server 127.0.0.1:8081; keepalive 32; }
           upstream vampi       { server 127.0.0.1:5000; keepalive 32; }
           upstream httpbin_up  { server 127.0.0.1:8080; keepalive 32; }
@@ -329,19 +335,61 @@ write_files:
   - path: /opt/origin-server/docker-compose.yml
     content: |
       services:
-        juice-shop:
+        juice-shop-1:
           image: bkimminich/juice-shop:latest
-          container_name: juice-shop
+          container_name: juice-shop-1
           restart: unless-stopped
           ports:
-            - "127.0.0.1:3000:3000"
+            - "127.0.0.1:3001:3000"
           environment:
             - NODE_ENV=ctf
           deploy:
             resources:
               limits:
-                cpus: "4.0"
-                memory: 512M
+                cpus: "1.0"
+                memory: 256M
+
+        juice-shop-2:
+          image: bkimminich/juice-shop:latest
+          container_name: juice-shop-2
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:3002:3000"
+          environment:
+            - NODE_ENV=ctf
+          deploy:
+            resources:
+              limits:
+                cpus: "1.0"
+                memory: 256M
+
+        juice-shop-3:
+          image: bkimminich/juice-shop:latest
+          container_name: juice-shop-3
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:3003:3000"
+          environment:
+            - NODE_ENV=ctf
+          deploy:
+            resources:
+              limits:
+                cpus: "1.0"
+                memory: 256M
+
+        juice-shop-4:
+          image: bkimminich/juice-shop:latest
+          container_name: juice-shop-4
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:3004:3000"
+          environment:
+            - NODE_ENV=ctf
+          deploy:
+            resources:
+              limits:
+                cpus: "1.0"
+                memory: 256M
 
         dvwa:
           image: ghcr.io/digininja/dvwa:latest
