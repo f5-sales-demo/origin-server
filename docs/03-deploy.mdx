@@ -242,6 +242,11 @@ packages:
   - curl
   - gnupg
   - nginx
+  - sysstat
+  - htop
+  - iotop
+  - dstat
+  - iftop
 
 write_files:
   - path: /etc/sysctl.d/99-origin-server.conf
@@ -569,6 +574,10 @@ write_files:
       </html>
 
 runcmd:
+  # Enable sysstat collection (sar history)
+  - sed -i 's/ENABLED="false"/ENABLED="true"/' /etc/default/sysstat
+  - systemctl enable sysstat
+  - systemctl restart sysstat
   # Kernel tuning
   - sysctl -p /etc/sysctl.d/99-origin-server.conf
   # Docker
