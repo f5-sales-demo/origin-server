@@ -151,6 +151,56 @@ curl -s "http://<PUBLIC_IP>/httpbin/headers" | jq .
 curl -s -o /dev/null -w "%{http_code}" "http://<PUBLIC_IP>/httpbin/status/403"
 ```
 
+## whoami (Request Diagnostics)
+
+| | |
+|---|---|
+| **Path** | `/whoami/` |
+| **Image** | `traefik/whoami:latest` |
+| **Framework** | Go |
+| **Project** | [github.com/traefik/whoami](https://github.com/traefik/whoami) |
+
+whoami is Traefik's lightweight request echo server. It displays every detail of the incoming HTTP request as the origin sees it -- hostname, IP addresses, all headers, method, and URL. This is the single most important diagnostic tool when verifying that F5 XC is injecting the correct headers.
+
+### Key Use Cases
+
+| Use Case | What to Look For |
+|---|---|
+| Verify F5 XC header injection | `X-Forwarded-For`, `True-Client-IP`, `X-Volterra-*` headers |
+| Confirm client IP visibility | `X-Real-IP` vs `RemoteAddr` |
+| Debug WAF false positives | Compare request headers before/after F5 XC |
+| Validate bot defense tagging | `X-Volterra-Bot-Type`, `X-Volterra-Bot-Verified` headers |
+| Check TLS termination | `X-Forwarded-Proto` shows `https` when TLS terminates at F5 XC |
+
+### Example
+
+```bash
+# Basic request -- see what the origin receives
+curl "http://<PUBLIC_IP>/whoami/"
+
+# Simulate request through F5 XC (with injected headers)
+curl "http://<PUBLIC_IP>/whoami/" \
+  -H "X-Forwarded-For: 203.0.113.50" \
+  -H "True-Client-IP: 203.0.113.50" \
+  -H "X-Forwarded-Proto: https"
+```
+
+Example output:
+
+```
+Hostname: 534c5084e169
+IP: 127.0.0.1
+RemoteAddr: 172.17.0.1:55118
+GET / HTTP/1.1
+Host: 20.12.78.159
+User-Agent: curl/8.5.0
+Accept: */*
+True-Client-Ip: 203.0.113.50
+X-Forwarded-For: 203.0.113.50, 10.0.0.1
+X-Forwarded-Proto: https
+X-Real-Ip: 104.219.105.84
+```
+
 ## Application Coverage Matrix
 
 | Demo Use Case | Primary App | Secondary App |
@@ -166,3 +216,5 @@ curl -s -o /dev/null -w "%{http_code}" "http://<PUBLIC_IP>/httpbin/status/403"
 | Client-Side Defense -- DOM XSS | Juice Shop | -- |
 | Client-Side Defense -- Stored XSS | DVWA | Juice Shop |
 | Basic connectivity testing | httpbin | -- |
+| Request diagnostics | whoami | httpbin |
+| Header injection verification | whoami | -- |

@@ -44,6 +44,9 @@ curl -sf "http://${ORIGIN_IP}/vampi/" -o /dev/null -w "VAmPI: %{http_code}\n"
 
 # httpbin
 curl -sf "http://${ORIGIN_IP}/httpbin/get" -o /dev/null -w "httpbin: %{http_code}\n"
+
+# whoami
+curl -sf "http://${ORIGIN_IP}/whoami/" -o /dev/null -w "whoami: %{http_code}\n"
 ```
 
 All should return `200`.
@@ -64,6 +67,7 @@ juice-shop   Up X minutes   127.0.0.1:3000->3000/tcp
 dvwa         Up X minutes   127.0.0.1:8081->80/tcp
 vampi        Up X minutes   127.0.0.1:5000->5000/tcp
 httpbin      Up X minutes   127.0.0.1:8080->80/tcp
+whoami       Up X minutes   127.0.0.1:8082->80/tcp
 ```
 
 ### nginx Status
