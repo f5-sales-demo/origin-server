@@ -1,6 +1,6 @@
 ---
 title: Applications
-description: Guide to each vulnerable web application and demo scenarios
+description: "URL paths, request/response behavior, default credentials, and attack scenarios for Juice Shop (/juice-shop), DVWA (/dvwa), VAmPI (/vampi), httpbin (/httpbin), whoami (/whoami), and CSD Demo (/csd-demo)"
 sidebar:
   order: 4
 ---
@@ -8,6 +8,33 @@ sidebar:
 ## Application Overview
 
 Each application runs as an isolated Docker container, accessible through the nginx reverse proxy on the VM. All applications are intentionally vulnerable and designed for security testing.
+
+Replace `<ORIGIN>` with `http://<PUBLIC_IP>` in all examples below. After deploying via Terraform, get the IP with `terraform output -raw public_ip`.
+
+## Quick Reference -- All URL Paths
+
+| Path | Application | HTTP Method | Expected Response |
+|---|---|---|---|
+| `/` | Landing page | GET | 200 HTML with links to all apps |
+| `/health` | Health check | GET | 200 JSON `{"status":"healthy","component":"origin-server",...}` |
+| `/juice-shop/` | Juice Shop | GET | 200 HTML (Angular SPA, ~75 KB) |
+| `/juice-shop/rest/products/search?q=` | Juice Shop API | GET | 200 JSON `{"status":"success","data":[...]}` (36 products) |
+| `/dvwa/` | DVWA | GET | 302 redirect to `/dvwa/login.php` |
+| `/dvwa/login.php` | DVWA login | GET | 200 HTML login form |
+| `/dvwa/setup.php` | DVWA setup | GET | 200 HTML (first-run database init) |
+| `/vampi/` | VAmPI | GET | 200 HTML (API docs) |
+| `/vampi/users/v1` | VAmPI API | GET | 200 JSON `{"users":[...]}` |
+| `/vampi/users/v1/register` | VAmPI API | POST | 200 JSON `{"status":"success",...}` |
+| `/vampi/users/v1/login` | VAmPI API | POST | 200 JSON `{"auth_token":"...","status":"success"}` |
+| `/httpbin/get` | httpbin | GET | 200 JSON with request details |
+| `/httpbin/post` | httpbin | POST | 200 JSON with posted data |
+| `/httpbin/headers` | httpbin | GET | 200 JSON `{"headers":{...}}` |
+| `/httpbin/status/:code` | httpbin | GET | Returns the specified HTTP status code |
+| `/whoami/` | whoami | GET | 200 plain text with hostname, IP, all headers |
+| `/csd-demo/` | CSD Demo | GET | 200 HTML checkout form with attack panel |
+| `/csd-demo/dashboard` | CSD attacker view | GET | 200 HTML showing exfiltrated data |
+| `/csd-demo/health` | CSD health | GET | 200 JSON `{"status":"healthy","component":"csd-demo",...}` |
+| `/csd-demo/exfil/log` | CSD exfil log | GET | 200 JSON array of captured data |
 
 ## OWASP Juice Shop
 
