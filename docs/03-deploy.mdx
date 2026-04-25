@@ -294,9 +294,9 @@ write_files:
           send_timeout 10;
           reset_timedout_connection on;
 
-          proxy_buffer_size 16k;
-          proxy_buffers 8 16k;
-          proxy_busy_buffers_size 32k;
+          proxy_buffer_size 32k;
+          proxy_buffers 16 32k;
+          proxy_busy_buffers_size 64k;
           proxy_connect_timeout 5;
           proxy_read_timeout 30;
           proxy_send_timeout 10;
@@ -309,12 +309,12 @@ write_files:
           gzip_comp_level 4;
           gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
 
-          upstream juice_shop { server 127.0.0.1:3000; keepalive 32; }
-          upstream dvwa        { server 127.0.0.1:8081; keepalive 16; }
-          upstream vampi       { server 127.0.0.1:5000; keepalive 16; }
-          upstream httpbin_up  { server 127.0.0.1:8080; keepalive 16; }
-          upstream whoami_up   { server 127.0.0.1:8082; keepalive 16; }
-          upstream csd_demo    { server 127.0.0.1:5001; keepalive 16; }
+          upstream juice_shop { server 127.0.0.1:3000; keepalive 64; }
+          upstream dvwa        { server 127.0.0.1:8081; keepalive 32; }
+          upstream vampi       { server 127.0.0.1:5000; keepalive 32; }
+          upstream httpbin_up  { server 127.0.0.1:8080; keepalive 32; }
+          upstream whoami_up   { server 127.0.0.1:8082; keepalive 32; }
+          upstream csd_demo    { server 127.0.0.1:5001; keepalive 32; }
 
           include /etc/nginx/conf.d/*.conf;
           include /etc/nginx/sites-enabled/*;
@@ -337,6 +337,11 @@ write_files:
             - "127.0.0.1:3000:3000"
           environment:
             - NODE_ENV=ctf
+          deploy:
+            resources:
+              limits:
+                cpus: "4.0"
+                memory: 512M
 
         dvwa:
           image: ghcr.io/digininja/dvwa:latest
@@ -351,6 +356,11 @@ write_files:
             - DB_DATABASE=dvwa
             - DB_USER=dvwa
             - DB_PASSWORD=p@ssw0rd
+          deploy:
+            resources:
+              limits:
+                cpus: "1.0"
+                memory: 256M
 
         dvwa-db:
           image: mariadb:10.11
@@ -361,8 +371,16 @@ write_files:
             - MYSQL_DATABASE=dvwa
             - MYSQL_USER=dvwa
             - MYSQL_PASSWORD=p@ssw0rd
+            - MARIADB_INNODB_BUFFER_POOL_SIZE=256M
+            - MARIADB_MAX_CONNECTIONS=200
+            - MARIADB_INNODB_LOG_FILE_SIZE=100M
           volumes:
             - dvwa-db-data:/var/lib/mysql
+          deploy:
+            resources:
+              limits:
+                cpus: "1.0"
+                memory: 768M
 
         vampi:
           image: erev0s/vampi:latest
@@ -370,6 +388,11 @@ write_files:
           restart: unless-stopped
           ports:
             - "127.0.0.1:5000:5000"
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 256M
 
         httpbin:
           image: kennethreitz/httpbin:latest
@@ -377,6 +400,11 @@ write_files:
           restart: unless-stopped
           ports:
             - "127.0.0.1:8080:80"
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 128M
 
         whoami:
           image: traefik/whoami:latest
@@ -384,6 +412,11 @@ write_files:
           restart: unless-stopped
           ports:
             - "127.0.0.1:8082:80"
+          deploy:
+            resources:
+              limits:
+                cpus: "0.25"
+                memory: 64M
 
       volumes:
         dvwa-db-data:
