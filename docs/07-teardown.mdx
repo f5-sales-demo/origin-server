@@ -1,0 +1,52 @@
+---
+title: Teardown
+description: Destroy the origin server infrastructure and clean up resources
+sidebar:
+  order: 7
+---
+
+When the lab session is complete, destroy all Azure resources to stop billing.
+
+## Terraform Destroy
+
+From the directory containing the Terraform configuration:
+
+```bash
+terraform plan -destroy
+
+terraform destroy
+```
+
+Terraform will prompt for confirmation. Type `yes` to proceed.
+
+## Verify Cleanup
+
+Confirm all resources have been removed:
+
+```bash
+az group show --name rg-origin-server 2>&1 | grep -q "ResourceGroupNotFound" \
+  && echo "Resource group deleted" \
+  || echo "Resource group still exists"
+
+az resource list --resource-group rg-origin-server -o table 2>/dev/null
+```
+
+## Clean Up Local State
+
+Remove Terraform state and cached files:
+
+```bash
+rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+```
+
+## F5 XC Cleanup
+
+If you created F5 XC resources pointing to this origin server, remove them:
+
+1. Delete the HTTP load balancer
+2. Delete the origin pool
+3. Delete any WAF policies created for testing
+
+## Cost Reference
+
+While running, the origin server costs approximately $69 USD/month. After `terraform destroy`, all charges stop. There are no residual costs from deleted resources.

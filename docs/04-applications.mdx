@@ -1,0 +1,168 @@
+---
+title: Applications
+description: Guide to each vulnerable web application and demo scenarios
+sidebar:
+  order: 4
+---
+
+## Application Overview
+
+Each application runs as an isolated Docker container, accessible through the nginx reverse proxy on the VM. All applications are intentionally vulnerable and designed for security testing.
+
+## OWASP Juice Shop
+
+| | |
+|---|---|
+| **Path** | `/juice-shop/` |
+| **Image** | `bkimminich/juice-shop:latest` |
+| **Framework** | Node.js / Angular |
+| **Project** | [owasp.org/www-project-juice-shop](https://owasp.org/www-project-juice-shop/) |
+
+OWASP Juice Shop is the most modern and actively maintained vulnerable web application. It covers the entire OWASP Top 10 with 100+ challenges in a realistic e-commerce application.
+
+### Demo Scenarios
+
+| Scenario | Category | Attack Vector |
+|---|---|---|
+| SQL Injection login bypass | WAF | `' OR 1=1--` in the login email field |
+| Reflected XSS | WAF, CSD | Script injection via search parameter |
+| DOM-based XSS | CSD | Payload in URL fragment |
+| Broken authentication | WAF | Brute force login, JWT manipulation |
+| API abuse | API Security | Unauthorized access to `/api/` endpoints |
+| Sensitive data exposure | API Security | Accessing user data without authorization |
+| CSRF | WAF | Cross-site request forgery on profile changes |
+
+### Access
+
+```bash
+curl -s "http://<PUBLIC_IP>/juice-shop/" -o /dev/null -w "%{http_code}"
+```
+
+## DVWA (Damn Vulnerable Web Application)
+
+| | |
+|---|---|
+| **Path** | `/dvwa/` |
+| **Image** | `ghcr.io/digininja/dvwa:latest` |
+| **Framework** | PHP / MySQL |
+| **Credentials** | `admin` / `password` |
+
+DVWA is the industry standard for WAF testing. It has adjustable security levels (Low, Medium, High, Impossible) that progressively add input validation and output encoding.
+
+### Demo Scenarios
+
+| Scenario | Category | Security Level |
+|---|---|---|
+| SQL Injection | WAF | Low: trivial `' OR 1=1#`, High: blind SQLi |
+| Command Injection | WAF | Low: `; ls`, High: filtered characters |
+| File Inclusion | WAF | Low: direct path traversal, High: sanitized |
+| XSS (Reflected) | WAF, CSD | Low: basic `<script>`, High: encoded bypass |
+| XSS (Stored) | WAF, CSD | Low: persistent script in guestbook |
+| File Upload | WAF | Low: PHP shell upload, High: extension filtering |
+| Brute Force | Bot Defense | Automated login attempts |
+
+### Security Levels
+
+Set the security level at `/dvwa/security.php` after logging in:
+
+- **Low** -- No input validation. Every attack works. Good for WAF signature demonstrations.
+- **Medium** -- Basic filtering. Some attacks require encoding or bypass techniques.
+- **High** -- Strong filtering. Only advanced techniques succeed. Good for showing WAF limitations.
+- **Impossible** -- Fully secure implementation. Demonstrates proper defensive coding.
+
+### Initial Setup
+
+DVWA requires a one-time database setup after first deployment:
+
+1. Navigate to `http://<PUBLIC_IP>/dvwa/setup.php`
+2. Click **Create / Reset Database**
+3. Log in with `admin` / `password`
+
+## VAmPI (Vulnerable API)
+
+| | |
+|---|---|
+| **Path** | `/vampi/` |
+| **Image** | `erev0s/vampi:latest` |
+| **Framework** | Python / Flask |
+| **Project** | [github.com/erev0s/VAmPI](https://github.com/erev0s/VAmPI) |
+
+VAmPI is purpose-built for testing the OWASP API Security Top 10. It provides a realistic REST API with deliberate vulnerabilities.
+
+### Demo Scenarios
+
+| Scenario | OWASP API Top 10 | Method |
+|---|---|---|
+| Broken Object Level Authorization (BOLA) | API1 | Access other users' data by manipulating IDs |
+| Broken Authentication | API2 | Weak token handling, no rate limiting |
+| Excessive Data Exposure | API3 | API returns more data than the client needs |
+| Mass Assignment | API6 | Modify admin fields via unexpected parameters |
+| SQL Injection | API8 | Injection through API parameters |
+| Improper Assets Management | API9 | Undocumented API endpoints |
+
+### API Endpoints
+
+```bash
+# Register a new user
+curl -X POST "http://<PUBLIC_IP>/vampi/users/v1/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test123","email":"test@test.com"}'
+
+# Login
+curl -X POST "http://<PUBLIC_IP>/vampi/users/v1/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test123"}'
+
+# List users (excessive data exposure)
+curl "http://<PUBLIC_IP>/vampi/users/v1"
+```
+
+## httpbin
+
+| | |
+|---|---|
+| **Path** | `/httpbin/` |
+| **Image** | `kennethreitz/httpbin:latest` |
+| **Framework** | Python / Flask |
+| **Project** | [httpbin.org](https://httpbin.org) |
+
+httpbin is a simple HTTP request/response service useful for basic API demos, testing request headers, and verifying proxy behavior.
+
+### Useful Endpoints
+
+| Endpoint | Purpose |
+|---|---|
+| `/httpbin/get` | Returns GET request data (headers, args, origin) |
+| `/httpbin/post` | Returns POST request data (body, form, JSON) |
+| `/httpbin/headers` | Returns request headers |
+| `/httpbin/ip` | Returns origin IP |
+| `/httpbin/user-agent` | Returns User-Agent header |
+| `/httpbin/status/:code` | Returns specified HTTP status code |
+| `/httpbin/delay/:seconds` | Delays response by N seconds |
+| `/httpbin/anything` | Returns anything passed in request |
+
+### Example
+
+```bash
+# Check what headers the origin sees (useful for verifying F5 XC header injection)
+curl -s "http://<PUBLIC_IP>/httpbin/headers" | jq .
+
+# Test a specific HTTP status code
+curl -s -o /dev/null -w "%{http_code}" "http://<PUBLIC_IP>/httpbin/status/403"
+```
+
+## Application Coverage Matrix
+
+| Demo Use Case | Primary App | Secondary App |
+|---|---|---|
+| WAF -- SQL Injection | DVWA | Juice Shop |
+| WAF -- XSS | DVWA | Juice Shop |
+| WAF -- Command Injection | DVWA | -- |
+| API Security -- BOLA | VAmPI | -- |
+| API Security -- Auth bypass | VAmPI | Juice Shop |
+| API Security -- Data exposure | VAmPI | httpbin |
+| Bot Defense -- Brute force | DVWA | Juice Shop |
+| Bot Defense -- Scraping | Juice Shop | -- |
+| Client-Side Defense -- DOM XSS | Juice Shop | -- |
+| Client-Side Defense -- Stored XSS | DVWA | Juice Shop |
+| Basic connectivity testing | httpbin | -- |

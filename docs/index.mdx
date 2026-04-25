@@ -1,0 +1,48 @@
+---
+title: Origin Server
+description: Ubuntu 24.04 origin server with vulnerable web applications for F5 XC demo environments
+template: splash
+sidebar:
+  hidden: true
+hero:
+  tagline: Deploy a multi-app origin server in Azure for WAF, API security, bot defense, and client-side defense testing with F5 Distributed Cloud.
+  image:
+    html: '<div style="font-size:4rem;">&#128421;</div>'
+  actions:
+    - text: Get Started
+      link: 01-architecture/
+      icon: right-arrow
+      variant: primary
+    - text: Deploy Now
+      link: 03-deploy/
+      icon: rocket
+      variant: minimal
+---
+
+import { CardGrid } from '@astrojs/starlight/components';
+import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
+
+## What This Provides
+
+<CardGrid>
+  <LinkCard
+    title="Multi-App Origin"
+    description="One Ubuntu 24.04 VM running nginx as a reverse proxy to Juice Shop, DVWA, VAmPI, and httpbin containers."
+    href="01-architecture/"
+  />
+  <LinkCard
+    title="Terraform Deployment"
+    description="Complete Azure infrastructure as code: VNet, PIP, NSG, and VM with Docker + nginx cloud-init provisioning."
+    href="03-deploy/"
+  />
+  <LinkCard
+    title="Vulnerable Applications"
+    description="OWASP Juice Shop, DVWA, VAmPI, and httpbin covering XSS, SQLi, API Top 10, and basic HTTP testing."
+    href="04-applications/"
+  />
+  <LinkCard
+    title="F5 XC Integration"
+    description="Use as the origin pool member behind an F5 XC HTTP load balancer with WAF, Bot Defense, and API Security."
+    href="06-integrate/"
+  />
+</CardGrid>

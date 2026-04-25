@@ -1,0 +1,477 @@
+---
+title: Deploy
+description: Terraform plan for deploying the origin server on Azure
+sidebar:
+  order: 3
+---
+
+## Directory Setup
+
+Create a working directory for the Terraform configuration:
+
+```bash
+mkdir -p origin-server && cd origin-server
+```
+
+## Terraform Configuration
+
+### Provider and Variables
+
+Create `main.tf`:
+
+```hcl
+terraform {
+  required_version = ">= 1.5.0"
+
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "~> 4.0"
+    }
+  }
+}
+
+provider "azurerm" {
+  features {}
+  subscription_id = var.subscription_id
+}
+```
+
+Create `variables.tf`:
+
+```hcl
+variable "subscription_id" {
+  description = "Azure subscription ID"
+  type        = string
+}
+
+variable "resource_group_name" {
+  description = "Name for the Azure resource group"
+  type        = string
+  default     = "rg-origin-server"
+}
+
+variable "location" {
+  description = "Azure region for all resources"
+  type        = string
+  default     = "eastus2"
+}
+
+variable "vm_size" {
+  description = "Azure VM size (Standard_B2ms provides 2 vCPU, 8 GiB RAM for Docker workloads)"
+  type        = string
+  default     = "Standard_B2ms"
+}
+
+variable "admin_username" {
+  description = "SSH admin username for the VM"
+  type        = string
+  default     = "azureuser"
+}
+
+variable "ssh_public_key_path" {
+  description = "Path to the SSH public key file"
+  type        = string
+  default     = "~/.ssh/id_ed25519.pub"
+}
+
+variable "environment_tag" {
+  description = "Environment tag applied to all resources"
+  type        = string
+  default     = "lab"
+}
+```
+
+### Network Infrastructure
+
+Create `network.tf`:
+
+```hcl
+resource "azurerm_resource_group" "origin" {
+  name     = var.resource_group_name
+  location = var.location
+
+  tags = {
+    environment = var.environment_tag
+    component   = "origin-server"
+  }
+}
+
+resource "azurerm_virtual_network" "origin" {
+  name                = "vnet-origin-server"
+  address_space       = ["10.200.0.0/16"]
+  location            = azurerm_resource_group.origin.location
+  resource_group_name = azurerm_resource_group.origin.name
+
+  tags = azurerm_resource_group.origin.tags
+}
+
+resource "azurerm_subnet" "origin" {
+  name                 = "snet-origin"
+  resource_group_name  = azurerm_resource_group.origin.name
+  virtual_network_name = azurerm_virtual_network.origin.name
+  address_prefixes     = ["10.200.1.0/24"]
+}
+
+resource "azurerm_public_ip" "origin" {
+  name                = "pip-origin-server"
+  location            = azurerm_resource_group.origin.location
+  resource_group_name = azurerm_resource_group.origin.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+
+  tags = azurerm_resource_group.origin.tags
+}
+
+resource "azurerm_network_security_group" "origin" {
+  name                = "nsg-origin-server"
+  location            = azurerm_resource_group.origin.location
+  resource_group_name = azurerm_resource_group.origin.name
+
+  security_rule {
+    name                       = "AllowHTTP"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "AllowHTTPS"
+    priority                   = 110
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "AllowSSH"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  tags = azurerm_resource_group.origin.tags
+}
+
+resource "azurerm_network_interface" "origin" {
+  name                = "nic-origin-server"
+  location            = azurerm_resource_group.origin.location
+  resource_group_name = azurerm_resource_group.origin.name
+
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.origin.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.origin.id
+  }
+
+  tags = azurerm_resource_group.origin.tags
+}
+
+resource "azurerm_network_interface_security_group_association" "origin" {
+  network_interface_id      = azurerm_network_interface.origin.id
+  network_security_group_id = azurerm_network_security_group.origin.id
+}
+```
+
+### Virtual Machine with Cloud-Init
+
+Create `vm.tf`:
+
+```hcl
+resource "azurerm_linux_virtual_machine" "origin" {
+  name                = "vm-origin-server"
+  resource_group_name = azurerm_resource_group.origin.name
+  location            = azurerm_resource_group.origin.location
+  size                = var.vm_size
+
+  admin_username                  = var.admin_username
+  disable_password_authentication = true
+
+  admin_ssh_key {
+    username   = var.admin_username
+    public_key = file(var.ssh_public_key_path)
+  }
+
+  network_interface_ids = [azurerm_network_interface.origin.id]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Premium_LRS"
+    disk_size_gb         = 30
+  }
+
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "ubuntu-24_04-lts"
+    sku       = "server"
+    version   = "latest"
+  }
+
+  custom_data = base64encode(file("${path.module}/cloud-init.yaml"))
+
+  tags = azurerm_resource_group.origin.tags
+}
+```
+
+### Cloud-Init Provisioning
+
+Create `cloud-init.yaml`:
+
+```yaml
+#cloud-config
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - gnupg
+  - nginx
+
+write_files:
+  - path: /opt/origin-server/docker-compose.yml
+    content: |
+      services:
+        juice-shop:
+          image: bkimminich/juice-shop:latest
+          container_name: juice-shop
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:3000:3000"
+          environment:
+            - NODE_ENV=ctf
+
+        dvwa:
+          image: ghcr.io/digininja/dvwa:latest
+          container_name: dvwa
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8081:80"
+
+        vampi:
+          image: erev0s/vampi:latest
+          container_name: vampi
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:5000:5000"
+
+        httpbin:
+          image: kennethreitz/httpbin:latest
+          container_name: httpbin
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8080:80"
+
+  - path: /etc/nginx/sites-available/origin-server
+    content: |
+      server {
+          listen 80;
+          server_name _;
+
+          location /health {
+              access_log off;
+              return 200 '{"status":"healthy","component":"origin-server","applications":["juice-shop","dvwa","vampi","httpbin"]}';
+              add_header Content-Type application/json;
+          }
+
+          location / {
+              root /var/www/html;
+              index index.html;
+          }
+
+          location /juice-shop/ {
+              proxy_pass http://127.0.0.1:3000/;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_set_header X-Forwarded-Prefix /juice-shop;
+          }
+
+          location /dvwa/ {
+              proxy_pass http://127.0.0.1:8081/;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+
+          location /vampi/ {
+              proxy_pass http://127.0.0.1:5000/;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+
+          location /httpbin/ {
+              proxy_pass http://127.0.0.1:8080/;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+      }
+
+  - path: /var/www/html/index.html
+    content: |
+      <!DOCTYPE html>
+      <html>
+      <head><title>Origin Server</title></head>
+      <body>
+      <h1>Origin Server</h1>
+      <p>Vulnerable web application origin server for F5 XC demo environments.</p>
+      <ul>
+        <li><a href="/juice-shop/">Juice Shop</a> - OWASP Top 10 (XSS, SQLi, CSRF)</li>
+        <li><a href="/dvwa/">DVWA</a> - WAF testing (adjustable difficulty)</li>
+        <li><a href="/vampi/">VAmPI</a> - REST API security (OWASP API Top 10)</li>
+        <li><a href="/httpbin/">httpbin</a> - HTTP request/response testing</li>
+      </ul>
+      <p><a href="/health">Health Check</a></p>
+      </body>
+      </html>
+
+runcmd:
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - systemctl enable docker
+  - systemctl start docker
+  - ln -sf /etc/nginx/sites-available/origin-server /etc/nginx/sites-enabled/origin-server
+  - rm -f /etc/nginx/sites-enabled/default
+  - nginx -t
+  - systemctl enable nginx
+  - cd /opt/origin-server && docker compose up -d
+  - sleep 30
+  - systemctl restart nginx
+```
+
+### Outputs
+
+Create `outputs.tf`:
+
+```hcl
+output "public_ip" {
+  description = "Public IP address of the origin server"
+  value       = azurerm_public_ip.origin.ip_address
+}
+
+output "ssh_command" {
+  description = "SSH command to connect to the origin server"
+  value       = "ssh ${var.admin_username}@${azurerm_public_ip.origin.ip_address}"
+}
+
+output "origin_url" {
+  description = "Base HTTP URL of the origin server"
+  value       = "http://${azurerm_public_ip.origin.ip_address}"
+}
+
+output "health_check_url" {
+  description = "Health check endpoint"
+  value       = "http://${azurerm_public_ip.origin.ip_address}/health"
+}
+
+output "juice_shop_url" {
+  description = "OWASP Juice Shop URL"
+  value       = "http://${azurerm_public_ip.origin.ip_address}/juice-shop/"
+}
+
+output "dvwa_url" {
+  description = "DVWA URL"
+  value       = "http://${azurerm_public_ip.origin.ip_address}/dvwa/"
+}
+
+output "vampi_url" {
+  description = "VAmPI URL"
+  value       = "http://${azurerm_public_ip.origin.ip_address}/vampi/"
+}
+
+output "httpbin_url" {
+  description = "httpbin URL"
+  value       = "http://${azurerm_public_ip.origin.ip_address}/httpbin/"
+}
+
+output "resource_group" {
+  description = "Resource group containing all origin server resources"
+  value       = azurerm_resource_group.origin.name
+}
+```
+
+### Example Variables File
+
+Create `terraform.tfvars.example`:
+
+```hcl
+subscription_id     = "00000000-0000-0000-0000-000000000000"
+resource_group_name = "rg-origin-server"
+location            = "eastus2"
+vm_size             = "Standard_B2ms"
+admin_username      = "azureuser"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+environment_tag     = "lab"
+```
+
+## Deploy
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+
+terraform init
+
+terraform plan
+
+terraform apply
+```
+
+Terraform outputs the public IP, SSH command, and application URLs after successful deployment.
+
+## Post-Deploy
+
+After `terraform apply` completes, allow 5--10 minutes for cloud-init to finish installing Docker, pulling container images, and configuring nginx. The Docker image pulls are the bottleneck -- Juice Shop alone is ~400 MiB.
+
+Verify the health endpoint:
+
+```bash
+curl -s "http://$(terraform output -raw public_ip)/health" | jq .
+```
+
+Expected response:
+
+```json
+{
+  "status": "healthy",
+  "component": "origin-server",
+  "applications": ["juice-shop", "dvwa", "vampi", "httpbin"]
+}
+```
+
+### DVWA Database Setup
+
+DVWA requires a one-time database initialization. After the containers are running, visit the setup page:
+
+```bash
+curl -s "http://$(terraform output -raw public_ip)/dvwa/setup.php" -o /dev/null -w "%{http_code}"
+```
+
+Open `http://<PUBLIC_IP>/dvwa/setup.php` in a browser and click **Create / Reset Database**. Default credentials are `admin` / `password`.
+
+Proceed to [Applications](../04-applications/) for usage guides or [Verify](../05-verify/) for smoke tests.

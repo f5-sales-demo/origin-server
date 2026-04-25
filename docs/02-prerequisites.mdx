@@ -1,0 +1,72 @@
+---
+title: Prerequisites
+description: Required tools and access for deploying the origin server
+sidebar:
+  order: 2
+---
+
+## Required
+
+### Azure Subscription
+
+An active Azure subscription with permission to create:
+
+- Resource groups
+- Virtual networks and subnets
+- Network security groups
+- Public IP addresses
+- Virtual machines (Standard_B2ms or equivalent -- 2 vCPU, 8 GiB RAM)
+
+### Azure CLI
+
+Install and authenticate the Azure CLI:
+
+```bash
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+az login
+
+az account show --query '{name:name, id:id}' -o table
+```
+
+### Terraform
+
+Terraform >= 1.5 is required:
+
+```bash
+terraform version
+```
+
+If not installed, use the HashiCorp APT repository:
+
+```bash
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+```
+
+### SSH Key Pair
+
+An SSH key pair for VM access:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
+```
+
+## Resource Estimates
+
+| Resource | SKU | Estimated Monthly Cost |
+|---|---|---|
+| Ubuntu 24.04 VM | Standard_B2ms (2 vCPU, 8 GiB) | ~$60 USD |
+| Public IP | Standard, Static | ~$4 USD |
+| OS Disk | 30 GiB Premium SSD | ~$5 USD |
+| VNet + NSG | -- | No additional cost |
+| **Total** | | **~$69 USD/month** |
+
+:::tip
+Use `terraform destroy` when the lab is not in use to avoid ongoing charges. See [Teardown](../07-teardown/) for the procedure.
+:::
+
+:::note
+Standard_B2ms (8 GiB RAM) is recommended because Juice Shop and DVWA each consume ~512 MiB RAM, and Docker overhead adds ~1 GiB. Standard_B2s (4 GiB) will work but may be tight under load.
+:::

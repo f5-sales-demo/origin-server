@@ -1,0 +1,97 @@
+---
+title: Integrate
+description: Using the origin server with F5 Distributed Cloud
+sidebar:
+  order: 6
+---
+
+## F5 XC Origin Pool Integration
+
+This origin server is designed to be used as an **origin pool member** behind an F5 Distributed Cloud HTTP load balancer. The F5 XC platform provides WAF, Bot Defense, API Security, and Client-Side Defense in front of this origin.
+
+### Architecture
+
+```
+End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker apps)
+```
+
+### Origin Pool Configuration
+
+Create an F5 XC origin pool pointing to this VM's public IP:
+
+| Setting | Value |
+|---|---|
+| **Origin Server Type** | Public IP of Origin Server |
+| **IP Address** | `<terraform output public_ip>` |
+| **Port** | `80` |
+| **Health Check** | HTTP, path `/health` |
+
+### HTTP Load Balancer Configuration
+
+Create an HTTP load balancer with the origin pool:
+
+| Setting | Value |
+|---|---|
+| **Domains** | Your demo domain (e.g., `demo.example.com`) |
+| **Origin Pool** | The pool created above |
+| **WAF** | Attach your WAF policy |
+| **Bot Defense** | Enable as needed |
+| **API Discovery** | Enable for VAmPI endpoints |
+
+### Path-Based Routing
+
+Each application is accessible via its path prefix through the load balancer:
+
+| F5 XC LB URL | Origin Path | Application |
+|---|---|---|
+| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop |
+| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA |
+| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI |
+| `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin |
+| `https://demo.example.com/health` | `/health` | Health check |
+
+### WAF Testing Through F5 XC
+
+With a WAF policy attached to the HTTP load balancer, test attack payloads:
+
+```bash
+LB_DOMAIN="demo.example.com"
+
+# SQL Injection (should be blocked by WAF)
+curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/sqli/?id=%27+OR+1%3D1--&Submit=Submit"
+
+# XSS (should be blocked by WAF)
+curl -sk "https://${LB_DOMAIN}/juice-shop/rest/products/search?q=<script>alert(1)</script>"
+
+# Command Injection (should be blocked by WAF)
+curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/exec/" \
+  -d "ip=127.0.0.1;cat+/etc/passwd&Submit=Submit"
+
+# Normal request (should pass through)
+curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
+```
+
+### API Security Testing
+
+Enable API Discovery on the HTTP load balancer to map VAmPI's API endpoints:
+
+```bash
+# These requests build the API inventory in F5 XC
+curl -sk "https://${LB_DOMAIN}/vampi/users/v1"
+curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"apitest","password":"test123","email":"api@test.com"}'
+curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"apitest","password":"test123"}'
+```
+
+### Multi-Component Architecture
+
+When combined with the CDN Simulator, the full lab architecture is:
+
+```
+End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this component)
+```
+
+The CDN Simulator uses the F5 XC HTTP load balancer VIP as its origin, and the F5 XC load balancer uses this origin server as its backend. This creates a realistic multi-layer architecture for comprehensive testing.

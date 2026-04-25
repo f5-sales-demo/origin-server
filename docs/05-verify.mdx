@@ -1,0 +1,134 @@
+---
+title: Verify
+description: Smoke tests and troubleshooting for the origin server
+sidebar:
+  order: 5
+---
+
+## Smoke Tests
+
+Run these checks after allowing 5--10 minutes for cloud-init to complete.
+
+### Health Endpoint
+
+```bash
+ORIGIN_IP=$(terraform output -raw public_ip)
+
+curl -sf "http://${ORIGIN_IP}/health" | jq .
+```
+
+Expected:
+
+```json
+{
+  "status": "healthy",
+  "component": "origin-server",
+  "applications": ["juice-shop", "dvwa", "vampi", "httpbin"]
+}
+```
+
+### Application Endpoints
+
+```bash
+# Default landing page
+curl -sf "http://${ORIGIN_IP}/" -o /dev/null -w "Landing: %{http_code}\n"
+
+# Juice Shop
+curl -sf "http://${ORIGIN_IP}/juice-shop/" -o /dev/null -w "Juice Shop: %{http_code}\n"
+
+# DVWA
+curl -sf "http://${ORIGIN_IP}/dvwa/" -o /dev/null -w "DVWA: %{http_code}\n"
+
+# VAmPI
+curl -sf "http://${ORIGIN_IP}/vampi/" -o /dev/null -w "VAmPI: %{http_code}\n"
+
+# httpbin
+curl -sf "http://${ORIGIN_IP}/httpbin/get" -o /dev/null -w "httpbin: %{http_code}\n"
+```
+
+All should return `200`.
+
+### Docker Container Status
+
+SSH into the VM and verify all containers are running:
+
+```bash
+ssh azureuser@${ORIGIN_IP} "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
+```
+
+Expected output:
+
+```
+NAMES        STATUS         PORTS
+juice-shop   Up X minutes   127.0.0.1:3000->3000/tcp
+dvwa         Up X minutes   127.0.0.1:8081->80/tcp
+vampi        Up X minutes   127.0.0.1:5000->5000/tcp
+httpbin      Up X minutes   127.0.0.1:8080->80/tcp
+```
+
+### nginx Status
+
+```bash
+ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pager"
+```
+
+## Troubleshooting
+
+### Cloud-init still running
+
+If endpoints return 502 or connection refused, cloud-init may still be provisioning:
+
+```bash
+ssh azureuser@${ORIGIN_IP} "cloud-init status"
+```
+
+- `status: running` -- still provisioning, wait a few minutes
+- `status: done` -- provisioning complete, check Docker containers
+- `status: error` -- check logs below
+
+### Cloud-init logs
+
+```bash
+ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
+```
+
+### Container not starting
+
+```bash
+# Check container logs
+ssh azureuser@${ORIGIN_IP} "docker logs juice-shop 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "docker logs dvwa 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "docker logs vampi 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "docker logs httpbin 2>&1 | tail -20"
+```
+
+### nginx returning 502
+
+The upstream container is not ready or has crashed:
+
+```bash
+# Check nginx error log
+ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
+
+# Restart a specific container
+ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && docker compose restart juice-shop"
+
+# Restart all containers
+ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && docker compose restart"
+```
+
+### Disk space
+
+Docker images consume approximately 2 GiB total. Verify disk usage:
+
+```bash
+ssh azureuser@${ORIGIN_IP} "df -h / && docker system df"
+```
+
+### Restart everything
+
+If needed, restart all services:
+
+```bash
+ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && docker compose down && docker compose up -d && sudo systemctl restart nginx"
+```
