@@ -360,7 +360,8 @@ runcmd:
   - nginx -t
   - systemctl enable nginx
   - cd /opt/origin-server && docker compose up -d
-  - sleep 30
+  - sleep 60
+  - docker exec vampi python -c "from config import db, vuln_app; vuln_app.app.app_context().__enter__(); db.create_all()"
   - systemctl restart nginx
 ```
 
@@ -466,12 +467,13 @@ Expected response:
 
 ### DVWA Database Setup
 
-DVWA requires a one-time database initialization. After the containers are running, visit the setup page:
+DVWA requires a one-time database initialization. Open `http://<PUBLIC_IP>/dvwa/setup.php` in a browser and click **Create / Reset Database**. Default credentials are `admin` / `password`.
 
+:::note
+VAmPI's SQLite database is automatically initialized by cloud-init. If VAmPI returns 500 errors, SSH into the VM and run:
 ```bash
-curl -s "http://$(terraform output -raw public_ip)/dvwa/setup.php" -o /dev/null -w "%{http_code}"
+sudo docker exec vampi python -c "from config import db, vuln_app; vuln_app.app.app_context().__enter__(); db.create_all()"
 ```
-
-Open `http://<PUBLIC_IP>/dvwa/setup.php` in a browser and click **Create / Reset Database**. Default credentials are `admin` / `password`.
+:::
 
 Proceed to [Applications](../04-applications/) for usage guides or [Verify](../05-verify/) for smoke tests.
