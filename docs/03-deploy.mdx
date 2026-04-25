@@ -284,6 +284,56 @@ write_files:
           ports:
             - "127.0.0.1:8082:80"
 
+  - path: /opt/origin-server/csd-demo/app.py
+    content: |
+      from datetime import datetime, timezone
+      from flask import Flask, jsonify, render_template, request
+      app = Flask(__name__)
+      exfiltrated_data = []
+      @app.route("/")
+      def checkout():
+          return render_template("checkout.html")
+      @app.route("/dashboard")
+      def dashboard():
+          return render_template("dashboard.html", entries=exfiltrated_data)
+      @app.route("/exfil", methods=["POST", "GET"])
+      def exfil():
+          entry = {"timestamp": datetime.now(timezone.utc).isoformat(),
+                   "source_ip": request.remote_addr,
+                   "user_agent": request.headers.get("User-Agent", ""),
+                   "attack_type": request.args.get("type", "unknown")}
+          if request.is_json:
+              entry["payload"] = request.get_json(silent=True)
+          elif request.args.get("d"):
+              entry["payload"] = request.args.get("d")
+          else:
+              entry["payload"] = request.get_data(as_text=True)
+          exfiltrated_data.append(entry)
+          return jsonify({"status": "received"})
+      @app.route("/exfil/log")
+      def exfil_log():
+          return jsonify(exfiltrated_data)
+      @app.route("/exfil/clear", methods=["POST"])
+      def exfil_clear():
+          exfiltrated_data.clear()
+          return jsonify({"status": "cleared"})
+      @app.route("/health")
+      def health():
+          return jsonify({"status": "healthy", "component": "csd-demo",
+            "attacks": ["skimmer", "formjacker", "keylogger", "cryptominer", "dom-hijack"]})
+      if __name__ == "__main__":
+          app.run(host="0.0.0.0", port=5001, debug=False)
+
+  - path: /opt/origin-server/csd-demo/Dockerfile
+    content: |
+      FROM python:3.12-slim
+      WORKDIR /app
+      RUN pip install --no-cache-dir flask
+      COPY app.py .
+      COPY templates/ templates/
+      EXPOSE 5001
+      CMD ["python", "app.py"]
+
   - path: /etc/nginx/sites-available/origin-server
     content: |
       server {
@@ -292,7 +342,7 @@ write_files:
 
           location /health {
               access_log off;
-              return 200 '{"status":"healthy","component":"origin-server","applications":["juice-shop","dvwa","vampi","httpbin","whoami"]}';
+              return 200 '{"status":"healthy","component":"origin-server","applications":["juice-shop","dvwa","vampi","httpbin","whoami","csd-demo"]}';
               add_header Content-Type application/json;
           }
 
@@ -320,6 +370,14 @@ write_files:
 
           location /vampi/ {
               proxy_pass http://127.0.0.1:5000/;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+
+          location /csd-demo/ {
+              proxy_pass http://127.0.0.1:5001/;
               proxy_set_header Host $host;
               proxy_set_header X-Real-IP $remote_addr;
               proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -357,6 +415,7 @@ write_files:
         <li><a href="/vampi/">VAmPI</a> - REST API security (OWASP API Top 10)</li>
         <li><a href="/httpbin/">httpbin</a> - HTTP request/response testing</li>
         <li><a href="/whoami/">whoami</a> - Request diagnostics (headers, IP, hostname)</li>
+        <li><a href="/csd-demo/">CSD Demo</a> - Client-Side Defense testing (skimming, formjacking)</li>
       </ul>
       <p><a href="/health">Health Check</a></p>
       </body>
@@ -378,6 +437,8 @@ runcmd:
   - cd /opt/origin-server && docker compose up -d
   - sleep 60
   - docker exec vampi python -c "from config import db, vuln_app; vuln_app.app.app_context().__enter__(); db.create_all()"
+  - docker build -t csd-demo:latest /opt/origin-server/csd-demo/
+  - docker run -d --name csd-demo --restart unless-stopped -p 127.0.0.1:5001:5001 csd-demo:latest
   - systemctl restart nginx
 ```
 
@@ -431,6 +492,11 @@ output "whoami_url" {
   value       = "http://${azurerm_public_ip.origin.ip_address}/whoami/"
 }
 
+output "csd_demo_url" {
+  description = "Client-Side Defense demo URL"
+  value       = "http://${azurerm_public_ip.origin.ip_address}/csd-demo/"
+}
+
 output "resource_group" {
   description = "Resource group containing all origin server resources"
   value       = azurerm_resource_group.origin.name
@@ -482,7 +548,7 @@ Expected response:
 {
   "status": "healthy",
   "component": "origin-server",
-  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami"]
+  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami", "csd-demo"]
 }
 ```
 

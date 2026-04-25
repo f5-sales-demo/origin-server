@@ -47,6 +47,9 @@ curl -sf "http://${ORIGIN_IP}/httpbin/get" -o /dev/null -w "httpbin: %{http_code
 
 # whoami
 curl -sf "http://${ORIGIN_IP}/whoami/" -o /dev/null -w "whoami: %{http_code}\n"
+
+# CSD Demo
+curl -sf "http://${ORIGIN_IP}/csd-demo/" -o /dev/null -w "CSD Demo: %{http_code}\n"
 ```
 
 All should return `200`.
@@ -68,6 +71,7 @@ dvwa         Up X minutes   127.0.0.1:8081->80/tcp
 vampi        Up X minutes   127.0.0.1:5000->5000/tcp
 httpbin      Up X minutes   127.0.0.1:8080->80/tcp
 whoami       Up X minutes   127.0.0.1:8082->80/tcp
+csd-demo     Up X minutes   127.0.0.1:5001->5001/tcp
 ```
 
 ### nginx Status

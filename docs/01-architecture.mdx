@@ -29,6 +29,7 @@ graph LR
     NGINX --> |/vampi/| VAMPI[VAmPI<br/>Port 5000]
     NGINX --> |/httpbin/| HTTPBIN[httpbin<br/>Port 8080]
     NGINX --> |/whoami/| WHOAMI[whoami<br/>Port 8082]
+    NGINX --> |/csd-demo/| CSD[CSD Demo<br/>Port 5001]
 ```
 
 The nginx reverse proxy on the VM:
@@ -49,6 +50,7 @@ The nginx reverse proxy on the VM:
 | `/vampi/` | VAmPI | 5000 | REST API security testing (OWASP API Top 10) |
 | `/httpbin/` | httpbin | 8080 | HTTP request/response service for API demos |
 | `/whoami/` | whoami | 8082 | Request diagnostics -- shows all headers, client IP, hostname |
+| `/csd-demo/` | CSD Demo | 5001 | Client-Side Defense testing -- skimming, formjacking, keylogging |
 
 ## Modular Component Design
 
@@ -69,3 +71,4 @@ The human operator adds components one at a time. Each component's documentation
 | **VAmPI** | Purpose-built for OWASP API Security Top 10; REST API with known vulnerabilities; lightweight Flask app |
 | **httpbin** | Kenneth Reitz's canonical HTTP testing service; useful for basic API demos and request inspection |
 | **whoami** | Traefik's request echo server; shows full request details as the origin sees them -- essential for verifying F5 XC header injection |
+| **CSD Demo** | Custom e-commerce checkout with toggleable Magecart skimmer, formjacker, keylogger, cryptominer, and DOM hijack attacks for F5 Client-Side Defense demos |

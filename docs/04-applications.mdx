@@ -201,6 +201,62 @@ X-Forwarded-Proto: https
 X-Real-Ip: 104.219.105.84
 ```
 
+## CSD Demo (Client-Side Defense)
+
+| | |
+|---|---|
+| **Path** | `/csd-demo/` |
+| **Image** | Custom (built from Dockerfile in cloud-init) |
+| **Framework** | Python / Flask |
+| **Dashboard** | `/csd-demo/dashboard` |
+
+A purpose-built e-commerce checkout page with five toggleable client-side attack scenarios designed to demonstrate F5 Distributed Cloud Client-Side Defense capabilities. Each attack can be enabled independently via the operator control panel.
+
+### Attack Scenarios
+
+| Attack | Toggle | What CSD Detects |
+|---|---|---|
+| **Card Skimmer** | Magecart-style interception | Unauthorized script reading payment form fields and exfiltrating via XHR to attacker endpoint |
+| **Formjacker** | Hijacks form action URL | Form submission redirected to attacker-controlled domain instead of legitimate backend |
+| **Keylogger** | Real-time keystroke capture | JavaScript listening to keydown events and transmitting keystrokes to external endpoint |
+| **Cryptominer** | Simulated CPU-intensive mining | Unauthorized script consuming CPU resources; communication with mining pool domain |
+| **DOM Hijack** | Injects fake overlay form | Unauthorized DOM manipulation creating phishing overlay to steal credentials |
+
+### Demo Flow
+
+1. Open `/csd-demo/` in the browser
+2. Open `/csd-demo/dashboard` in a second tab (attacker view)
+3. Enable one or more attacks via the red control panel
+4. Fill in the checkout form with test data
+5. Submit the form and observe data appearing in the attacker dashboard
+6. Show how F5 CSD detects and blocks these exfiltration attempts
+
+### CSD Detection Mapping
+
+Based on the [F5 CSD Solution Overview](https://cdn.studio.f5.com/files/k6fem79d/production/6cf856310ae57017926c3ba475c6199c9747d92b.pdf):
+
+| CSD Capability | Demo Attack |
+|---|---|
+| Monitor client-side code for malicious JavaScript | All five attacks |
+| Detect data exfiltration to attacker-controlled domains | Skimmer, Formjacker, Keylogger |
+| Stop account takeovers (session/credential theft) | DOM Hijack, Keylogger |
+| One-click blocking of attacker domains | Skimmer exfil endpoint |
+| PCI DSS 6.4.3 compliance (script inventory) | All -- unauthorized scripts detected |
+| Supply chain attack detection | Skimmer (injected via compromised third-party JS) |
+
+### API Endpoints
+
+```bash
+# Check CSD demo health
+curl "http://<PUBLIC_IP>/csd-demo/health"
+
+# View exfiltration log (attacker C&C)
+curl "http://<PUBLIC_IP>/csd-demo/exfil/log" | jq .
+
+# Clear exfiltration log
+curl -X POST "http://<PUBLIC_IP>/csd-demo/exfil/clear"
+```
+
 ## Application Coverage Matrix
 
 | Demo Use Case | Primary App | Secondary App |
@@ -218,3 +274,9 @@ X-Real-Ip: 104.219.105.84
 | Basic connectivity testing | httpbin | -- |
 | Request diagnostics | whoami | httpbin |
 | Header injection verification | whoami | -- |
+| Client-Side Defense -- Skimming | CSD Demo | -- |
+| Client-Side Defense -- Formjacking | CSD Demo | -- |
+| Client-Side Defense -- Keylogging | CSD Demo | -- |
+| Client-Side Defense -- Cryptomining | CSD Demo | -- |
+| Client-Side Defense -- DOM Hijack | CSD Demo | -- |
+| PCI DSS 6.4.3 compliance | CSD Demo | -- |
