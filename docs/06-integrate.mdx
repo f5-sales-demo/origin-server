@@ -48,7 +48,28 @@ Each application is accessible via its path prefix through the load balancer:
 | `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA |
 | `https://demo.example.com/vampi/` | `/vampi/` | VAmPI |
 | `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin |
+| `https://demo.example.com/whoami/` | `/whoami/` | Request diagnostics |
 | `https://demo.example.com/health` | `/health` | Health check |
+
+### Verify F5 XC Header Injection
+
+Use the whoami endpoint to verify what headers F5 XC injects into requests reaching the origin:
+
+```bash
+LB_DOMAIN="demo.example.com"
+
+curl -sk "https://${LB_DOMAIN}/whoami/"
+```
+
+Look for these F5 XC injected headers in the response:
+
+| Header | Meaning |
+|---|---|
+| `X-Forwarded-For` | Client IP chain through F5 XC |
+| `True-Client-IP` | Original client IP |
+| `X-Forwarded-Proto` | `https` if TLS terminates at F5 XC |
+| `X-Volterra-Bot-Type` | Bot classification (when Bot Defense is enabled) |
+| `X-Request-ID` | F5 XC request tracking ID |
 
 ### WAF Testing Through F5 XC
 

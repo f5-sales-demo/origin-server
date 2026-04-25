@@ -277,6 +277,13 @@ write_files:
           ports:
             - "127.0.0.1:8080:80"
 
+        whoami:
+          image: traefik/whoami:latest
+          container_name: whoami
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8082:80"
+
   - path: /etc/nginx/sites-available/origin-server
     content: |
       server {
@@ -285,7 +292,7 @@ write_files:
 
           location /health {
               access_log off;
-              return 200 '{"status":"healthy","component":"origin-server","applications":["juice-shop","dvwa","vampi","httpbin"]}';
+              return 200 '{"status":"healthy","component":"origin-server","applications":["juice-shop","dvwa","vampi","httpbin","whoami"]}';
               add_header Content-Type application/json;
           }
 
@@ -319,6 +326,14 @@ write_files:
               proxy_set_header X-Forwarded-Proto $scheme;
           }
 
+          location /whoami/ {
+              proxy_pass http://127.0.0.1:8082/;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+
           location /httpbin/ {
               proxy_pass http://127.0.0.1:8080/;
               proxy_set_header Host $host;
@@ -341,6 +356,7 @@ write_files:
         <li><a href="/dvwa/">DVWA</a> - WAF testing (adjustable difficulty)</li>
         <li><a href="/vampi/">VAmPI</a> - REST API security (OWASP API Top 10)</li>
         <li><a href="/httpbin/">httpbin</a> - HTTP request/response testing</li>
+        <li><a href="/whoami/">whoami</a> - Request diagnostics (headers, IP, hostname)</li>
       </ul>
       <p><a href="/health">Health Check</a></p>
       </body>
@@ -410,6 +426,11 @@ output "httpbin_url" {
   value       = "http://${azurerm_public_ip.origin.ip_address}/httpbin/"
 }
 
+output "whoami_url" {
+  description = "whoami request diagnostics URL"
+  value       = "http://${azurerm_public_ip.origin.ip_address}/whoami/"
+}
+
 output "resource_group" {
   description = "Resource group containing all origin server resources"
   value       = azurerm_resource_group.origin.name
@@ -461,7 +482,7 @@ Expected response:
 {
   "status": "healthy",
   "component": "origin-server",
-  "applications": ["juice-shop", "dvwa", "vampi", "httpbin"]
+  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami"]
 }
 ```
 

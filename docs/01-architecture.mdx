@@ -28,6 +28,7 @@ graph LR
     NGINX --> |/dvwa/| DVWA[DVWA<br/>Port 8081]
     NGINX --> |/vampi/| VAMPI[VAmPI<br/>Port 5000]
     NGINX --> |/httpbin/| HTTPBIN[httpbin<br/>Port 8080]
+    NGINX --> |/whoami/| WHOAMI[whoami<br/>Port 8082]
 ```
 
 The nginx reverse proxy on the VM:
@@ -47,6 +48,7 @@ The nginx reverse proxy on the VM:
 | `/dvwa/` | DVWA | 8081 | Classic WAF testing with adjustable difficulty |
 | `/vampi/` | VAmPI | 5000 | REST API security testing (OWASP API Top 10) |
 | `/httpbin/` | httpbin | 8080 | HTTP request/response service for API demos |
+| `/whoami/` | whoami | 8082 | Request diagnostics -- shows all headers, client IP, hostname |
 
 ## Modular Component Design
 
@@ -66,3 +68,4 @@ The human operator adds components one at a time. Each component's documentation
 | **DVWA** | Industry standard for WAF testing; adjustable security levels (low/medium/high/impossible); PHP-based for diversity |
 | **VAmPI** | Purpose-built for OWASP API Security Top 10; REST API with known vulnerabilities; lightweight Flask app |
 | **httpbin** | Kenneth Reitz's canonical HTTP testing service; useful for basic API demos and request inspection |
+| **whoami** | Traefik's request echo server; shows full request details as the origin sees them -- essential for verifying F5 XC header injection |
