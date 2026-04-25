@@ -342,8 +342,27 @@ write_files:
           image: ghcr.io/digininja/dvwa:latest
           container_name: dvwa
           restart: unless-stopped
+          depends_on:
+            - dvwa-db
           ports:
             - "127.0.0.1:8081:80"
+          environment:
+            - DB_SERVER=dvwa-db
+            - DB_DATABASE=dvwa
+            - DB_USER=dvwa
+            - DB_PASSWORD=p@ssw0rd
+
+        dvwa-db:
+          image: mariadb:10.11
+          container_name: dvwa-db
+          restart: unless-stopped
+          environment:
+            - MYSQL_ROOT_PASSWORD=root_password
+            - MYSQL_DATABASE=dvwa
+            - MYSQL_USER=dvwa
+            - MYSQL_PASSWORD=p@ssw0rd
+          volumes:
+            - dvwa-db-data:/var/lib/mysql
 
         vampi:
           image: erev0s/vampi:latest
@@ -365,6 +384,9 @@ write_files:
           restart: unless-stopped
           ports:
             - "127.0.0.1:8082:80"
+
+      volumes:
+        dvwa-db-data:
 
   - path: /etc/nginx/sites-available/origin-server
     content: |
@@ -487,6 +509,15 @@ runcmd:
   - cd /opt/origin-server && docker compose up -d
   - sleep 60
   - docker exec vampi python -c "from config import db, vuln_app; vuln_app.app.app_context().__enter__(); db.create_all()"
+  # DVWA database setup (create tables via HTTP setup endpoint)
+  - |
+    for i in $(seq 1 30); do
+      docker exec dvwa-db mysqladmin ping -u root -proot_password 2>/dev/null && break
+      sleep 2
+    done
+  - |
+    TOKEN=$(curl -sf http://127.0.0.1:8081/setup.php | grep -oP "user_token.*?value='\K[a-f0-9]+" | head -1)
+    curl -sf -X POST http://127.0.0.1:8081/setup.php -d "create_db=Create+%2F+Reset+Database&user_token=${TOKEN}" -c /tmp/dvwa-setup -b /tmp/dvwa-setup
   - docker build -t csd-demo:latest /opt/origin-server/csd-demo/
   - docker run -d --name csd-demo --restart unless-stopped -p 127.0.0.1:5001:5001 csd-demo:latest
   - systemctl restart nginx
