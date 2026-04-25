@@ -19,11 +19,6 @@ export default {
     '@semantic-release/release-notes-generator',
     // biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release interpolation token
     ['@semantic-release/exec', { prepareCmd: 'node scripts/stamp-manifest.js ${nextRelease.version}' }],
-    [
-      '@semantic-release/git',
-      // biome-ignore lint/suspicious/noTemplateCurlyInString: semantic-release interpolation token
-      { assets: ['manifest.json'], message: 'chore(release): ${nextRelease.version} [skip ci]' },
-    ],
     ['@semantic-release/github', { assets: [{ path: 'manifest.json', label: 'Endpoint Manifest' }] }],
   ],
 };
