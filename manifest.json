@@ -1,0 +1,120 @@
+{
+  "component": "origin-server",
+  "version": "0.0.0",
+  "generated": "2026-04-25T20:00:00Z",
+  "connection": {
+    "default_port": 80,
+    "health_check": {
+      "path": "/health",
+      "method": "GET",
+      "expected_status": 200
+    }
+  },
+  "applications": [
+    {
+      "name": "juice-shop",
+      "path": "/juice-shop/",
+      "description": "OWASP Juice Shop — modern e-commerce with 100+ security challenges",
+      "container": {
+        "image": "bkimminich/juice-shop",
+        "tag": "latest",
+        "internal_port": 3000
+      },
+      "health_check": {
+        "path": "/juice-shop/rest/admin/application-version",
+        "method": "GET",
+        "expected_status": 200
+      },
+      "credentials": null,
+      "demo_features": ["waf", "bot-defense", "api-security", "client-side-defense"]
+    },
+    {
+      "name": "dvwa",
+      "path": "/dvwa/",
+      "description": "DVWA — classic WAF testing with adjustable difficulty levels",
+      "container": {
+        "image": "ghcr.io/digininja/dvwa",
+        "tag": "latest",
+        "internal_port": 80
+      },
+      "health_check": {
+        "path": "/dvwa/login.php",
+        "method": "GET",
+        "expected_status": 200
+      },
+      "credentials": {
+        "username": "admin",
+        "password": "password"
+      },
+      "demo_features": ["waf", "bot-defense"]
+    },
+    {
+      "name": "vampi",
+      "path": "/vampi/",
+      "description": "VAmPI — REST API with OWASP API Security Top 10 vulnerabilities",
+      "container": {
+        "image": "erev0s/vampi",
+        "tag": "latest",
+        "internal_port": 5000
+      },
+      "health_check": {
+        "path": "/vampi/",
+        "method": "GET",
+        "expected_status": 200
+      },
+      "credentials": null,
+      "demo_features": ["api-security"]
+    },
+    {
+      "name": "httpbin",
+      "path": "/httpbin/",
+      "description": "httpbin — HTTP request/response echo service for diagnostics",
+      "container": {
+        "image": "kennethreitz/httpbin",
+        "tag": "latest",
+        "internal_port": 80
+      },
+      "health_check": {
+        "path": "/httpbin/get",
+        "method": "GET",
+        "expected_status": 200
+      },
+      "credentials": null,
+      "demo_features": ["diagnostics"]
+    },
+    {
+      "name": "whoami",
+      "path": "/whoami/",
+      "description": "whoami — request diagnostics showing all headers as the origin sees them",
+      "container": {
+        "image": "traefik/whoami",
+        "tag": "latest",
+        "internal_port": 80
+      },
+      "health_check": {
+        "path": "/whoami/",
+        "method": "GET",
+        "expected_status": 200
+      },
+      "credentials": null,
+      "demo_features": ["diagnostics", "header-verification"]
+    },
+    {
+      "name": "csd-demo",
+      "path": "/csd-demo/",
+      "description": "CSD Demo — e-commerce checkout with toggleable Magecart attacks",
+      "container": {
+        "image": "f5xc-salesdemos/csd-demo",
+        "tag": "latest",
+        "internal_port": 5001
+      },
+      "health_check": {
+        "path": "/csd-demo/health",
+        "method": "GET",
+        "expected_status": 200
+      },
+      "credentials": null,
+      "demo_features": ["client-side-defense"]
+    }
+  ]
+}

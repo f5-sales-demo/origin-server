@@ -1,0 +1,71 @@
+---
+name: Release
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - ".github/workflows/enforce-repo-settings.yml"
+      - ".github/workflows/github-pages-deploy.yml"
+      - ".github/workflows/require-linked-issue.yml"
+      - ".github/workflows/super-linter.yml"
+      - ".github/workflows/dependabot-auto-merge.yml"
+      - ".editorconfig"
+      - ".gitignore"
+      - "CLAUDE.md"
+      - "CONTRIBUTING.md"
+      - "README.md"
+      - "LICENSE"
+      - "release.config.js"
+      - "scripts/**"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+      - run: node scripts/validate-manifest.js
+
+  release:
+    name: Semantic Release
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Install semantic-release
+        run: >
+          npm install --no-save
+          semantic-release
+          @semantic-release/commit-analyzer
+          @semantic-release/release-notes-generator
+          @semantic-release/exec
+          @semantic-release/git
+          @semantic-release/github
+
+      - name: Run semantic-release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
