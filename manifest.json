@@ -143,6 +143,74 @@
       },
       "credentials": null,
       "demo_features": ["client-side-defense"]
+    },
+    {
+      "name": "dvga",
+      "path": "/dvga/",
+      "description": "DVGA — Damn Vulnerable GraphQL Application with 20+ vulnerability scenarios",
+      "container": {
+        "image": "dolevf/dvga",
+        "tag": "latest",
+        "internal_port": 5013,
+        "instances": 4,
+        "host_ports": "5201-5204",
+        "sticky": "ip_hash",
+        "resources": "0.5 CPU / 256M"
+      },
+      "health_check": {
+        "path": "/dvga/",
+        "method": "GET",
+        "expected_status": 200
+      },
+      "credentials": null,
+      "demo_features": ["api-security", "graphql"]
+    },
+    {
+      "name": "restaurant",
+      "path": "/restaurant/",
+      "description": "Damn Vulnerable RESTaurant — FastAPI game covering OWASP API Security Top 10 2023",
+      "container": {
+        "image": "restaurant-api",
+        "tag": "latest",
+        "build": true,
+        "internal_port": 8091,
+        "instances": 4,
+        "host_ports": "8301-8304",
+        "entrypoint": "uvicorn --root-path /restaurant",
+        "resources": "0.5 CPU / 256M",
+        "database": "postgres:15.4-alpine (restaurant-db, 0.5 CPU / 512M)"
+      },
+      "health_check": {
+        "path": "/restaurant/docs",
+        "method": "GET",
+        "expected_status": 200
+      },
+      "credentials": {
+        "username": "admin",
+        "password": "password"
+      },
+      "demo_features": ["api-security"]
+    },
+    {
+      "name": "crapi",
+      "path": ":8888",
+      "description": "crAPI — OWASP microservices API with BOLA, BFLA, mass assignment, and SSRF challenges",
+      "container": {
+        "image": "crapi/*",
+        "tag": "latest",
+        "internal_port": 80,
+        "instances": 1,
+        "host_ports": "18888",
+        "resources": "3.0 CPU / 2048M total (7 microservices)",
+        "database": "postgres:14 + mongo:4.4"
+      },
+      "health_check": {
+        "path": ":8888/health",
+        "method": "GET",
+        "expected_status": 200
+      },
+      "credentials": null,
+      "demo_features": ["api-security", "bola", "bfla", "mass-assignment", "ssrf"]
     }
   ]
 }
