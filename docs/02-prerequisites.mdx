@@ -1,6 +1,6 @@
 ---
 title: Prerequisites
-description: "Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and Standard_B2ms VM (2 vCPU, 8 GiB RAM) at approximately $69 USD/month"
+description: "Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) for 25-container deployment"
 sidebar:
   order: 2
 ---
@@ -15,7 +15,7 @@ An active Azure subscription with permission to create:
 - Virtual networks and subnets
 - Network security groups
 - Public IP addresses
-- Virtual machines (Standard_B2ms or equivalent -- 2 vCPU, 8 GiB RAM)
+- Virtual machines (Standard_D16s_v3 -- 16 vCPU, 64 GiB RAM for 25-container workloads)
 
 ### Azure CLI
 
@@ -57,16 +57,16 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 
 | Resource | SKU | Estimated Monthly Cost |
 |---|---|---|
-| Ubuntu 24.04 VM | Standard_B2ms (2 vCPU, 8 GiB) | ~$60 USD |
+| Ubuntu 24.04 VM | Standard_D16s_v3 (16 vCPU, 64 GiB) | ~$486 USD |
 | Public IP | Standard, Static | ~$4 USD |
-| OS Disk | 30 GiB Premium SSD | ~$5 USD |
+| OS Disk | 60 GiB Premium SSD | ~$10 USD |
 | VNet + NSG | -- | No additional cost |
-| **Total** | | **~$69 USD/month** |
+| **Total** | | **~$500 USD/month** |
 
 :::tip
 Use `terraform destroy` when the lab is not in use to avoid ongoing charges. See [Teardown](../07-teardown/) for the procedure.
 :::
 
 :::note
-Standard_B2ms (8 GiB RAM) is recommended because Juice Shop and DVWA each consume ~512 MiB RAM, and Docker overhead adds ~1 GiB. Standard_B2s (4 GiB) will work but may be tight under load.
+Standard_D16s_v3 (64 GiB RAM) is required for the 25-container deployment. Container memory allocation: 4 Juice Shop instances at 1 GiB each (4 GiB), 4 VAmPI at 512 MiB each (2 GiB), 4 DVWA-FPM + MariaDB (1.8 GiB), 4 httpbin at 256 MiB (1 GiB), 4 CSD Demo at 256 MiB (1 GiB), 4 whoami at 64 MiB (256 MiB), plus nginx, OS, and buffer cache. Total container allocation is approximately 10 GiB.
 :::

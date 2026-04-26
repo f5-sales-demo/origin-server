@@ -27,17 +27,17 @@ import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
 <CardGrid>
   <LinkCard
     title="Multi-App Origin"
-    description="One Ubuntu 24.04 VM running nginx as a reverse proxy to Juice Shop, DVWA, VAmPI, and httpbin containers."
+    description="One Ubuntu 24.04 VM (16 vCPU, 64 GiB) running nginx as a reverse proxy to 25 Docker containers: Juice Shop, DVWA, VAmPI, httpbin, whoami, and CSD Demo — each scaled to 4 load-balanced instances."
     href="01-architecture/"
   />
   <LinkCard
     title="Terraform Deployment"
-    description="Complete Azure infrastructure as code: VNet, PIP, NSG, and VM with Docker + nginx cloud-init provisioning."
+    description="Complete Azure infrastructure as code: VNet, PIP, NSG, and Standard_D16s_v3 VM with Docker + nginx cloud-init provisioning. 60 GiB disk, logrotate, and journald caps included."
     href="03-deploy/"
   />
   <LinkCard
     title="Vulnerable Applications"
-    description="Juice Shop, DVWA, VAmPI, httpbin, and whoami covering security testing and request diagnostics."
+    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, and CSD Demo covering WAF, API security, bot defense, client-side defense, and request diagnostics."
     href="04-applications/"
   />
   <LinkCard
