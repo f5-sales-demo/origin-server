@@ -180,7 +180,46 @@ check_contains "csd-demo-exfil-receives" '"received"' "$CSD_EXFIL"
 CSD_LOG=$(curl -sf --max-time 5 "${BASE}/csd-demo/exfil/log" 2>/dev/null || echo "[]")
 check_contains "csd-demo-exfil-log-has-entry" "smoke-test" "$CSD_LOG"
 
-# ── 8. Cross-cutting ───────────────────────────────
+# ── 8. DVGA ───────────────────────────────────────
+
+echo "── DVGA (GraphQL) ──"
+
+DVGA_HOME=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "${BASE}/dvga/" 2>/dev/null || echo "000")
+check "dvga-home-200" "200" "$DVGA_HOME"
+
+DVGA_GQL=$(curl -sf --max-time 10 -X POST "${BASE}/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{__schema{queryType{name}}}"}' 2>/dev/null || echo "{}")
+check_contains "dvga-graphql-introspection" '"Query"' "$DVGA_GQL"
+
+# ── 9. RESTaurant API ────────────────────────────────
+
+echo "── RESTaurant API ──"
+
+REST_DOCS=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "${BASE}/restaurant/docs" 2>/dev/null || echo "000")
+check "restaurant-docs-200" "200" "$REST_DOCS"
+
+REST_OPENAPI=$(curl -sf --max-time 10 "${BASE}/restaurant/openapi.json" 2>/dev/null || echo "{}")
+check_contains "restaurant-openapi-title" '"Damn Vulnerable RESTaurant"' "$REST_OPENAPI"
+
+# ── 10. crAPI ─────────────────────────────────────────
+
+echo "── crAPI (port 8888) ──"
+
+CRAPI_BASE="http://${ORIGIN_IP}:8888"
+
+CRAPI_HOME=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "${CRAPI_BASE}/" 2>/dev/null || echo "000")
+check "crapi-home-200" "200" "$CRAPI_HOME"
+
+CRAPI_HEALTH=$(curl -sf --max-time 10 "${CRAPI_BASE}/health" 2>/dev/null || echo "")
+check_contains "crapi-health-ok" "OK" "$CRAPI_HEALTH"
+
+CRAPI_SIGNUP=$(curl -sf --max-time 15 -X POST "${CRAPI_BASE}/identity/api/auth/signup" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Smoke Test","email":"smoke@example.com","number":"5551234567","password":"SmokeTest123"}' 2>/dev/null || echo "{}")
+check_contains "crapi-signup-responds" '"message"' "$CRAPI_SIGNUP"
+
+# ── 11. Cross-cutting ───────────────────────────────
 
 echo "── Cross-cutting ──"
 

@@ -1,6 +1,6 @@
 ---
 title: Prerequisites
-description: "Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) for 25-container deployment"
+description: "Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) for 41-container deployment"
 sidebar:
   order: 2
 ---
@@ -15,7 +15,7 @@ An active Azure subscription with permission to create:
 - Virtual networks and subnets
 - Network security groups
 - Public IP addresses
-- Virtual machines (Standard_D16s_v3 -- 16 vCPU, 64 GiB RAM for 25-container workloads)
+- Virtual machines (Standard_D16s_v3 -- 16 vCPU, 64 GiB RAM for 41-container workloads)
 
 ### Azure CLI
 
@@ -68,5 +68,9 @@ Use `terraform destroy` when the lab is not in use to avoid ongoing charges. See
 :::
 
 :::note
-Standard_D16s_v3 (64 GiB RAM) is required for the 25-container deployment. Container memory allocation: 4 Juice Shop instances at 1 GiB each (4 GiB), 4 VAmPI at 512 MiB each (2 GiB), 4 DVWA-FPM + MariaDB (1.8 GiB), 4 httpbin at 256 MiB (1 GiB), 4 CSD Demo at 256 MiB (1 GiB), 4 whoami at 64 MiB (256 MiB), plus nginx, OS, and buffer cache. Total container allocation is approximately 10 GiB.
+Standard_D16s_v3 (64 GiB RAM) is required for the 41-container deployment. Container memory allocation: 4 Juice Shop instances at 1 GiB each (4 GiB), 4 VAmPI at 512 MiB each (2 GiB), 4 DVWA-FPM + MariaDB (1.8 GiB), 4 httpbin at 256 MiB (1 GiB), 4 CSD Demo at 256 MiB (1 GiB), 4 whoami at 64 MiB (256 MiB), 4 DVGA at 256 MiB each (1 GiB), 4 RESTaurant + PostgreSQL (1.5 GiB), crAPI 7 microservices (2 GiB), plus nginx, OS, and buffer cache. Total container allocation is approximately 14.5 GiB (22.7% of 64 GiB).
+:::
+
+:::note
+The NSG allows inbound traffic on ports 80 (HTTP) and 8888 (crAPI). Port 8888 is required because crAPI is a single-page application that hardcodes its API paths and cannot be served behind a path prefix.
 :::

@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: "25-container deployment on Standard_D16s_v3 (16 vCPU, 64 GiB): nginx reverse proxy with reuseport, sticky sessions, and proxy cache routing to 4 load-balanced instances each of Juice Shop, DVWA-FPM, VAmPI, httpbin, whoami, and CSD Demo on Ubuntu 24.04"
+description: "41-container deployment on Standard_D16s_v3 (16 vCPU, 64 GiB): nginx reverse proxy with reuseport, sticky sessions, and proxy cache routing to load-balanced instances of Juice Shop, DVWA-FPM, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI on Ubuntu 24.04"
 sidebar:
   order: 1
 ---
@@ -30,10 +30,14 @@ graph LR
     NGINX --> |/httpbin/| HTTPBIN[httpbin ×4<br/>Ports 8201-8204<br/>gunicorn -w 4]
     NGINX --> |/whoami/| WHOAMI[whoami ×4<br/>Ports 8082-8085]
     NGINX --> |/csd-demo/| CSD[CSD Demo ×4<br/>Ports 5001-5004<br/>ip_hash · gunicorn -w 1]
+    NGINX --> |/dvga/| DVGA[DVGA ×4<br/>Ports 5201-5204<br/>ip_hash · SQLite]
+    NGINX --> |/restaurant/| REST[RESTaurant ×4<br/>Ports 8301-8304<br/>round-robin]
+    XCHLB --> |:8888| CRAPI[crAPI ×7 microservices<br/>Port 8888<br/>web · identity · community<br/>workshop · postgres · mongo · mailhog]
     DVWA --> DB[(MariaDB 10.11<br/>dvwa-db)]
+    REST --> RESTDB[(PostgreSQL 15.4<br/>restaurant-db)]
 ```
 
-**25 containers** on a Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM, 60 GiB disk).
+**41 containers** on a Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM, 60 GiB disk).
 
 The nginx reverse proxy:
 
@@ -50,13 +54,16 @@ The nginx reverse proxy:
 | Path | Upstream | Instances | Ports | Sticky Session | Purpose |
 |---|---|---|---|---|---|
 | `/` | nginx | -- | -- | -- | Landing page with links to all apps |
-| `/health` | nginx | -- | -- | -- | JSON health endpoint (6 apps listed) |
+| `/health` | nginx | -- | -- | -- | JSON health endpoint (9 apps listed) |
 | `/juice-shop/` | juice_shop | 4 | 3001-3004 | `hash $cookie_token` | Modern web app security (XSS, injection, CSRF) |
 | `/dvwa/` | dvwa | 4 + MariaDB | 8101-8104 | `hash $cookie_PHPSESSID` | Classic WAF testing with adjustable difficulty |
 | `/vampi/` | vampi | 4 | 5101-5104 | `ip_hash` | REST API security testing (OWASP API Top 10) |
 | `/httpbin/` | httpbin_up | 4 | 8201-8204 | -- | HTTP request/response service for API demos |
 | `/whoami/` | whoami_up | 4 | 8082-8085 | -- | Request diagnostics -- shows all headers, client IP |
 | `/csd-demo/` | csd_demo | 4 | 5001-5004 | `ip_hash` | Client-Side Defense testing (Magecart attacks) |
+| `/dvga/` | dvga | 4 | 5201-5204 | `ip_hash` | GraphQL API security testing (injection, DoS, auth bypass) |
+| `/restaurant/` | restaurant | 4 + PostgreSQL | 8301-8304 | -- | REST API security (OWASP API Top 10 2023) |
+| `:8888` | crapi | 7 microservices | 8888 | -- | OWASP crAPI (BOLA, BFLA, mass assignment, SSRF, JWT) |
 
 ## Modular Component Design
 
@@ -78,3 +85,6 @@ The human operator adds components one at a time. Each component's documentation
 | **httpbin** | Kenneth Reitz's canonical HTTP testing service; gunicorn with 4 gevent workers; useful for API demos and request inspection |
 | **whoami** | Traefik's request echo server; shows full request details as the origin sees them -- essential for verifying F5 XC header injection |
 | **CSD Demo** | Custom checkout page with 5 toggleable Magecart-style attacks (card skimmer, formjacker, keylogger, cryptominer, DOM hijack); exfil endpoint + attacker dashboard; gunicorn single-worker for in-memory state persistence |
+| **DVGA** | Damn Vulnerable GraphQL Application; GraphQL-specific vulnerabilities including injection, DoS, batching attacks, and authorization bypass; GraphiQL UI for interactive exploration; ip_hash sticky for SQLite per instance |
+| **RESTaurant** | Damn Vulnerable RESTaurant API Game; purpose-built for OWASP API Security Top 10 2023; FastAPI with Swagger UI; shared PostgreSQL 15.4 backend; covers BOLA, BFLA, mass assignment, SSRF, and injection |
+| **crAPI** | OWASP Completely Ridiculous API; 7-microservice architecture covering BOLA, BFLA, mass assignment, SSRF, JWT manipulation, and NoSQL injection; dedicated port 8888 (SPA with hardcoded API paths); MailHog for email capture |

@@ -1,6 +1,6 @@
 ---
 title: Applications
-description: "URL paths, request/response behavior, default credentials, and attack scenarios for Juice Shop (/juice-shop), DVWA (/dvwa), VAmPI (/vampi), httpbin (/httpbin), whoami (/whoami), and CSD Demo (/csd-demo)"
+description: "URL paths, request/response behavior, default credentials, and attack scenarios for Juice Shop (/juice-shop), DVWA (/dvwa), VAmPI (/vampi), httpbin (/httpbin), whoami (/whoami), CSD Demo (/csd-demo), DVGA (/dvga), RESTaurant (/restaurant), and crAPI (:8888)"
 sidebar:
   order: 4
 ---
@@ -35,6 +35,14 @@ Replace `<ORIGIN>` with `http://<PUBLIC_IP>` in all examples below. After deploy
 | `/csd-demo/dashboard` | CSD attacker view | GET | 200 HTML showing exfiltrated data |
 | `/csd-demo/health` | CSD health | GET | 200 JSON `{"status":"healthy","component":"csd-demo",...}` |
 | `/csd-demo/exfil/log` | CSD exfil log | GET | 200 JSON array of captured data |
+| `/dvga/` | DVGA GraphiQL | GET | 200 HTML (GraphiQL IDE) |
+| `/dvga/graphql` | DVGA GraphQL API | POST | 200 JSON GraphQL response |
+| `/restaurant/` | RESTaurant | GET | 200 (redirects to docs) |
+| `/restaurant/docs` | RESTaurant Swagger | GET | 200 HTML (FastAPI Swagger UI) |
+| `/restaurant/openapi.json` | RESTaurant OpenAPI | GET | 200 JSON OpenAPI spec |
+| `http://<PUBLIC_IP>:8888` | crAPI | GET | 200 HTML (SPA) |
+| `http://<PUBLIC_IP>:8888/identity/api/auth/signup` | crAPI signup | POST | 200 JSON |
+| `http://<PUBLIC_IP>:8888/identity/api/auth/login` | crAPI login | POST | 200 JSON `{"token":"..."}` |
 
 ## OWASP Juice Shop
 
@@ -239,6 +247,157 @@ X-Forwarded-Proto: https
 X-Real-Ip: 104.219.105.84
 ```
 
+## DVGA (Damn Vulnerable GraphQL Application)
+
+| | |
+|---|---|
+| **Path** | `/dvga/` |
+| **Image** | `dolevf/dvga:latest` |
+| **Instances** | 4 (ports 5201-5204), sticky via `ip_hash` (SQLite per instance) |
+| **Resources** | 0.5 CPU / 256 MiB RAM per instance |
+| **Framework** | Python / Flask / GraphQL |
+| **Project** | [github.com/dolevf/Damn-Vulnerable-GraphQL-Application](https://github.com/dolevf/Damn-Vulnerable-GraphQL-Application) |
+
+DVGA is purpose-built for testing GraphQL-specific vulnerabilities. It provides a GraphiQL IDE at `/dvga/` for interactive query exploration and a GraphQL API endpoint at `/dvga/graphql`. Each instance uses its own SQLite database, so `ip_hash` sticky sessions ensure consistent state.
+
+### Demo Scenarios
+
+| Scenario | Category | Attack Vector |
+|---|---|---|
+| GraphQL Injection | API Security | Malicious queries via string interpolation |
+| Denial of Service | API Security | Deeply nested queries, batch queries, resource exhaustion |
+| Authorization Bypass | API Security | Accessing unauthorized data through GraphQL |
+| Information Disclosure | API Security | Introspection queries revealing schema details |
+| Batching Attack | API Security | Multiple operations in a single request |
+
+### Key Endpoints
+
+```bash
+# GraphiQL UI (interactive IDE)
+curl -sf "http://<PUBLIC_IP>/dvga/" -o /dev/null -w "%{http_code}"
+
+# Introspection query -- enumerate the full schema
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ __schema { types { name fields { name } } } }"}'
+
+# List pastes (example query)
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ pastes { title content } }"}'
+
+# Create a paste (mutation)
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"mutation { createPaste(title:\"test\", content:\"hello\", public:true) { paste { title } } }"}'
+```
+
+## RESTaurant (Damn Vulnerable RESTaurant API Game)
+
+| | |
+|---|---|
+| **Path** | `/restaurant/` |
+| **Image** | Custom build from `theowni/Damn-Vulnerable-RESTaurant-API-Game` |
+| **Instances** | 4 (ports 8301-8304), round-robin (shared PostgreSQL) |
+| **Resources** | 0.5 CPU / 256 MiB RAM per instance |
+| **Database** | Shared PostgreSQL 15.4 (`restaurant-db` container, 0.5 CPU / 512 MiB) |
+| **Framework** | Python / FastAPI / PostgreSQL |
+| **Credentials** | `admin` / `password` (PostgreSQL) |
+| **Project** | [github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game](https://github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game) |
+
+RESTaurant is a gamified vulnerable REST API covering the OWASP API Security Top 10 2023. It uses FastAPI with automatic Swagger UI documentation at `/restaurant/docs`. All 4 instances share a single PostgreSQL database, so round-robin load balancing works without sticky sessions.
+
+### Demo Scenarios
+
+| Scenario | OWASP API Top 10 2023 | Method |
+|---|---|---|
+| Broken Object Level Authorization (BOLA) | API1 | Access other users' orders by manipulating IDs |
+| Broken Authentication | API2 | Weak token handling, credential stuffing |
+| Broken Object Property Level Authorization | API3 | Mass assignment on user profile fields |
+| Unrestricted Resource Consumption | API4 | No rate limiting on endpoints |
+| Broken Function Level Authorization (BFLA) | API5 | Access admin endpoints as regular user |
+| Server Side Request Forgery (SSRF) | API7 | Manipulate server-side URL requests |
+| Security Misconfiguration | API8 | Verbose error messages, default credentials |
+
+### Key Endpoints
+
+```bash
+# Swagger UI
+curl -sf "http://<PUBLIC_IP>/restaurant/docs" -o /dev/null -w "%{http_code}"
+
+# OpenAPI spec
+curl -s "http://<PUBLIC_IP>/restaurant/openapi.json" | jq .info
+
+# BOLA -- access another user's order (after authentication)
+curl -s "http://<PUBLIC_IP>/restaurant/orders/1" \
+  -H "Authorization: Bearer <token>"
+
+# BFLA -- attempt admin action as regular user
+curl -s -X POST "http://<PUBLIC_IP>/restaurant/admin/users" \
+  -H "Authorization: Bearer <user_token>" \
+  -H "Content-Type: application/json"
+```
+
+## crAPI (OWASP Completely Ridiculous API)
+
+| | |
+|---|---|
+| **Port** | `8888` (dedicated -- not path-prefixed) |
+| **Images** | `crapi/crapi-web`, `crapi/crapi-identity`, `crapi/crapi-community`, `crapi/crapi-workshop`, PostgreSQL, MongoDB, MailHog |
+| **Instances** | 7 microservices (single instance each) |
+| **Resources** | ~3.0 CPU / ~2.0 GiB RAM total |
+| **Framework** | React SPA + Java/Go/Python microservices |
+| **Project** | [github.com/OWASP/crAPI](https://github.com/OWASP/crAPI) |
+
+crAPI is the OWASP flagship project for API security testing. It runs as 7 microservices on a dedicated port (8888) because the React SPA hardcodes its API paths and cannot be served behind a path prefix. The NSG allows inbound traffic on port 8888.
+
+MailHog captures all emails sent by crAPI (account verification, password reset). Access MailHog via SSH tunnel on port 18025.
+
+### Challenge Categories
+
+| Category | Vulnerabilities |
+|---|---|
+| BOLA (Broken Object Level Authorization) | Access other users' vehicles, orders, and reports |
+| BFLA (Broken Function Level Authorization) | Escalate to admin, access restricted endpoints |
+| Mass Assignment | Modify protected fields (role, balance) via API |
+| SSRF (Server Side Request Forgery) | Manipulate server-side URL fetching |
+| JWT Manipulation | Forge or modify JWT tokens for privilege escalation |
+| NoSQL Injection | Inject queries into MongoDB-backed endpoints |
+| Excessive Data Exposure | API returns sensitive user data |
+
+### Getting Started
+
+```bash
+# Verify crAPI is running
+curl -sf "http://<PUBLIC_IP>:8888" -o /dev/null -w "%{http_code}"
+
+# Sign up a new user
+curl -s -X POST "http://<PUBLIC_IP>:8888/identity/api/auth/signup" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test User","email":"test@example.com","number":"1234567890","password":"Test1234!"}'
+
+# Log in
+curl -s -X POST "http://<PUBLIC_IP>:8888/identity/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"Test1234!"}'
+
+# Access MailHog (via SSH tunnel for email verification)
+# ssh -L 18025:localhost:18025 azureuser@<PUBLIC_IP>
+# Then open http://localhost:18025 in your browser
+```
+
+### crAPI Architecture
+
+```
+Port 8888 -> crapi-web (React SPA + nginx)
+             -> crapi-identity (Java, user auth, JWT)
+             -> crapi-community (Go, forums, posts)
+             -> crapi-workshop (Python, vehicle service)
+             -> crapi-postgres (PostgreSQL)
+             -> crapi-mongo (MongoDB)
+             -> crapi-mailhog (email capture, port 18025)
+```
+
 ## Application Coverage Matrix
 
 | Demo Use Case | Primary App | Secondary App |
@@ -258,6 +417,14 @@ X-Real-Ip: 104.219.105.84
 | Client-Side Defense -- Keylogger | CSD Demo | -- |
 | Client-Side Defense -- Cryptominer | CSD Demo | -- |
 | Client-Side Defense -- DOM Hijack | CSD Demo | -- |
+| API Security -- GraphQL injection | DVGA | -- |
+| API Security -- GraphQL DoS | DVGA | -- |
+| API Security -- OWASP API Top 10 2023 | RESTaurant | crAPI |
+| API Security -- BFLA | RESTaurant | crAPI |
+| API Security -- Mass assignment | crAPI | RESTaurant |
+| API Security -- SSRF | crAPI | RESTaurant |
+| API Security -- JWT manipulation | crAPI | -- |
+| API Security -- NoSQL injection | crAPI | -- |
 | Basic connectivity testing | httpbin | -- |
 | Request diagnostics | whoami | httpbin |
 | Header injection verification | whoami | -- |

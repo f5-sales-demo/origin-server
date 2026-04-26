@@ -1,6 +1,6 @@
 ---
 title: Deploy
-description: "Complete Terraform HCL for Azure deployment: main.tf, variables.tf, network.tf, vm.tf, cloud-init.yaml, and outputs.tf with docker-compose for all six application containers"
+description: "Complete Terraform HCL for Azure deployment: main.tf, variables.tf, network.tf, vm.tf, cloud-init.yaml, and outputs.tf with docker-compose for 41 containers across 9 applications"
 sidebar:
   order: 3
 ---
@@ -160,6 +160,18 @@ resource "azurerm_network_security_group" "origin" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "AllowCrAPI"
+    priority                   = 130
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "8888"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
@@ -364,6 +376,23 @@ write_files:
               server 127.0.0.1:5003 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:5004 max_fails=3 fail_timeout=10s;
               ip_hash;
+              keepalive 32;
+          }
+
+          upstream dvga_graphql {
+              server 127.0.0.1:5201 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:5202 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:5203 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:5204 max_fails=3 fail_timeout=10s;
+              ip_hash;
+              keepalive 32;
+          }
+
+          upstream restaurant {
+              server 127.0.0.1:8301 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:8302 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:8303 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:8304 max_fails=3 fail_timeout=10s;
               keepalive 32;
           }
 
@@ -762,8 +791,409 @@ write_files:
                 cpus: "0.5"
                 memory: 256M
 
+        dvga-1:
+          image: dolevf/dvga:latest
+          container_name: dvga-1
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:5201:5013"
+          environment:
+            - WEB_HOST=0.0.0.0
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 256M
+
+        dvga-2:
+          image: dolevf/dvga:latest
+          container_name: dvga-2
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:5202:5013"
+          environment:
+            - WEB_HOST=0.0.0.0
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 256M
+
+        dvga-3:
+          image: dolevf/dvga:latest
+          container_name: dvga-3
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:5203:5013"
+          environment:
+            - WEB_HOST=0.0.0.0
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 256M
+
+        dvga-4:
+          image: dolevf/dvga:latest
+          container_name: dvga-4
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:5204:5013"
+          environment:
+            - WEB_HOST=0.0.0.0
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 256M
+
+        restaurant-db:
+          image: postgres:15.4-alpine
+          container_name: restaurant-db
+          restart: unless-stopped
+          environment:
+            - POSTGRES_USER=admin
+            - POSTGRES_PASSWORD=password
+            - POSTGRES_DB=restaurant
+            - PGDATA=/var/lib/postgresql/data/pgdata
+          volumes:
+            - restaurant-db-data:/var/lib/postgresql/data
+          healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U admin -d restaurant"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 512M
+
+        restaurant-1:
+          build: ./restaurant/
+          container_name: restaurant-1
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8301:8091"
+          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant"]
+          environment:
+            - POSTGRES_USER=admin
+            - POSTGRES_PASSWORD=password
+            - POSTGRES_SERVER=restaurant-db
+            - POSTGRES_PORT=5432
+            - POSTGRES_DB=restaurant
+          depends_on:
+            restaurant-db:
+              condition: service_healthy
+          cap_add:
+            - SYS_ADMIN
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 256M
+
+        restaurant-2:
+          build: ./restaurant/
+          container_name: restaurant-2
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8302:8091"
+          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant"]
+          environment:
+            - POSTGRES_USER=admin
+            - POSTGRES_PASSWORD=password
+            - POSTGRES_SERVER=restaurant-db
+            - POSTGRES_PORT=5432
+            - POSTGRES_DB=restaurant
+          depends_on:
+            restaurant-db:
+              condition: service_healthy
+          cap_add:
+            - SYS_ADMIN
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 256M
+
+        restaurant-3:
+          build: ./restaurant/
+          container_name: restaurant-3
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8303:8091"
+          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant"]
+          environment:
+            - POSTGRES_USER=admin
+            - POSTGRES_PASSWORD=password
+            - POSTGRES_SERVER=restaurant-db
+            - POSTGRES_PORT=5432
+            - POSTGRES_DB=restaurant
+          depends_on:
+            restaurant-db:
+              condition: service_healthy
+          cap_add:
+            - SYS_ADMIN
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 256M
+
+        restaurant-4:
+          build: ./restaurant/
+          container_name: restaurant-4
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8304:8091"
+          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant"]
+          environment:
+            - POSTGRES_USER=admin
+            - POSTGRES_PASSWORD=password
+            - POSTGRES_SERVER=restaurant-db
+            - POSTGRES_PORT=5432
+            - POSTGRES_DB=restaurant
+          depends_on:
+            restaurant-db:
+              condition: service_healthy
+          cap_add:
+            - SYS_ADMIN
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 256M
+
+        crapi-web:
+          image: crapi/crapi-web:latest
+          container_name: crapi-web
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:18888:80"
+          environment:
+            - COMMUNITY_SERVICE=crapi-community:8087
+            - IDENTITY_SERVICE=crapi-identity:8080
+            - WORKSHOP_SERVICE=crapi-workshop:8000
+            - CHATBOT_SERVICE=crapi-identity:8080
+            - MAILHOG_WEB_SERVICE=crapi-mailhog:8025
+            - TLS_ENABLED=false
+          depends_on:
+            crapi-identity:
+              condition: service_healthy
+            crapi-community:
+              condition: service_healthy
+            crapi-workshop:
+              condition: service_healthy
+          healthcheck:
+            test: ["CMD", "curl", "-f", "http://0.0.0.0:80/health"]
+            interval: 15s
+            timeout: 15s
+            retries: 15
+          deploy:
+            resources:
+              limits:
+                cpus: "0.3"
+                memory: 128M
+
+        crapi-identity:
+          image: crapi/crapi-identity:latest
+          container_name: crapi-identity
+          restart: unless-stopped
+          environment:
+            - LOG_LEVEL=INFO
+            - DB_NAME=crapi
+            - DB_USER=admin
+            - DB_PASSWORD=crapisecretpassword
+            - DB_HOST=crapi-postgres
+            - DB_PORT=5432
+            - SERVER_PORT=8080
+            - ENABLE_SHELL_INJECTION=true
+            - JWT_SECRET=crapi
+            - JWT_EXPIRATION=604800000
+            - MAILHOG_HOST=crapi-mailhog
+            - MAILHOG_PORT=1025
+            - MAILHOG_DOMAIN=example.com
+            - SMTP_HOST=crapi-mailhog
+            - SMTP_PORT=1025
+            - SMTP_EMAIL=user@example.com
+            - SMTP_PASS=xxxxxxxxxxxxxx
+            - SMTP_FROM=no-reply@example.com
+            - SMTP_AUTH=false
+            - SMTP_STARTTLS=false
+            - ENABLE_LOG4J=true
+            - API_GATEWAY_URL=https://api.mypremiumdealership.com
+            - MONGO_DB_HOST=crapi-mongo
+            - MONGO_DB_PORT=27017
+            - MONGO_DB_USER=admin
+            - MONGO_DB_PASSWORD=crapisecretpassword
+            - MONGO_DB_NAME=crapi
+            - TLS_ENABLED=false
+          depends_on:
+            crapi-postgres:
+              condition: service_healthy
+            crapi-mongo:
+              condition: service_healthy
+            crapi-mailhog:
+              condition: service_healthy
+          healthcheck:
+            test: ["CMD", "/app/health.sh"]
+            interval: 15s
+            timeout: 15s
+            retries: 15
+          deploy:
+            resources:
+              limits:
+                cpus: "0.8"
+                memory: 512M
+
+        crapi-community:
+          image: crapi/crapi-community:latest
+          container_name: crapi-community
+          restart: unless-stopped
+          environment:
+            - LOG_LEVEL=INFO
+            - IDENTITY_SERVICE=crapi-identity:8080
+            - DB_NAME=crapi
+            - DB_USER=admin
+            - DB_PASSWORD=crapisecretpassword
+            - DB_HOST=crapi-postgres
+            - DB_PORT=5432
+            - SERVER_PORT=8087
+            - MONGO_DB_HOST=crapi-mongo
+            - MONGO_DB_PORT=27017
+            - MONGO_DB_USER=admin
+            - MONGO_DB_PASSWORD=crapisecretpassword
+            - MONGO_DB_NAME=crapi
+            - TLS_ENABLED=false
+          depends_on:
+            crapi-mongo:
+              condition: service_healthy
+            crapi-identity:
+              condition: service_healthy
+          healthcheck:
+            test: ["CMD", "/app/health.sh"]
+            interval: 15s
+            timeout: 15s
+            retries: 15
+          deploy:
+            resources:
+              limits:
+                cpus: "0.3"
+                memory: 192M
+
+        crapi-workshop:
+          image: crapi/crapi-workshop:latest
+          container_name: crapi-workshop
+          restart: unless-stopped
+          environment:
+            - LOG_LEVEL=INFO
+            - IDENTITY_SERVICE=crapi-identity:8080
+            - DB_NAME=crapi
+            - DB_USER=admin
+            - DB_PASSWORD=crapisecretpassword
+            - DB_HOST=crapi-postgres
+            - DB_PORT=5432
+            - SERVER_PORT=8000
+            - MONGO_DB_HOST=crapi-mongo
+            - MONGO_DB_PORT=27017
+            - MONGO_DB_USER=admin
+            - MONGO_DB_PASSWORD=crapisecretpassword
+            - MONGO_DB_NAME=crapi
+            - SECRET_KEY=crapi
+            - API_GATEWAY_URL=https://api.mypremiumdealership.com
+            - TLS_ENABLED=false
+            - FILES_LIMIT=1000
+          depends_on:
+            crapi-postgres:
+              condition: service_healthy
+            crapi-mongo:
+              condition: service_healthy
+            crapi-identity:
+              condition: service_healthy
+            crapi-community:
+              condition: service_healthy
+          healthcheck:
+            test: ["CMD", "/app/health.sh"]
+            interval: 15s
+            timeout: 15s
+            retries: 15
+          deploy:
+            resources:
+              limits:
+                cpus: "0.3"
+                memory: 256M
+
+        crapi-postgres:
+          image: postgres:14
+          container_name: crapi-postgres
+          restart: unless-stopped
+          environment:
+            - POSTGRES_USER=admin
+            - POSTGRES_PASSWORD=crapisecretpassword
+            - POSTGRES_DB=crapi
+          volumes:
+            - crapi-postgres-data:/var/lib/postgresql/data
+          healthcheck:
+            test: ["CMD-SHELL", "pg_isready"]
+            interval: 15s
+            timeout: 15s
+            retries: 10
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 256M
+
+        crapi-mongo:
+          image: mongo:4.4
+          container_name: crapi-mongo
+          restart: unless-stopped
+          environment:
+            - MONGO_INITDB_ROOT_USERNAME=admin
+            - MONGO_INITDB_ROOT_PASSWORD=crapisecretpassword
+          volumes:
+            - crapi-mongo-data:/data/db
+          healthcheck:
+            test: ["CMD", "mongo", "--eval", "db.runCommand(\"ping\").ok", "--quiet"]
+            interval: 15s
+            timeout: 15s
+            retries: 10
+            start_period: 20s
+          deploy:
+            resources:
+              limits:
+                cpus: "0.3"
+                memory: 128M
+
+        crapi-mailhog:
+          image: crapi/mailhog:latest
+          container_name: crapi-mailhog
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:18025:8025"
+          environment:
+            - MH_MONGO_URI=admin:crapisecretpassword@crapi-mongo:27017
+            - MH_STORAGE=mongodb
+          depends_on:
+            crapi-mongo:
+              condition: service_healthy
+          healthcheck:
+            test: ["CMD", "nc", "-z", "localhost", "8025"]
+            interval: 15s
+            timeout: 15s
+            retries: 10
+          deploy:
+            resources:
+              limits:
+                cpus: "0.3"
+                memory: 128M
+
       volumes:
         dvwa-db-data:
+        restaurant-db-data:
+        crapi-postgres-data:
+        crapi-mongo-data:
 
   - path: /etc/nginx/sites-available/origin-server
     content: |
@@ -773,7 +1203,7 @@ write_files:
 
           location /health {
               access_log off;
-              return 200 '{ "status":"healthy","component":"origin-server","applications":["juice-shop","dvwa","vampi","httpbin","whoami","csd-demo"] }' ;
+              return 200 '{ "status":"healthy","component":"origin-server","applications":["juice-shop","dvwa","vampi","httpbin","whoami","csd-demo","dvga","restaurant","crapi"] }' ;
               add_header Content-Type application/json;
           }
 
@@ -846,6 +1276,47 @@ write_files:
               proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
               proxy_set_header X-Forwarded-Proto $scheme;
           }
+
+          location /dvga/ {
+              proxy_pass http://dvga_graphql/;
+              proxy_http_version 1.1;
+              proxy_set_header Connection "";
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+
+          location /restaurant/ {
+              proxy_pass http://restaurant/;
+              proxy_http_version 1.1;
+              proxy_set_header Connection "";
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+      }
+
+      server {
+          listen 8888;
+          server_name _;
+
+          location /health {
+              access_log off;
+              return 200 '{"status":"healthy","component":"crapi"}';
+              add_header Content-Type application/json;
+          }
+
+          location / {
+              proxy_pass http://127.0.0.1:18888;
+              proxy_http_version 1.1;
+              proxy_set_header Connection "";
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
       }
 
   - path: /var/www/html/index.html
@@ -863,6 +1334,9 @@ write_files:
         <li><a href="/httpbin/">httpbin</a> - HTTP request/response testing</li>
         <li><a href="/whoami/">whoami</a> - Request diagnostics (headers, IP, hostname)</li>
         <li><a href="/csd-demo/">CSD Demo</a> - Client-Side Defense testing (skimming, formjacking)</li>
+        <li><a href="/dvga/">DVGA</a> - GraphQL security (introspection, batching, injection)</li>
+        <li><a href="/restaurant/">RESTaurant</a> - REST API security (OWASP API Top 10 2023)</li>
+        <li><a href="javascript:void(0)" onclick="window.open('http://'+location.hostname+':8888','_blank')">crAPI</a> - Microservices API security (BOLA, BFLA, SSRF)</li>
       </ul>
       <p><a href="/health">Health Check</a></p>
       </body>
@@ -1502,6 +1976,9 @@ runcmd:
   - rm -f /etc/nginx/sites-enabled/default
   - nginx -t
   - systemctl enable nginx
+  # Clone RESTaurant API repo for build
+  - apt-get install -y git
+  - git clone --depth 1 https://github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game.git /opt/origin-server/restaurant
   # Build custom images and start all containers
   - cd /opt/origin-server && docker compose build
   - cd /opt/origin-server && docker compose up -d
@@ -1568,6 +2045,21 @@ output "whoami_url" {
   value       = "http://${azurerm_public_ip.origin.ip_address}/whoami/"
 }
 
+output "dvga_url" {
+  description = "DVGA GraphQL security URL"
+  value       = "http://${azurerm_public_ip.origin.ip_address}/dvga/"
+}
+
+output "restaurant_url" {
+  description = "RESTaurant API security URL"
+  value       = "http://${azurerm_public_ip.origin.ip_address}/restaurant/"
+}
+
+output "crapi_url" {
+  description = "crAPI microservices security URL"
+  value       = "http://${azurerm_public_ip.origin.ip_address}:8888"
+}
+
 output "resource_group" {
   description = "Resource group containing all origin server resources"
   value       = azurerm_resource_group.origin.name
@@ -1619,7 +2111,7 @@ Expected response:
 {
   "status": "healthy",
   "component": "origin-server",
-  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami", "csd-demo"]
+  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami", "csd-demo", "dvga", "restaurant", "crapi"]
 }
 ```
 
