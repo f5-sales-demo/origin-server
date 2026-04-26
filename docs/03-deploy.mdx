@@ -768,7 +768,7 @@ write_files:
   - path: /etc/nginx/sites-available/origin-server
     content: |
       server {
-          listen 80 backlog=4096;
+          listen 80 reuseport backlog=4096;
           server_name _;
 
           location /health {
