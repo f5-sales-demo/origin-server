@@ -109,11 +109,18 @@ VAMPI_USERS=$(curl -sf --max-time 5 "${BASE}/vampi/users/v1" 2>/dev/null || echo
 check_contains "vampi-users-endpoint" "users" "$VAMPI_USERS"
 
 SMOKE_USER="smoke$(date +%s)"
+# Register on all load-balanced instances (round-robin sends each to a different backend)
+for _ in 1 2 3 4; do
+  curl -sf --max-time 5 -X POST "${BASE}/vampi/users/v1/register" \
+    -H "Content-Type: application/json" \
+    -d "{\"username\":\"${SMOKE_USER}\",\"password\":\"test123\",\"email\":\"${SMOKE_USER}@test.com\"}" -o /dev/null 2>/dev/null
+done
 VAMPI_REG=$(curl -sf --max-time 5 -X POST "${BASE}/vampi/users/v1/register" \
   -H "Content-Type: application/json" \
-  -d "{\"username\":\"${SMOKE_USER}\",\"password\":\"test123\",\"email\":\"${SMOKE_USER}@test.com\"}" 2>/dev/null || echo "{}")
+  -d "{\"username\":\"${SMOKE_USER}x\",\"password\":\"test123\",\"email\":\"${SMOKE_USER}x@test.com\"}" 2>/dev/null || echo "{}")
 check_contains "vampi-register-success" '"success"' "$VAMPI_REG"
 
+# Login will hit one of the instances that has the user
 VAMPI_LOGIN=$(curl -sf --max-time 5 -X POST "${BASE}/vampi/users/v1/login" \
   -H "Content-Type: application/json" \
   -d "{\"username\":\"${SMOKE_USER}\",\"password\":\"test123\"}" 2>/dev/null || echo "{}")
