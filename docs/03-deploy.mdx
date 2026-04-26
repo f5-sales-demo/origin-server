@@ -321,11 +321,29 @@ write_files:
               server 127.0.0.1:3004 max_fails=3 fail_timeout=10s;
               keepalive 64;
           }
-          upstream dvwa        { server 127.0.0.1:8081; keepalive 32; }
-          upstream vampi       { server 127.0.0.1:5000; keepalive 32; }
-          upstream httpbin_up  { server 127.0.0.1:8080; keepalive 32; }
-          upstream whoami_up   { server 127.0.0.1:8082; keepalive 32; }
-          upstream csd_demo    { server 127.0.0.1:5001; keepalive 32; }
+          upstream dvwa {
+              server 127.0.0.1:8101 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:8102 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:8103 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:8104 max_fails=3 fail_timeout=10s;
+              keepalive 32;
+          }
+          upstream vampi {
+              server 127.0.0.1:5101 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:5102 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:5103 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:5104 max_fails=3 fail_timeout=10s;
+              keepalive 32;
+          }
+          upstream httpbin_up {
+              server 127.0.0.1:8201 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:8202 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:8203 max_fails=3 fail_timeout=10s;
+              server 127.0.0.1:8204 max_fails=3 fail_timeout=10s;
+              keepalive 32;
+          }
+          upstream whoami_up  { server 127.0.0.1:8082; keepalive 32; }
+          upstream csd_demo   { server 127.0.0.1:5001; keepalive 32; }
 
           include /etc/nginx/conf.d/*.conf;
           include /etc/nginx/sites-enabled/*;
@@ -396,14 +414,14 @@ write_files:
                 cpus: "1.0"
                 memory: 256M
 
-        dvwa:
+        dvwa-1:
           image: ghcr.io/digininja/dvwa:latest
-          container_name: dvwa
+          container_name: dvwa-1
           restart: unless-stopped
           depends_on:
             - dvwa-db
           ports:
-            - "127.0.0.1:8081:80"
+            - "127.0.0.1:8101:80"
           environment:
             - DB_SERVER=dvwa-db
             - DB_DATABASE=dvwa
@@ -412,8 +430,65 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "1.0"
-                memory: 256M
+                cpus: "0.5"
+                memory: 128M
+
+        dvwa-2:
+          image: ghcr.io/digininja/dvwa:latest
+          container_name: dvwa-2
+          restart: unless-stopped
+          depends_on:
+            - dvwa-db
+          ports:
+            - "127.0.0.1:8102:80"
+          environment:
+            - DB_SERVER=dvwa-db
+            - DB_DATABASE=dvwa
+            - DB_USER=dvwa
+            - DB_PASSWORD=p@ssw0rd
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 128M
+
+        dvwa-3:
+          image: ghcr.io/digininja/dvwa:latest
+          container_name: dvwa-3
+          restart: unless-stopped
+          depends_on:
+            - dvwa-db
+          ports:
+            - "127.0.0.1:8103:80"
+          environment:
+            - DB_SERVER=dvwa-db
+            - DB_DATABASE=dvwa
+            - DB_USER=dvwa
+            - DB_PASSWORD=p@ssw0rd
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 128M
+
+        dvwa-4:
+          image: ghcr.io/digininja/dvwa:latest
+          container_name: dvwa-4
+          restart: unless-stopped
+          depends_on:
+            - dvwa-db
+          ports:
+            - "127.0.0.1:8104:80"
+          environment:
+            - DB_SERVER=dvwa-db
+            - DB_DATABASE=dvwa
+            - DB_USER=dvwa
+            - DB_PASSWORD=p@ssw0rd
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 128M
 
         dvwa-db:
           image: mariadb:10.11
@@ -435,24 +510,96 @@ write_files:
                 cpus: "1.0"
                 memory: 768M
 
-        vampi:
+        vampi-1:
           image: erev0s/vampi:latest
-          container_name: vampi
+          container_name: vampi-1
           restart: unless-stopped
           ports:
-            - "127.0.0.1:5000:5000"
+            - "127.0.0.1:5101:5000"
           deploy:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 128M
 
-        httpbin:
-          image: kennethreitz/httpbin:latest
-          container_name: httpbin
+        vampi-2:
+          image: erev0s/vampi:latest
+          container_name: vampi-2
           restart: unless-stopped
           ports:
-            - "127.0.0.1:8080:80"
+            - "127.0.0.1:5102:5000"
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 128M
+
+        vampi-3:
+          image: erev0s/vampi:latest
+          container_name: vampi-3
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:5103:5000"
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 128M
+
+        vampi-4:
+          image: erev0s/vampi:latest
+          container_name: vampi-4
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:5104:5000"
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 128M
+
+        httpbin-1:
+          image: kennethreitz/httpbin:latest
+          container_name: httpbin-1
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8201:80"
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 128M
+
+        httpbin-2:
+          image: kennethreitz/httpbin:latest
+          container_name: httpbin-2
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8202:80"
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 128M
+
+        httpbin-3:
+          image: kennethreitz/httpbin:latest
+          container_name: httpbin-3
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8203:80"
+          deploy:
+            resources:
+              limits:
+                cpus: "0.5"
+                memory: 128M
+
+        httpbin-4:
+          image: kennethreitz/httpbin:latest
+          container_name: httpbin-4
+          restart: unless-stopped
+          ports:
+            - "127.0.0.1:8204:80"
           deploy:
             resources:
               limits:
@@ -598,7 +745,7 @@ runcmd:
   # Start containers
   - cd /opt/origin-server && docker compose up -d
   - sleep 60
-  - docker exec vampi python -c "from config import db, vuln_app; vuln_app.app.app_context().__enter__(); db.create_all()"
+  - for i in 1 2 3 4; do docker exec vampi-$i python -c "from config import db, vuln_app; vuln_app.app.app_context().__enter__(); db.create_all()" 2>/dev/null; done
   # DVWA database setup (create tables via HTTP setup endpoint)
   - |
     for i in $(seq 1 30); do
@@ -606,8 +753,8 @@ runcmd:
       sleep 2
     done
   - |
-    TOKEN=$(curl -sf http://127.0.0.1:8081/setup.php | grep -oP "user_token.*?value='\K[a-f0-9]+" | head -1)
-    curl -sf -X POST http://127.0.0.1:8081/setup.php -d "create_db=Create+%2F+Reset+Database&user_token=${TOKEN}" -c /tmp/dvwa-setup -b /tmp/dvwa-setup
+    TOKEN=$(curl -sf http://127.0.0.1:8101/setup.php | grep -oP "user_token.*?value='\K[a-f0-9]+" | head -1)
+    curl -sf -X POST http://127.0.0.1:8101/setup.php -d "create_db=Create+%2F+Reset+Database&user_token=${TOKEN}" -c /tmp/dvwa-setup -b /tmp/dvwa-setup
   - docker build -t csd-demo:latest /opt/origin-server/csd-demo/
   - docker run -d --name csd-demo --restart unless-stopped -p 127.0.0.1:5001:5001 csd-demo:latest
   - systemctl restart nginx
