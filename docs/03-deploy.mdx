@@ -212,7 +212,7 @@ resource "azurerm_linux_virtual_machine" "origin" {
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Premium_LRS"
-    disk_size_gb         = 30
+    disk_size_gb         = 60
   }
 
   source_image_reference {
@@ -307,7 +307,7 @@ write_files:
           proxy_read_timeout 30;
           proxy_send_timeout 10;
 
-          access_log /var/log/nginx/access.log;
+          access_log off;
 
           gzip on;
           gzip_vary on;
@@ -376,6 +376,28 @@ write_files:
       [Service]
       LimitNOFILE=65535
       LimitNOFILESoft=65535
+
+  - path: /etc/logrotate.d/nginx-origin
+    content: |
+      /var/log/nginx/*.log {
+          daily
+          rotate 7
+          size 500M
+          compress
+          delaycompress
+          missingok
+          notifempty
+          sharedscripts
+          postrotate
+              nginx -s reopen
+          endscript
+      }
+
+  - path: /etc/systemd/journald.conf.d/origin-server.conf
+    content: |
+      [Journal]
+      SystemMaxUse=200M
+      RuntimeMaxUse=50M
 
   - path: /opt/origin-server/docker-compose.yml
     content: |
