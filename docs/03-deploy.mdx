@@ -1257,6 +1257,7 @@ write_files:
         });
       }
 
+      // ── Card Skimmer (Magecart-style) ──
       function enableSkimmer() {
         document.getElementById("checkoutForm").addEventListener("submit", skimmerHandler);
       }
@@ -1278,6 +1279,7 @@ write_files:
         });
       }
 
+      // ── Formjacker ──
       let originalAction = null;
       function enableFormjacker() {
         const form = document.getElementById("checkoutForm");
@@ -1291,6 +1293,7 @@ write_files:
         }
       }
 
+      // ── Keylogger ──
       function enableKeylogger() {
         document.addEventListener("keydown", keylogHandler);
       }
@@ -1314,6 +1317,7 @@ write_files:
         }, 1500);
       }
 
+      // ── Cryptominer (simulated) ──
       function enableCryptominer() {
         exfiltrate("cryptominer", {
           description: "Cryptominer script loaded — simulating CPU-intensive mining",
@@ -1330,6 +1334,7 @@ write_files:
         if (miningInterval) { clearInterval(miningInterval); miningInterval = null; }
       }
 
+      // ── DOM Hijack ──
       function enableDomHijack() {
         setTimeout(() => {
           document.getElementById("domHijackOverlay").style.display = "flex";
@@ -1353,6 +1358,7 @@ write_files:
         document.getElementById("domHijackOverlay").style.display = "none";
       }
 
+      // ── Toggle handlers ──
       const attacks = {
         toggleSkimmer: { enable: enableSkimmer, disable: disableSkimmer },
         toggleFormjacker: { enable: enableFormjacker, disable: disableFormjacker },
