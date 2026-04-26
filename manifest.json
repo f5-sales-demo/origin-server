@@ -18,7 +18,11 @@
       "container": {
         "image": "bkimminich/juice-shop",
         "tag": "latest",
-        "internal_port": 3000
+        "internal_port": 3000,
+        "instances": 4,
+        "host_ports": "3001-3004",
+        "sticky": "hash $cookie_token consistent",
+        "resources": "2 CPU / 1024M"
       },
       "health_check": {
         "path": "/juice-shop/rest/admin/application-version",
@@ -33,9 +37,15 @@
       "path": "/dvwa/",
       "description": "DVWA — classic WAF testing with adjustable difficulty levels",
       "container": {
-        "image": "ghcr.io/digininja/dvwa",
+        "image": "dvwa-fpm",
         "tag": "latest",
-        "internal_port": 80
+        "build": true,
+        "internal_port": 80,
+        "instances": 4,
+        "host_ports": "8101-8104",
+        "sticky": "hash $cookie_PHPSESSID consistent",
+        "resources": "0.5 CPU / 256M",
+        "database": "mariadb:10.11 (dvwa-db, 1 CPU / 768M)"
       },
       "health_check": {
         "path": "/dvwa/login.php",
@@ -55,7 +65,12 @@
       "container": {
         "image": "erev0s/vampi",
         "tag": "latest",
-        "internal_port": 5000
+        "internal_port": 5000,
+        "instances": 4,
+        "host_ports": "5101-5104",
+        "sticky": "ip_hash",
+        "entrypoint": "gunicorn -w 4",
+        "resources": "0.5 CPU / 512M"
       },
       "health_check": {
         "path": "/vampi/",
@@ -72,7 +87,11 @@
       "container": {
         "image": "kennethreitz/httpbin",
         "tag": "latest",
-        "internal_port": 80
+        "internal_port": 80,
+        "instances": 4,
+        "host_ports": "8201-8204",
+        "command": "gunicorn -b 0.0.0.0:80 httpbin:app -k gevent -w 4 --timeout 30",
+        "resources": "0.5 CPU / 256M"
       },
       "health_check": {
         "path": "/httpbin/get",
@@ -89,7 +108,10 @@
       "container": {
         "image": "traefik/whoami",
         "tag": "latest",
-        "internal_port": 80
+        "internal_port": 80,
+        "instances": 4,
+        "host_ports": "8082-8085",
+        "resources": "0.25 CPU / 64M"
       },
       "health_check": {
         "path": "/whoami/",
@@ -104,9 +126,15 @@
       "path": "/csd-demo/",
       "description": "CSD Demo — e-commerce checkout with toggleable Magecart attacks",
       "container": {
-        "image": "f5xc-salesdemos/csd-demo",
+        "image": "csd-demo-gunicorn",
         "tag": "latest",
-        "internal_port": 5001
+        "build": true,
+        "internal_port": 5001,
+        "instances": 4,
+        "host_ports": "5001-5004",
+        "sticky": "ip_hash",
+        "command": "gunicorn -b 0.0.0.0:5001 app:app -w 1 -k gevent --timeout 30",
+        "resources": "0.5 CPU / 256M"
       },
       "health_check": {
         "path": "/csd-demo/health",

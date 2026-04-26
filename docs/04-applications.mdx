@@ -7,7 +7,7 @@ sidebar:
 
 ## Application Overview
 
-Each application runs as an isolated Docker container, accessible through the nginx reverse proxy on the VM. All applications are intentionally vulnerable and designed for security testing.
+Each application runs as 4 load-balanced Docker containers behind nginx upstream pools, accessible through the nginx reverse proxy on the VM. Sticky sessions ensure stateful applications (Juice Shop, DVWA, VAmPI, CSD Demo) route consistently. All applications are intentionally vulnerable and designed for security testing.
 
 Replace `<ORIGIN>` with `http://<PUBLIC_IP>` in all examples below. After deploying via Terraform, get the IP with `terraform output -raw public_ip`.
 
@@ -42,6 +42,8 @@ Replace `<ORIGIN>` with `http://<PUBLIC_IP>` in all examples below. After deploy
 |---|---|
 | **Path** | `/juice-shop/` |
 | **Image** | `bkimminich/juice-shop:latest` |
+| **Instances** | 4 (ports 3001-3004), sticky via `hash $cookie_token`, proxy cache (60 s TTL) |
+| **Resources** | 2 CPU / 1 GiB RAM per instance |
 | **Framework** | Node.js / Angular |
 | **Project** | [owasp.org/www-project-juice-shop](https://owasp.org/www-project-juice-shop/) |
 
@@ -70,8 +72,11 @@ curl -s "http://<PUBLIC_IP>/juice-shop/" -o /dev/null -w "%{http_code}"
 | | |
 |---|---|
 | **Path** | `/dvwa/` |
-| **Image** | `ghcr.io/digininja/dvwa:latest` |
-| **Framework** | PHP / MySQL |
+| **Image** | Custom `dvwa-fpm:latest` (php-fpm + nginx, built from `ghcr.io/digininja/dvwa:latest`) |
+| **Instances** | 4 (ports 8101-8104), sticky via `hash $cookie_PHPSESSID` |
+| **Resources** | 0.5 CPU / 256 MiB RAM per instance |
+| **Database** | Shared MariaDB 10.11 (`dvwa-db` container, 1 CPU / 768 MiB) |
+| **Framework** | PHP 8 / php-fpm / MariaDB |
 | **Credentials** | `admin` / `password` |
 
 DVWA is the industry standard for WAF testing. It has adjustable security levels (Low, Medium, High, Impossible) that progressively add input validation and output encoding.
@@ -110,11 +115,13 @@ DVWA requires a one-time database setup after first deployment:
 | | |
 |---|---|
 | **Path** | `/vampi/` |
-| **Image** | `erev0s/vampi:latest` |
-| **Framework** | Python / Flask |
+| **Image** | `erev0s/vampi:latest` with gunicorn entrypoint (4 workers) |
+| **Instances** | 4 (ports 5101-5104), sticky via `ip_hash` (SQLite per instance) |
+| **Resources** | 0.5 CPU / 512 MiB RAM per instance |
+| **Framework** | Python / Flask / gunicorn |
 | **Project** | [github.com/erev0s/VAmPI](https://github.com/erev0s/VAmPI) |
 
-VAmPI is purpose-built for testing the OWASP API Security Top 10. It provides a realistic REST API with deliberate vulnerabilities.
+VAmPI is purpose-built for testing the OWASP API Security Top 10. It provides a realistic REST API with deliberate vulnerabilities. Each instance runs gunicorn with 4 workers and its own SQLite database. The `ip_hash` sticky session ensures registration and login from the same client IP always hit the same instance.
 
 ### Demo Scenarios
 
@@ -149,8 +156,10 @@ curl "http://<PUBLIC_IP>/vampi/users/v1"
 | | |
 |---|---|
 | **Path** | `/httpbin/` |
-| **Image** | `kennethreitz/httpbin:latest` |
-| **Framework** | Python / Flask |
+| **Image** | `kennethreitz/httpbin:latest` with gunicorn CMD override (`-w 4 -k gevent --timeout 30`) |
+| **Instances** | 4 (ports 8201-8204), round-robin (stateless) |
+| **Resources** | 0.5 CPU / 256 MiB RAM per instance |
+| **Framework** | Python / Flask / gunicorn + gevent |
 | **Project** | [httpbin.org](https://httpbin.org) |
 
 httpbin is a simple HTTP request/response service useful for basic API demos, testing request headers, and verifying proxy behavior.
@@ -184,6 +193,8 @@ curl -s -o /dev/null -w "%{http_code}" "http://<PUBLIC_IP>/httpbin/status/403"
 |---|---|
 | **Path** | `/whoami/` |
 | **Image** | `traefik/whoami:latest` |
+| **Instances** | 4 (ports 8082-8085), round-robin (stateless) |
+| **Resources** | 0.25 CPU / 64 MiB RAM per instance |
 | **Framework** | Go |
 | **Project** | [github.com/traefik/whoami](https://github.com/traefik/whoami) |
 
@@ -242,6 +253,11 @@ X-Real-Ip: 104.219.105.84
 | Bot Defense -- Scraping | Juice Shop | -- |
 | Client-Side Defense -- DOM XSS | Juice Shop | -- |
 | Client-Side Defense -- Stored XSS | DVWA | Juice Shop |
+| Client-Side Defense -- Card Skimmer | CSD Demo | -- |
+| Client-Side Defense -- Formjacker | CSD Demo | -- |
+| Client-Side Defense -- Keylogger | CSD Demo | -- |
+| Client-Side Defense -- Cryptominer | CSD Demo | -- |
+| Client-Side Defense -- DOM Hijack | CSD Demo | -- |
 | Basic connectivity testing | httpbin | -- |
 | Request diagnostics | whoami | httpbin |
 | Header injection verification | whoami | -- |

@@ -23,7 +23,7 @@ Expected:
 {
   "status": "healthy",
   "component": "origin-server",
-  "applications": ["juice-shop", "dvwa", "vampi", "httpbin"]
+  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami", "csd-demo"]
 }
 ```
 
@@ -49,25 +49,55 @@ curl -sf "http://${ORIGIN_IP}/httpbin/get" -o /dev/null -w "httpbin: %{http_code
 curl -sf "http://${ORIGIN_IP}/whoami/" -o /dev/null -w "whoami: %{http_code}\n"
 ```
 
-All should return `200`.
+All should return `200` (DVWA returns `302` redirect to login).
+
+### Automated Smoke Test
+
+The repository includes a 39-point smoke test suite:
+
+```bash
+./tests/smoke-test.sh ${ORIGIN_IP}
+```
+
+This validates all 6 applications, health endpoints, VAmPI registration/login, CSD Demo exfil round-trip, nginx gzip, and version hiding.
 
 ### Docker Container Status
 
-SSH into the VM and verify all containers are running:
+SSH into the VM and verify all 25 containers are running:
 
 ```bash
-ssh azureuser@${ORIGIN_IP} "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
+ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
 ```
 
-Expected output:
+Expected output (25 containers):
 
 ```
-NAMES        STATUS         PORTS
-juice-shop   Up X minutes   127.0.0.1:3000->3000/tcp
-dvwa         Up X minutes   127.0.0.1:8081->80/tcp
-vampi        Up X minutes   127.0.0.1:5000->5000/tcp
-httpbin      Up X minutes   127.0.0.1:8080->80/tcp
-whoami       Up X minutes   127.0.0.1:8082->80/tcp
+NAMES          STATUS         PORTS
+csd-demo-1     Up X minutes   127.0.0.1:5001->5001/tcp
+csd-demo-2     Up X minutes   127.0.0.1:5002->5001/tcp
+csd-demo-3     Up X minutes   127.0.0.1:5003->5001/tcp
+csd-demo-4     Up X minutes   127.0.0.1:5004->5001/tcp
+dvwa-1         Up X minutes   127.0.0.1:8101->80/tcp
+dvwa-2         Up X minutes   127.0.0.1:8102->80/tcp
+dvwa-3         Up X minutes   127.0.0.1:8103->80/tcp
+dvwa-4         Up X minutes   127.0.0.1:8104->80/tcp
+dvwa-db        Up X minutes   3306/tcp
+httpbin-1      Up X minutes   127.0.0.1:8201->80/tcp
+httpbin-2      Up X minutes   127.0.0.1:8202->80/tcp
+httpbin-3      Up X minutes   127.0.0.1:8203->80/tcp
+httpbin-4      Up X minutes   127.0.0.1:8204->80/tcp
+juice-shop-1   Up X minutes   127.0.0.1:3001->3000/tcp
+juice-shop-2   Up X minutes   127.0.0.1:3002->3000/tcp
+juice-shop-3   Up X minutes   127.0.0.1:3003->3000/tcp
+juice-shop-4   Up X minutes   127.0.0.1:3004->3000/tcp
+vampi-1        Up X minutes   127.0.0.1:5101->5000/tcp
+vampi-2        Up X minutes   127.0.0.1:5102->5000/tcp
+vampi-3        Up X minutes   127.0.0.1:5103->5000/tcp
+vampi-4        Up X minutes   127.0.0.1:5104->5000/tcp
+whoami-1       Up X minutes   127.0.0.1:8082->80/tcp
+whoami-2       Up X minutes   127.0.0.1:8083->80/tcp
+whoami-3       Up X minutes   127.0.0.1:8084->80/tcp
+whoami-4       Up X minutes   127.0.0.1:8085->80/tcp
 ```
 
 ### nginx Status
@@ -99,11 +129,12 @@ ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ### Container not starting
 
 ```bash
-# Check container logs
-ssh azureuser@${ORIGIN_IP} "docker logs juice-shop 2>&1 | tail -20"
-ssh azureuser@${ORIGIN_IP} "docker logs dvwa 2>&1 | tail -20"
-ssh azureuser@${ORIGIN_IP} "docker logs vampi 2>&1 | tail -20"
-ssh azureuser@${ORIGIN_IP} "docker logs httpbin 2>&1 | tail -20"
+# Check container logs (each app has 4 instances: -1 through -4)
+ssh azureuser@${ORIGIN_IP} "sudo docker logs juice-shop-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs dvwa-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs vampi-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs httpbin-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs csd-demo-1 2>&1 | tail -20"
 ```
 
 ### nginx returning 502
@@ -114,25 +145,33 @@ The upstream container is not ready or has crashed:
 # Check nginx error log
 ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
 
-# Restart a specific container
-ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && docker compose restart juice-shop"
+# Restart all instances of a specific app
+ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
 
-# Restart all containers
-ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && docker compose restart"
+# Rebuild and restart all containers
+ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
 ```
 
 ### Disk space
 
-Docker images consume approximately 2 GiB total. Verify disk usage:
+Docker images consume approximately 4.7 GiB. Access logging is disabled to prevent disk exhaustion under CDN load testing. Logrotate is configured as defense-in-depth (500 MiB cap). Verify disk usage:
 
 ```bash
-ssh azureuser@${ORIGIN_IP} "df -h / && docker system df"
+ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
+```
+
+### Container memory
+
+Check for containers approaching their memory limits (OOM risk):
+
+```bash
+ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
 ```
 
 ### Restart everything
 
-If needed, restart all services:
+If needed, rebuild and restart all services:
 
 ```bash
-ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && docker compose down && docker compose up -d && sudo systemctl restart nginx"
+ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"
 ```

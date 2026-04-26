@@ -44,12 +44,13 @@ Each application is accessible via its path prefix through the load balancer:
 
 | F5 XC LB URL | Origin Path | Application |
 |---|---|---|
-| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop |
-| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA |
-| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI |
-| `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin |
-| `https://demo.example.com/whoami/` | `/whoami/` | Request diagnostics |
-| `https://demo.example.com/health` | `/health` | Health check |
+| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop (4 instances, cookie sticky) |
+| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA (4 instances + MariaDB, cookie sticky) |
+| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 instances, ip_hash sticky) |
+| `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin (4 instances, round-robin) |
+| `https://demo.example.com/whoami/` | `/whoami/` | Request diagnostics (4 instances) |
+| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo (4 instances, ip_hash sticky) |
+| `https://demo.example.com/health` | `/health` | Health check (nginx direct) |
 
 ### Verify F5 XC Header Injection
 
@@ -106,6 +107,21 @@ curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
   -H "Content-Type: application/json" \
   -d '{"username":"apitest","password":"test123"}'
 ```
+
+### Sticky Session Awareness
+
+The origin server uses nginx sticky sessions internally to route stateful applications to consistent backend containers. When configuring the F5 XC HTTP load balancer, be aware:
+
+| Application | Sticky Method | Why |
+|---|---|---|
+| Juice Shop | `hash $cookie_token` | Node.js session state |
+| DVWA | `hash $cookie_PHPSESSID` | PHP session state |
+| VAmPI | `ip_hash` | SQLite database per instance |
+| CSD Demo | `ip_hash` | In-memory exfil log per instance |
+| httpbin | Round-robin | Stateless |
+| whoami | Round-robin | Stateless |
+
+F5 XC does not need to replicate these sticky sessions -- nginx on the origin VM handles the backend routing. F5 XC should treat the origin as a single endpoint (the VM's public IP on port 80).
 
 ### Multi-Component Architecture
 
