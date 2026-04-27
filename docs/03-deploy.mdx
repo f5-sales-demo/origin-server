@@ -875,7 +875,7 @@ write_files:
           restart: unless-stopped
           ports:
             - "127.0.0.1:8301:8091"
-          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant"]
+          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant --limit-max-requests 200"]
           environment:
             - POSTGRES_USER=admin
             - POSTGRES_PASSWORD=password
@@ -891,7 +891,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 384M
 
         restaurant-2:
           build: ./restaurant/
@@ -899,7 +899,7 @@ write_files:
           restart: unless-stopped
           ports:
             - "127.0.0.1:8302:8091"
-          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant"]
+          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant --limit-max-requests 200"]
           environment:
             - POSTGRES_USER=admin
             - POSTGRES_PASSWORD=password
@@ -915,7 +915,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 384M
 
         restaurant-3:
           build: ./restaurant/
@@ -923,7 +923,7 @@ write_files:
           restart: unless-stopped
           ports:
             - "127.0.0.1:8303:8091"
-          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant"]
+          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant --limit-max-requests 200"]
           environment:
             - POSTGRES_USER=admin
             - POSTGRES_PASSWORD=password
@@ -939,7 +939,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 384M
 
         restaurant-4:
           build: ./restaurant/
@@ -947,7 +947,7 @@ write_files:
           restart: unless-stopped
           ports:
             - "127.0.0.1:8304:8091"
-          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant"]
+          command: ["sh", "-c", "alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port 8091 --root-path /restaurant --limit-max-requests 200"]
           environment:
             - POSTGRES_USER=admin
             - POSTGRES_PASSWORD=password
@@ -963,7 +963,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 384M
 
         crapi-web:
           image: crapi/crapi-web:latest
