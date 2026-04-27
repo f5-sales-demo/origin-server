@@ -573,7 +573,7 @@ write_files:
             - MYSQL_USER=dvwa
             - MYSQL_PASSWORD=p@ssw0rd
             - MARIADB_INNODB_BUFFER_POOL_SIZE=256M
-            - MARIADB_MAX_CONNECTIONS=200
+            - MARIADB_MAX_CONNECTIONS=400
             - MARIADB_INNODB_LOG_FILE_SIZE=100M
           volumes:
             - dvwa-db-data:/var/lib/mysql
@@ -653,7 +653,7 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "0.5"
+                cpus: "1.0"
                 memory: 256M
 
         httpbin-2:
@@ -666,7 +666,7 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "0.5"
+                cpus: "1.0"
                 memory: 256M
 
         httpbin-3:
@@ -679,7 +679,7 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "0.5"
+                cpus: "1.0"
                 memory: 256M
 
         httpbin-4:
@@ -692,7 +692,7 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "0.5"
+                cpus: "1.0"
                 memory: 256M
 
         whoami-1:
@@ -1104,6 +1104,7 @@ write_files:
             - API_GATEWAY_URL=https://api.mypremiumdealership.com
             - TLS_ENABLED=false
             - FILES_LIMIT=1000
+            - GUNICORN_WORKERS=2
           depends_on:
             crapi-postgres:
               condition: service_healthy
@@ -1121,8 +1122,8 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "0.3"
-                memory: 256M
+                cpus: "0.5"
+                memory: 512M
 
         crapi-postgres:
           image: postgres:14
@@ -1420,7 +1421,7 @@ write_files:
       with vuln_app.app.app_context():
           db.create_all()
       "
-      exec gunicorn -b 0.0.0.0:5000 "config:vuln_app" -w 4 --timeout 30
+      exec gunicorn -b 0.0.0.0:5000 "config:vuln_app" -w 2 --timeout 30
 
   - path: /opt/origin-server/csd-demo/Dockerfile
     content: |
