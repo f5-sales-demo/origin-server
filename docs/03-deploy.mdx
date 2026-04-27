@@ -286,7 +286,7 @@ write_files:
       worker_processes auto;
       worker_rlimit_nofile 65535;
       pid /run/nginx.pid;
-      error_log /var/log/nginx/error.log;
+      error_log /var/log/nginx/error.log crit;
       include /etc/nginx/modules-enabled/*.conf;
 
       events {
@@ -343,7 +343,7 @@ write_files:
               server 127.0.0.1:8103 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:8104 max_fails=3 fail_timeout=10s;
               hash $cookie_PHPSESSID consistent;
-              keepalive 32;
+              keepalive 128;
           }
 
           upstream vampi {
@@ -352,7 +352,7 @@ write_files:
               server 127.0.0.1:5103 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:5104 max_fails=3 fail_timeout=10s;
               ip_hash;
-              keepalive 32;
+              keepalive 128;
           }
 
           upstream httpbin_up {
@@ -360,7 +360,7 @@ write_files:
               server 127.0.0.1:8202 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:8203 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:8204 max_fails=3 fail_timeout=10s;
-              keepalive 32;
+              keepalive 128;
           }
 
           upstream whoami_up {
@@ -368,7 +368,7 @@ write_files:
               server 127.0.0.1:8083 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:8084 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:8085 max_fails=3 fail_timeout=10s;
-              keepalive 32;
+              keepalive 128;
           }
           upstream csd_demo {
               server 127.0.0.1:5001 max_fails=3 fail_timeout=10s;
@@ -376,7 +376,7 @@ write_files:
               server 127.0.0.1:5003 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:5004 max_fails=3 fail_timeout=10s;
               ip_hash;
-              keepalive 32;
+              keepalive 128;
           }
 
           upstream dvga_graphql {
@@ -385,7 +385,7 @@ write_files:
               server 127.0.0.1:5203 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:5204 max_fails=3 fail_timeout=10s;
               ip_hash;
-              keepalive 32;
+              keepalive 128;
           }
 
           upstream restaurant {
@@ -393,7 +393,7 @@ write_files:
               server 127.0.0.1:8302 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:8303 max_fails=3 fail_timeout=10s;
               server 127.0.0.1:8304 max_fails=3 fail_timeout=10s;
-              keepalive 32;
+              keepalive 128;
           }
 
           include /etc/nginx/conf.d/*.conf;
@@ -442,7 +442,7 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "2.0"
+                cpus: "1.0"
                 memory: 1024M
 
         juice-shop-2:
@@ -456,7 +456,7 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "2.0"
+                cpus: "1.0"
                 memory: 1024M
 
         juice-shop-3:
@@ -470,7 +470,7 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "2.0"
+                cpus: "1.0"
                 memory: 1024M
 
         juice-shop-4:
@@ -484,7 +484,7 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "2.0"
+                cpus: "1.0"
                 memory: 1024M
 
         dvwa-1:
@@ -504,7 +504,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 512M
 
         dvwa-2:
           build: ./dvwa-fpm/
@@ -523,7 +523,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 512M
 
         dvwa-3:
           build: ./dvwa-fpm/
@@ -542,7 +542,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 512M
 
         dvwa-4:
           build: ./dvwa-fpm/
@@ -561,7 +561,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 512M
 
         dvwa-db:
           image: mariadb:10.11
@@ -1045,7 +1045,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.8"
-                memory: 768M
+                memory: 1024M
 
         crapi-community:
           image: crapi/crapi-community:latest
@@ -1347,6 +1347,8 @@ write_files:
       FROM ghcr.io/digininja/dvwa:latest AS dvwa-src
       FROM php:8-fpm
       RUN apt-get update && apt-get install -y --no-install-recommends nginx \
+          libpng-dev libjpeg62-turbo-dev libfreetype6-dev zlib1g-dev \
+          && docker-php-ext-configure gd --with-freetype --with-jpeg \
           && docker-php-ext-install mysqli pdo pdo_mysql gd \
           && rm -rf /var/lib/apt/lists/*
       COPY --from=dvwa-src /var/www/html /var/www/html
@@ -1393,7 +1395,7 @@ write_files:
       pm.start_servers = 8
       pm.min_spare_servers = 4
       pm.max_spare_servers = 16
-      pm.max_requests = 500
+      pm.max_requests = 200
       request_terminate_timeout = 30
 
   - path: /opt/origin-server/dvwa-fpm/entrypoint.sh
