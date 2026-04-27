@@ -803,7 +803,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 384M
 
         dvga-2:
           image: dolevf/dvga:latest
@@ -817,7 +817,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 384M
 
         dvga-3:
           image: dolevf/dvga:latest
@@ -831,7 +831,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 384M
 
         dvga-4:
           image: dolevf/dvga:latest
@@ -845,7 +845,7 @@ write_files:
             resources:
               limits:
                 cpus: "0.5"
-                memory: 256M
+                memory: 384M
 
         restaurant-db:
           image: postgres:15.4-alpine
@@ -1104,7 +1104,7 @@ write_files:
             - API_GATEWAY_URL=https://api.mypremiumdealership.com
             - TLS_ENABLED=false
             - FILES_LIMIT=1000
-            - GUNICORN_WORKERS=2
+            - GUNICORN_WORKERS=4
           depends_on:
             crapi-postgres:
               condition: service_healthy
@@ -1122,7 +1122,7 @@ write_files:
           deploy:
             resources:
               limits:
-                cpus: "0.5"
+                cpus: "1.0"
                 memory: 512M
 
         crapi-postgres:
