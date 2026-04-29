@@ -1,0 +1,7 @@
+subscription_id     = "00000000-0000-0000-0000-000000000000"
+resource_group_name = "rg-origin-server"
+location            = "eastus2"
+vm_size             = "Standard_D16s_v3"
+admin_username      = "azureuser"
+ssh_public_key_path = "~/.ssh/id_ed25519.pub"
+environment_tag     = "lab"
