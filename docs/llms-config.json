@@ -9,8 +9,13 @@
       "label": "Integration",
       "description": "Integration with F5 XC HTTP load balancers and WAF policies",
       "paths": ["06-integrate*"]
+    },
+    {
+      "label": "API Testing Guide",
+      "description": "Comprehensive API vulnerability testing patterns for DVGA, RESTaurant, and crAPI applications",
+      "paths": ["08-api-testing-guide*"]
     }
   ],
-  "promote": ["index*", "01-architecture*", "03-deploy*"],
+  "promote": ["index*", "01-architecture*", "03-deploy*", "08-api-testing-guide*"],
   "demote": ["07-teardown*"]
 }
