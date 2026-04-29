@@ -193,7 +193,8 @@
     },
     {
       "name": "crapi",
-      "path": ":8888",
+      "port": 8888,
+      "path": "/",
       "description": "crAPI — OWASP microservices API with BOLA, BFLA, mass assignment, and SSRF challenges",
       "container": {
         "image": "crapi/*",
@@ -205,7 +206,7 @@
         "database": "postgres:14 + mongo:4.4"
       },
       "health_check": {
-        "path": ":8888/health",
+        "path": "/health",
         "method": "GET",
         "expected_status": 200
       },
