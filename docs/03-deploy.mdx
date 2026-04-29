@@ -20,26 +20,26 @@ cp terraform.tfvars.example terraform.tfvars
 
 `main.tf` configures the Azure provider:
 
-```hcl file=../terraform/main.tf
+```hcl file=./_data/main.tf
 ```
 
 `variables.tf` defines all configurable parameters. The `vm_size` default is `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) -- sized for 41 Docker containers under sustained load:
 
-```hcl file=../terraform/variables.tf
+```hcl file=./_data/variables.tf
 ```
 
 ### Network Infrastructure
 
 `network.tf` creates the VNet, subnet, public IP, NSG (ports 22/80/443/8888), and NIC. Port 8888 is required for crAPI which runs on a dedicated port:
 
-```hcl file=../terraform/network.tf
+```hcl file=./_data/network.tf
 ```
 
 ### Virtual Machine with Cloud-Init
 
 `vm.tf` creates the Ubuntu 24.04 VM and passes the cloud-init provisioning script. The 60 GiB Premium SSD provides sufficient space for Docker images and container volumes:
 
-```hcl file=../terraform/vm.tf
+```hcl file=./_data/vm.tf
 ```
 
 ### Cloud-Init Provisioning
@@ -52,21 +52,21 @@ cp terraform.tfvars.example terraform.tfvars
 - **Custom builds**: DVWA-FPM (php-fpm with pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (cloned from GitHub)
 - **Worker recycling**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) to prevent memory leaks under sustained load
 
-```yaml file=../terraform/cloud-init.yaml
+```yaml file=./_data/cloud-init.yaml
 ```
 
 ### Outputs
 
 `outputs.tf` exposes the public IP, SSH command, per-application URLs, and resource group name:
 
-```hcl file=../terraform/outputs.tf
+```hcl file=./_data/outputs.tf
 ```
 
 ### Example Variables File
 
 Copy `terraform.tfvars.example` to `terraform.tfvars` and fill in your values. The `.gitignore` excludes `terraform.tfvars` to prevent committing credentials:
 
-```hcl file=../terraform/terraform.tfvars.example
+```hcl file=./_data/terraform.tfvars.example
 ```
 
 ## Deploy
