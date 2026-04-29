@@ -1,0 +1,21 @@
+{
+  "schema_version": "1",
+  "name": "origin-server",
+  "role": "Origin server with vulnerable web applications",
+  "category": "lab-infrastructure",
+  "summary": "Ubuntu 24.04 Azure VM running nginx reverse proxy to 41 Docker containers across 9 vulnerable applications for WAF, API security, bot defense, and client-side defense testing with F5 Distributed Cloud",
+  "provides": [
+    "vulnerable-web-apps",
+    "waf-target",
+    "api-security-target",
+    "bot-defense-target",
+    "client-side-defense-target"
+  ],
+  "pairs_with": ["traffic-generator", "cdn-simulator"],
+  "demos": ["waf", "api-security", "bot-standard", "bot-advanced", "csd", "was"],
+  "terraform": {
+    "required_vars": ["subscription_id"],
+    "vm_size": "Standard_D16s_v3",
+    "estimated_monthly_cost": "$486"
+  }
+}
