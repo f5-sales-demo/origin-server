@@ -62,3 +62,8 @@ output "resource_group" {
   description = "Resource group containing all origin server resources"
   value       = azurerm_resource_group.origin.name
 }
+
+output "deployment_suffix" {
+  description = "Unique deployment suffix for this instance"
+  value       = local.suffix
+}
