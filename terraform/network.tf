@@ -1,5 +1,5 @@
 resource "azurerm_resource_group" "origin" {
-  name     = var.resource_group_name
+  name     = "${var.resource_group_name}-${local.suffix}"
   location = var.location
 
   tags = {
@@ -9,7 +9,7 @@ resource "azurerm_resource_group" "origin" {
 }
 
 resource "azurerm_virtual_network" "origin" {
-  name                = "vnet-origin-server"
+  name                = "vnet-origin-${local.suffix}"
   address_space       = ["10.200.0.0/16"]
   location            = azurerm_resource_group.origin.location
   resource_group_name = azurerm_resource_group.origin.name
@@ -26,7 +26,7 @@ resource "azurerm_subnet" "origin" {
 }
 
 resource "azurerm_public_ip" "origin" {
-  name                = "pip-origin-server"
+  name                = "pip-origin-${local.suffix}"
   location            = azurerm_resource_group.origin.location
   resource_group_name = azurerm_resource_group.origin.name
   allocation_method   = "Static"
@@ -39,7 +39,7 @@ resource "azurerm_network_security_group" "origin" {
   #checkov:skip=CKV_AZURE_10:Lab NSG - SSH open for demo access
   #checkov:skip=CKV_AZURE_160:Lab NSG - HTTP port 80 required for traffic
   #checkov:skip=CKV_AZURE_220:Lab NSG - SSH open for demo access
-  name                = "nsg-origin-server"
+  name                = "nsg-origin-${local.suffix}"
   location            = azurerm_resource_group.origin.location
   resource_group_name = azurerm_resource_group.origin.name
 
@@ -96,7 +96,7 @@ resource "azurerm_network_security_group" "origin" {
 
 resource "azurerm_network_interface" "origin" {
   #checkov:skip=CKV_AZURE_119:Lab NIC - public IP required for demo access
-  name                = "nic-origin-server"
+  name                = "nic-origin-${local.suffix}"
   location            = azurerm_resource_group.origin.location
   resource_group_name = azurerm_resource_group.origin.name
 

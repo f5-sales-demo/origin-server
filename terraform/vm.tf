@@ -1,7 +1,7 @@
 resource "azurerm_linux_virtual_machine" "origin" {
   #checkov:skip=CKV_AZURE_50:Lab VM - no extensions required
   #checkov:skip=CKV_AZURE_93:Lab VM - platform-managed encryption sufficient
-  name                = "vm-origin-server"
+  name                = "vm-origin-${local.suffix}"
   resource_group_name = azurerm_resource_group.origin.name
   location            = azurerm_resource_group.origin.location
   size                = var.vm_size
