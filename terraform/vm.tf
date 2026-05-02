@@ -1,9 +1,9 @@
-resource "azurerm_linux_virtual_machine" "origin" {
+resource "azurerm_linux_virtual_machine" "main" {
   #checkov:skip=CKV_AZURE_50:Lab VM - no extensions required
   #checkov:skip=CKV_AZURE_93:Lab VM - platform-managed encryption sufficient
-  name                = "vm-origin-${local.suffix}"
-  resource_group_name = azurerm_resource_group.origin.name
-  location            = azurerm_resource_group.origin.location
+  name                = local.name.virtual_machine
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
   size                = var.vm_size
 
   admin_username                  = var.admin_username
@@ -11,15 +11,15 @@ resource "azurerm_linux_virtual_machine" "origin" {
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = file(var.ssh_public_key_path)
+    public_key = file(pathexpand(var.ssh_public_key_path))
   }
 
-  network_interface_ids = [azurerm_network_interface.origin.id]
+  network_interface_ids = [azurerm_network_interface.main.id]
 
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Premium_LRS"
-    disk_size_gb         = 60
+    disk_size_gb         = var.disk_size_gb
   }
 
   source_image_reference {
@@ -29,7 +29,7 @@ resource "azurerm_linux_virtual_machine" "origin" {
     version   = "latest"
   }
 
-  custom_data = base64encode(file("${path.module}/cloud-init.yaml"))
+  custom_data = base64encode(templatefile("${path.module}/cloud-init.yaml", {}))
 
-  tags = azurerm_resource_group.origin.tags
+  tags = azurerm_resource_group.main.tags
 }

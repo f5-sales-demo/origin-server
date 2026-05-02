@@ -1,12 +1,16 @@
+# ---------------------------------------------------------
+# General
+# ---------------------------------------------------------
+
 variable "subscription_id" {
   description = "Azure subscription ID"
   type        = string
 }
 
-variable "resource_group_name" {
-  description = "Name for the Azure resource group"
+variable "deployer" {
+  description = "Override for deployer identifier (auto-resolved from Azure AD if empty). Required for service principal or managed identity authentication."
   type        = string
-  default     = "rg-origin-server"
+  default     = ""
 }
 
 variable "location" {
@@ -15,8 +19,24 @@ variable "location" {
   default     = "eastus2"
 }
 
+variable "environment" {
+  description = "Environment label used in resource group naming and tags"
+  type        = string
+  default     = "lab"
+}
+
+variable "tags" {
+  description = "Additional tags merged with standard tags (component, environment, deployer, managed_by)"
+  type        = map(string)
+  default     = {}
+}
+
+# ---------------------------------------------------------
+# Compute
+# ---------------------------------------------------------
+
 variable "vm_size" {
-  description = "Azure VM size (Standard_D16s_v3 provides 16 vCPU, 64 GiB RAM for Docker workloads)"
+  description = "Azure VM size (Standard_D16s_v3: 16 vCPU, 64 GiB RAM for Docker workloads)"
   type        = string
   default     = "Standard_D16s_v3"
 }
@@ -33,8 +53,8 @@ variable "ssh_public_key_path" {
   default     = "~/.ssh/id_ed25519.pub"
 }
 
-variable "environment_tag" {
-  description = "Environment tag applied to all resources"
-  type        = string
-  default     = "lab"
+variable "disk_size_gb" {
+  description = "OS disk size in GB"
+  type        = number
+  default     = 60
 }

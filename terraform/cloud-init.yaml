@@ -1747,5 +1747,5 @@ runcmd:
     done
   - |
     TOKEN=$(curl -sf http://127.0.0.1:8101/setup.php | grep -oP "user_token.*?value='\K[a-f0-9]+" | head -1)
-    curl -sf -X POST http://127.0.0.1:8101/setup.php -d "create_db=Create+%2F+Reset+Database&user_token=${TOKEN}" -c /tmp/dvwa-setup -b /tmp/dvwa-setup
+    curl -sf -X POST http://127.0.0.1:8101/setup.php -d "create_db=Create+%2F+Reset+Database&user_token=$${TOKEN}" -c /tmp/dvwa-setup -b /tmp/dvwa-setup
   - systemctl restart nginx

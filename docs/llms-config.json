@@ -1,19 +1,19 @@
 {
   "customSets": [
     {
-      "label": "Deployment Guide",
-      "description": "Step-by-step deployment from architecture through teardown",
-      "paths": ["01-architecture*", "02-prerequisites*", "03-deploy*", "04-applications*", "05-verify*"]
+      "label": "Deployment",
+      "description": "Terraform IaC deployment with prerequisites and teardown",
+      "paths": ["02-prerequisites*", "03-deploy*", "07-teardown*"]
+    },
+    {
+      "label": "Applications",
+      "description": "Vulnerable web application architecture, configuration, and API testing",
+      "paths": ["01-architecture*", "04-applications*", "05-verify*", "08-api-testing-guide*"]
     },
     {
       "label": "Integration",
       "description": "Integration with F5 XC HTTP load balancers and WAF policies",
       "paths": ["06-integrate*"]
-    },
-    {
-      "label": "API Testing Guide",
-      "description": "Comprehensive API vulnerability testing patterns for DVGA, RESTaurant, and crAPI applications",
-      "paths": ["08-api-testing-guide*"]
     }
   ],
   "promote": ["index*", "01-architecture*", "03-deploy*", "08-api-testing-guide*"],
