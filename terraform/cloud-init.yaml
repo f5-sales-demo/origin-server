@@ -2,6 +2,10 @@
 package_update: true
 package_upgrade: true
 
+bootcmd:
+  - mkdir -p /var/cache/nginx/juice_shop
+  - chown www-data:www-data /var/cache/nginx/juice_shop 2>/dev/null || true
+
 packages:
   - ca-certificates
   - curl
@@ -10,7 +14,7 @@ packages:
   - sysstat
   - htop
   - iotop
-  - dstat
+  - dool
   - iftop
 
 write_files:
@@ -1724,9 +1728,6 @@ runcmd:
   - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   - systemctl enable docker
   - systemctl start docker
-  # nginx cache directory and systemd limits
-  - mkdir -p /var/cache/nginx/juice_shop
-  - chown www-data:www-data /var/cache/nginx/juice_shop
   - systemctl daemon-reload
   - ln -sf /etc/nginx/sites-available/origin-server /etc/nginx/sites-enabled/origin-server
   - rm -f /etc/nginx/sites-enabled/default
