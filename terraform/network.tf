@@ -1,47 +1,37 @@
-resource "azurerm_resource_group" "origin" {
-  name     = "${var.resource_group_name}-${local.suffix}"
-  location = var.location
-
-  tags = {
-    environment = var.environment_tag
-    component   = "origin-server"
-  }
-}
-
-resource "azurerm_virtual_network" "origin" {
-  name                = "vnet-origin-${local.suffix}"
+resource "azurerm_virtual_network" "main" {
+  name                = local.name.virtual_network
   address_space       = ["10.200.0.0/16"]
-  location            = azurerm_resource_group.origin.location
-  resource_group_name = azurerm_resource_group.origin.name
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
 
-  tags = azurerm_resource_group.origin.tags
+  tags = azurerm_resource_group.main.tags
 }
 
-resource "azurerm_subnet" "origin" {
+resource "azurerm_subnet" "main" {
   #checkov:skip=CKV2_AZURE_31:Lab subnet - NSG associated at NIC level
-  name                 = "snet-origin"
-  resource_group_name  = azurerm_resource_group.origin.name
-  virtual_network_name = azurerm_virtual_network.origin.name
+  name                 = local.name.subnet
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = ["10.200.1.0/24"]
 }
 
-resource "azurerm_public_ip" "origin" {
-  name                = "pip-origin-${local.suffix}"
-  location            = azurerm_resource_group.origin.location
-  resource_group_name = azurerm_resource_group.origin.name
+resource "azurerm_public_ip" "main" {
+  name                = local.name.public_ip
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
   allocation_method   = "Static"
   sku                 = "Standard"
 
-  tags = azurerm_resource_group.origin.tags
+  tags = azurerm_resource_group.main.tags
 }
 
-resource "azurerm_network_security_group" "origin" {
+resource "azurerm_network_security_group" "main" {
   #checkov:skip=CKV_AZURE_10:Lab NSG - SSH open for demo access
   #checkov:skip=CKV_AZURE_160:Lab NSG - HTTP port 80 required for traffic
   #checkov:skip=CKV_AZURE_220:Lab NSG - SSH open for demo access
-  name                = "nsg-origin-${local.suffix}"
-  location            = azurerm_resource_group.origin.location
-  resource_group_name = azurerm_resource_group.origin.name
+  name                = local.name.nsg
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
 
   security_rule {
     name                       = "AllowHTTP"
@@ -91,26 +81,26 @@ resource "azurerm_network_security_group" "origin" {
     destination_address_prefix = "*"
   }
 
-  tags = azurerm_resource_group.origin.tags
+  tags = azurerm_resource_group.main.tags
 }
 
-resource "azurerm_network_interface" "origin" {
+resource "azurerm_network_interface" "main" {
   #checkov:skip=CKV_AZURE_119:Lab NIC - public IP required for demo access
-  name                = "nic-origin-${local.suffix}"
-  location            = azurerm_resource_group.origin.location
-  resource_group_name = azurerm_resource_group.origin.name
+  name                = local.name.network_interface
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
 
   ip_configuration {
     name                          = "internal"
-    subnet_id                     = azurerm_subnet.origin.id
+    subnet_id                     = azurerm_subnet.main.id
     private_ip_address_allocation = "Dynamic"
-    public_ip_address_id          = azurerm_public_ip.origin.id
+    public_ip_address_id          = azurerm_public_ip.main.id
   }
 
-  tags = azurerm_resource_group.origin.tags
+  tags = azurerm_resource_group.main.tags
 }
 
-resource "azurerm_network_interface_security_group_association" "origin" {
-  network_interface_id      = azurerm_network_interface.origin.id
-  network_security_group_id = azurerm_network_security_group.origin.id
+resource "azurerm_network_interface_security_group_association" "main" {
+  network_interface_id      = azurerm_network_interface.main.id
+  network_security_group_id = azurerm_network_security_group.main.id
 }
