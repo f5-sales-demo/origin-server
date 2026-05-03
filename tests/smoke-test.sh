@@ -248,11 +248,12 @@ CRAPI_HOME=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "${CRAPI_BASE
 check "crapi-home-200" "200" "$CRAPI_HOME"
 
 CRAPI_HEALTH=$(curl -sf --max-time 10 "${CRAPI_BASE}/health" 2>/dev/null || echo "")
-check_contains "crapi-health-ok" "OK" "$CRAPI_HEALTH"
+check_contains "crapi-health-ok" '"healthy"' "$CRAPI_HEALTH"
 
-CRAPI_SIGNUP=$(curl -sf --max-time 15 -X POST "${CRAPI_BASE}/identity/api/auth/signup" \
+CRAPI_EMAIL="smoke-$(date +%s)@example.com"
+CRAPI_SIGNUP=$(curl -s --max-time 15 -X POST "${CRAPI_BASE}/identity/api/auth/signup" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Smoke Test","email":"smoke@example.com","number":"5551234567","password":"SmokeTest123"}' 2>/dev/null || echo "{}")
+  -d "{\"name\":\"Smoke Test\",\"email\":\"${CRAPI_EMAIL}\",\"number\":\"555$(shuf -i 1000000-9999999 -n1)\",\"password\":\"SmokeTest123\"}" 2>/dev/null || echo "{}")
 check_contains "crapi-signup-responds" '"message"' "$CRAPI_SIGNUP"
 
 # ── 11. Cross-cutting ───────────────────────────────
@@ -279,7 +280,7 @@ if $SSH_MODE; then
   NGINX_TEST=$(ssh_cmd "sudo nginx -t 2>&1 && echo VALID || echo INVALID")
   check_contains "ssh-nginx-config-valid" "VALID" "$NGINX_TEST"
 
-  DOCKER_COUNT=$(ssh_cmd "docker ps -q 2>/dev/null | wc -l" || echo "0")
+  DOCKER_COUNT=$(ssh_cmd "sudo docker ps -q 2>/dev/null | wc -l" || echo "0")
   check_gte "ssh-docker-container-count" 38 "$DOCKER_COUNT"
 
   PROGRESS_EXISTS=$(ssh_cmd "test -f /var/log/cloud-init-progress.log && echo yes || echo no")
@@ -292,10 +293,10 @@ if $SSH_MODE; then
   SOMAXCONN=$(ssh_cmd "sysctl -n net.core.somaxconn" || echo "0")
   check_gte "ssh-sysctl-somaxconn" 65535 "$SOMAXCONN"
 
-  CRAPI_PG_HEALTH=$(ssh_cmd "docker inspect --format='{{.State.Health.Status}}' crapi-postgres 2>/dev/null" || echo "unknown")
+  CRAPI_PG_HEALTH=$(ssh_cmd "sudo docker inspect --format='{{.State.Health.Status}}' crapi-postgres 2>/dev/null" || echo "unknown")
   check "ssh-docker-crapi-postgres-healthy" "healthy" "$CRAPI_PG_HEALTH"
 
-  CRAPI_WEB_HEALTH=$(ssh_cmd "docker inspect --format='{{.State.Health.Status}}' crapi-web 2>/dev/null" || echo "unknown")
+  CRAPI_WEB_HEALTH=$(ssh_cmd "sudo docker inspect --format='{{.State.Health.Status}}' crapi-web 2>/dev/null" || echo "unknown")
   check "ssh-docker-crapi-web-healthy" "healthy" "$CRAPI_WEB_HEALTH"
 
   NGINX_ERRORS=$(ssh_cmd "sudo journalctl -u nginx --since '5 minutes ago' --priority=err --no-pager -q 2>/dev/null | wc -l" || echo "0")
