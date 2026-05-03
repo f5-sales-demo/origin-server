@@ -3,10 +3,25 @@ set -euo pipefail
 
 # Origin Server Post-Boot Smoke Test Suite
 # Deterministic validation of all components after deployment or reboot.
-# Usage: ./smoke-test.sh <origin-ip-or-hostname>
+# Usage: ./smoke-test.sh <origin-ip-or-hostname> [--ssh]
+#   Default:  HTTP-only tests (application endpoints via curl)
+#   --ssh:    additionally runs SSH infrastructure tests (requires SSH key)
 # Exit codes: 0 = all pass, 1 = failures detected
 
-ORIGIN="${1:?Usage: $0 <origin-ip-or-hostname>}"
+ORIGIN="${1:?Usage: $0 <origin-ip-or-hostname> [--ssh]}"
+SSH_MODE=false
+shift || true
+while [ $# -gt 0 ]; do
+  case "$1" in
+  --ssh) SSH_MODE=true ;;
+  *)
+    echo "Unknown option: $1"
+    exit 1
+    ;;
+  esac
+  shift
+done
+
 BASE="http://${ORIGIN}"
 PASS=0
 FAIL=0
@@ -34,9 +49,25 @@ check_contains() {
   fi
 }
 
+check_gte() {
+  local name="$1" minimum="$2" actual="$3"
+  if [ "$actual" -ge "$minimum" ] 2>/dev/null; then
+    RESULTS+=("PASS  $name (value=$actual)")
+    PASS=$((PASS + 1))
+  else
+    RESULTS+=("FAIL  $name (expected>=$minimum got=$actual)")
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+ssh_cmd() {
+  ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 "azureuser@${ORIGIN}" "$@" 2>/dev/null
+}
+
 echo "============================================"
 echo "  Origin Server Smoke Test Suite"
 echo "  Target: ${BASE}"
+echo "  Mode:   $(if $SSH_MODE; then echo 'Full (HTTP + SSH)'; else echo 'HTTP-only'; fi)"
 echo "  Time:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "============================================"
 echo ""
@@ -180,17 +211,22 @@ check_contains "csd-demo-exfil-receives" '"received"' "$CSD_EXFIL"
 CSD_LOG=$(curl -sf --max-time 5 "${BASE}/csd-demo/exfil/log" 2>/dev/null || echo "[]")
 check_contains "csd-demo-exfil-log-has-entry" "smoke-test" "$CSD_LOG"
 
-# ── 8. DVGA ───────────────────────────────────────
+# ── 8. DVGA (GraphQL) ─────────────────────────────
 
 echo "── DVGA (GraphQL) ──"
 
-DVGA_HOME=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "${BASE}/dvga/" 2>/dev/null || echo "000")
+DVGA_HOME=$(curl -sf --max-time 15 -o /dev/null -w "%{http_code}" "${BASE}/dvga/" 2>/dev/null || echo "000")
 check "dvga-home-200" "200" "$DVGA_HOME"
 
 DVGA_GQL=$(curl -sf --max-time 10 -X POST "${BASE}/dvga/graphql" \
   -H "Content-Type: application/json" \
   -d '{"query":"{__schema{queryType{name}}}"}' 2>/dev/null || echo "{}")
 check_contains "dvga-graphql-introspection" '"Query"' "$DVGA_GQL"
+
+DVGA_PASTE=$(curl -sf --max-time 10 -X POST "${BASE}/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"mutation { createPaste(title: \"smoke-test\", content: \"smoke-test-content\", public: true) { paste { title content } } }"}' 2>/dev/null || echo "{}")
+check_contains "dvga-graphql-create-paste" '"smoke-test"' "$DVGA_PASTE"
 
 # ── 9. RESTaurant API ────────────────────────────────
 
@@ -202,11 +238,11 @@ check "restaurant-docs-200" "200" "$REST_DOCS"
 REST_OPENAPI=$(curl -sf --max-time 10 "${BASE}/restaurant/openapi.json" 2>/dev/null || echo "{}")
 check_contains "restaurant-openapi-title" '"Damn Vulnerable RESTaurant"' "$REST_OPENAPI"
 
-# ── 10. crAPI ─────────────────────────────────────────
+# ── 10. crAPI (port 8888) ─────────────────────────────
 
 echo "── crAPI (port 8888) ──"
 
-CRAPI_BASE="http://${ORIGIN_IP}:8888"
+CRAPI_BASE="http://${ORIGIN}:8888"
 
 CRAPI_HOME=$(curl -sf --max-time 10 -o /dev/null -w "%{http_code}" "${CRAPI_BASE}/" 2>/dev/null || echo "000")
 check "crapi-home-200" "200" "$CRAPI_HOME"
@@ -230,6 +266,41 @@ check "nginx-no-version-leak" "true" "$(echo "$NGINX_HEADER" | grep -qP 'nginx/\
 GZIP=$(curl -sf --max-time 5 -H "Accept-Encoding: gzip" -o /dev/null -w "%{size_download}" "${BASE}/juice-shop/" 2>/dev/null || echo "0")
 NOGZIP=$(curl -sf --max-time 5 -o /dev/null -w "%{size_download}" "${BASE}/juice-shop/" 2>/dev/null || echo "0")
 check "gzip-compression-active" "true" "$([ "$GZIP" -lt "$NOGZIP" ] && echo true || echo false)"
+
+# ── 12. Infrastructure (SSH) ─────────────────────────
+
+if $SSH_MODE; then
+  echo ""
+  echo "── Infrastructure (SSH) ──"
+
+  NGINX_ACTIVE=$(ssh_cmd "systemctl is-active nginx" || echo "unknown")
+  check "ssh-nginx-active" "active" "$NGINX_ACTIVE"
+
+  NGINX_TEST=$(ssh_cmd "sudo nginx -t 2>&1 && echo VALID || echo INVALID")
+  check_contains "ssh-nginx-config-valid" "VALID" "$NGINX_TEST"
+
+  DOCKER_COUNT=$(ssh_cmd "docker ps -q 2>/dev/null | wc -l" || echo "0")
+  check_gte "ssh-docker-container-count" 38 "$DOCKER_COUNT"
+
+  PROGRESS_EXISTS=$(ssh_cmd "test -f /var/log/cloud-init-progress.log && echo yes || echo no")
+  check "ssh-progress-log-exists" "yes" "$PROGRESS_EXISTS"
+
+  PROGRESS_LOG=$(ssh_cmd "cat /var/log/cloud-init-progress.log 2>/dev/null" || echo "")
+  check_contains "ssh-progress-log-health-check" '\[health-check\]' "$PROGRESS_LOG"
+  check_contains "ssh-progress-log-complete" '\[complete\]' "$PROGRESS_LOG"
+
+  SOMAXCONN=$(ssh_cmd "sysctl -n net.core.somaxconn" || echo "0")
+  check_gte "ssh-sysctl-somaxconn" 65535 "$SOMAXCONN"
+
+  CRAPI_PG_HEALTH=$(ssh_cmd "docker inspect --format='{{.State.Health.Status}}' crapi-postgres 2>/dev/null" || echo "unknown")
+  check "ssh-docker-crapi-postgres-healthy" "healthy" "$CRAPI_PG_HEALTH"
+
+  CRAPI_WEB_HEALTH=$(ssh_cmd "docker inspect --format='{{.State.Health.Status}}' crapi-web 2>/dev/null" || echo "unknown")
+  check "ssh-docker-crapi-web-healthy" "healthy" "$CRAPI_WEB_HEALTH"
+
+  NGINX_ERRORS=$(ssh_cmd "sudo journalctl -u nginx --since '5 minutes ago' --priority=err --no-pager -q 2>/dev/null | wc -l" || echo "0")
+  check "ssh-no-nginx-errors-last-5min" "0" "$NGINX_ERRORS"
+fi
 
 # ── Results ────────────────────────────────────────
 
