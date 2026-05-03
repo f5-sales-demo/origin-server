@@ -1712,34 +1712,130 @@ write_files:
       </body>
       </html>
 
+  - path: /usr/local/lib/cloud-init-helpers.sh
+    permissions: "0644"
+    content: |
+      #!/bin/sh
+      PROGRESS_LOG="/var/log/cloud-init-progress.log"
+      log_phase() {
+        _phase="$1"; shift
+        _msg="$${*:-started}"
+        _ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+        printf '[%s] [%s] %s\n' "$_ts" "$_phase" "$_msg" | tee -a "$PROGRESS_LOG" >&2
+      }
+      retry_cmd() {
+        _max="$1"; _base="$2"; shift 2
+        _attempt=1
+        while [ "$_attempt" -le "$_max" ]; do
+          if "$@"; then return 0; fi
+          if [ "$_attempt" -lt "$_max" ]; then
+            _wait=$(( _base * _attempt ))
+            log_phase "retry" "attempt $_attempt/$_max failed ($1) — retrying in $${_wait}s"
+            sleep "$_wait"
+          fi
+          _attempt=$(( _attempt + 1 ))
+        done
+        log_phase "retry" "FAILED after $_max attempts: $1"
+        return 1
+      }
+      fetch_url() {
+        _url="$1"; _out="$2"; _desc="$${3:-$1}"
+        log_phase "fetch" "$_desc"
+        retry_cmd 4 5 curl -fsSL --connect-timeout 15 --max-time 300 -o "$_out" "$_url"
+      }
+      install_packages() {
+        log_phase "apt" "installing: $*"
+        retry_cmd 3 10 apt-get install -y -o DPkg::Lock::Timeout=60 "$@"
+      }
+      clone_repo() {
+        _url="$1"; _dest="$2"; _depth="$${3:-1}"
+        log_phase "git" "cloning $_url -> $_dest"
+        retry_cmd 3 10 git clone --depth "$_depth" --single-branch "$_url" "$_dest"
+      }
+      wait_for_http() {
+        _url="$1"; _max="$2"; _desc="$${3:-$_url}"
+        log_phase "health" "waiting for $_desc (max $${_max}s)"
+        _elapsed=0
+        while [ "$_elapsed" -lt "$_max" ]; do
+          if curl -sf --max-time 5 "$_url" >/dev/null 2>&1; then
+            log_phase "health" "$_desc ready after $${_elapsed}s"
+            return 0
+          fi
+          sleep 5; _elapsed=$(( _elapsed + 5 ))
+        done
+        log_phase "health" "TIMEOUT: $_desc not ready after $${_max}s"
+        return 1
+      }
+      wait_for_docker_health() {
+        _ctr="$1"; _max="$2"
+        log_phase "docker" "waiting for $_ctr (max $${_max}s)"
+        _elapsed=0
+        while [ "$_elapsed" -lt "$_max" ]; do
+          _st=$(docker inspect -f '{{.State.Health.Status}}' "$_ctr" 2>/dev/null || echo "missing")
+          case "$_st" in
+            healthy)   log_phase "docker" "$_ctr healthy after $${_elapsed}s"; return 0 ;;
+            unhealthy) log_phase "docker" "ERROR: $_ctr unhealthy"; return 1 ;;
+          esac
+          sleep 5; _elapsed=$(( _elapsed + 5 ))
+        done
+        log_phase "docker" "TIMEOUT: $_ctr not healthy after $${_max}s"
+        return 1
+      }
+
 runcmd:
+  - |
+    . /usr/local/lib/cloud-init-helpers.sh
+    log_phase "init" "origin-server provisioning started"
   # Enable sysstat collection (sar history)
   - sed -i 's/ENABLED="false"/ENABLED="true"/' /etc/default/sysstat
   - systemctl enable sysstat
   - systemctl restart sysstat
   # Kernel tuning
-  - sysctl -p /etc/sysctl.d/99-origin-server.conf
+  - sysctl -p /etc/sysctl.d/99-origin-server.conf || exit 1
   # Docker
-  - install -m 0755 -d /etc/apt/keyrings
-  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-  - chmod a+r /etc/apt/keyrings/docker.asc
-  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable" > /etc/apt/sources.list.d/docker.list
-  - apt-get update
-  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-  - systemctl enable docker
-  - systemctl start docker
+  - |
+    . /usr/local/lib/cloud-init-helpers.sh
+    log_phase "docker-install" "installing Docker Engine"
+    install -m 0755 -d /etc/apt/keyrings
+    fetch_url "https://download.docker.com/linux/ubuntu/gpg" /etc/apt/keyrings/docker.asc "Docker GPG key"
+    chmod a+r /etc/apt/keyrings/docker.asc
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+    retry_cmd 3 10 apt-get update
+    install_packages docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    systemctl enable docker
+    systemctl start docker
+    log_phase "docker-install" "Docker Engine installed"
   - systemctl daemon-reload
   - ln -sf /etc/nginx/sites-available/origin-server /etc/nginx/sites-enabled/origin-server
   - rm -f /etc/nginx/sites-enabled/default
-  - nginx -t
+  - nginx -t || exit 1
   - systemctl enable nginx
   # Clone RESTaurant API repo for build
   - apt-get install -y git
-  - git clone --depth 1 https://github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game.git /opt/origin-server/restaurant
+  - |
+    . /usr/local/lib/cloud-init-helpers.sh
+    clone_repo "https://github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game.git" /opt/origin-server/restaurant
   # Build custom images and start all containers
-  - cd /opt/origin-server && docker compose build
-  - cd /opt/origin-server && docker compose up -d
-  - sleep 60
+  - |
+    . /usr/local/lib/cloud-init-helpers.sh
+    log_phase "docker-build" "building custom images"
+    cd /opt/origin-server && retry_cmd 3 30 docker compose build || exit 1
+    log_phase "docker-up" "starting 41 containers"
+    cd /opt/origin-server && docker compose up -d || exit 1
+  - |
+    . /usr/local/lib/cloud-init-helpers.sh
+    log_phase "health-check" "waiting for application containers"
+    for ctr in crapi-postgres crapi-mongo crapi-mailhog; do
+      wait_for_docker_health "$ctr" 120
+    done
+    for ctr in crapi-identity crapi-community crapi-workshop crapi-web; do
+      wait_for_docker_health "$ctr" 180
+    done
+    wait_for_http "http://127.0.0.1:3001" 120 "juice-shop"
+    wait_for_http "http://127.0.0.1:5101/api/v1/users" 120 "vampi"
+    wait_for_http "http://127.0.0.1:8201" 120 "httpbin"
+    wait_for_http "http://127.0.0.1:8082" 120 "whoami"
+    log_phase "health-check" "all containers ready"
   # DVWA database setup (create tables via HTTP setup endpoint)
   - |
     for i in $(seq 1 30); do
@@ -1747,6 +1843,12 @@ runcmd:
       sleep 2
     done
   - |
+    . /usr/local/lib/cloud-init-helpers.sh
     TOKEN=$(curl -sf http://127.0.0.1:8101/setup.php | grep -oP "user_token.*?value='\K[a-f0-9]+" | head -1)
+    if [ -z "$TOKEN" ]; then log_phase "warning" "empty DVWA token — skipping database setup"; else
     curl -sf -X POST http://127.0.0.1:8101/setup.php -d "create_db=Create+%2F+Reset+Database&user_token=$${TOKEN}" -c /tmp/dvwa-setup -b /tmp/dvwa-setup
+    fi
   - systemctl restart nginx
+  - |
+    . /usr/local/lib/cloud-init-helpers.sh
+    log_phase "complete" "origin-server provisioned"
