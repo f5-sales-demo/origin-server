@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -uo pipefail
 
 # Origin Server Post-Boot Smoke Test Suite
 # Deterministic validation of all components after deployment or reboot.
