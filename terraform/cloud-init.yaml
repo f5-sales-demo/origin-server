@@ -1717,70 +1717,13 @@ write_files:
     content: |
       #!/bin/sh
       PROGRESS_LOG="/var/log/cloud-init-progress.log"
-      log_phase() {
-        _phase="$1"; shift
-        _msg="$${*:-started}"
-        _ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-        printf '[%s] [%s] %s\n' "$_ts" "$_phase" "$_msg" | tee -a "$PROGRESS_LOG" >&2
-      }
-      retry_cmd() {
-        _max="$1"; _base="$2"; shift 2
-        _attempt=1
-        while [ "$_attempt" -le "$_max" ]; do
-          if "$@"; then return 0; fi
-          if [ "$_attempt" -lt "$_max" ]; then
-            _wait=$(( _base * _attempt ))
-            log_phase "retry" "attempt $_attempt/$_max failed ($1) — retrying in $${_wait}s"
-            sleep "$_wait"
-          fi
-          _attempt=$(( _attempt + 1 ))
-        done
-        log_phase "retry" "FAILED after $_max attempts: $1"
-        return 1
-      }
-      fetch_url() {
-        _url="$1"; _out="$2"; _desc="$${3:-$1}"
-        log_phase "fetch" "$_desc"
-        retry_cmd 4 5 curl -fsSL --connect-timeout 15 --max-time 300 -o "$_out" "$_url"
-      }
-      install_packages() {
-        log_phase "apt" "installing: $*"
-        retry_cmd 3 10 apt-get install -y -o DPkg::Lock::Timeout=60 "$@"
-      }
-      clone_repo() {
-        _url="$1"; _dest="$2"; _depth="$${3:-1}"
-        log_phase "git" "cloning $_url -> $_dest"
-        retry_cmd 3 10 git clone --depth "$_depth" --single-branch "$_url" "$_dest"
-      }
-      wait_for_http() {
-        _url="$1"; _max="$2"; _desc="$${3:-$_url}"
-        log_phase "health" "waiting for $_desc (max $${_max}s)"
-        _elapsed=0
-        while [ "$_elapsed" -lt "$_max" ]; do
-          if curl -sf --max-time 5 "$_url" >/dev/null 2>&1; then
-            log_phase "health" "$_desc ready after $${_elapsed}s"
-            return 0
-          fi
-          sleep 5; _elapsed=$(( _elapsed + 5 ))
-        done
-        log_phase "health" "TIMEOUT: $_desc not ready after $${_max}s"
-        return 1
-      }
-      wait_for_docker_health() {
-        _ctr="$1"; _max="$2"
-        log_phase "docker" "waiting for $_ctr (max $${_max}s)"
-        _elapsed=0
-        while [ "$_elapsed" -lt "$_max" ]; do
-          _st=$(docker inspect -f '{{.State.Health.Status}}' "$_ctr" 2>/dev/null || echo "missing")
-          case "$_st" in
-            healthy)   log_phase "docker" "$_ctr healthy after $${_elapsed}s"; return 0 ;;
-            unhealthy) log_phase "docker" "ERROR: $_ctr unhealthy"; return 1 ;;
-          esac
-          sleep 5; _elapsed=$(( _elapsed + 5 ))
-        done
-        log_phase "docker" "TIMEOUT: $_ctr not healthy after $${_max}s"
-        return 1
-      }
+      log_phase() { _p="$1"; shift; printf '[%s] [%s] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$_p" "$${*:-started}" | tee -a "$PROGRESS_LOG" >&2; }
+      retry_cmd() { _m="$1"; _b="$2"; shift 2; _a=1; while [ "$_a" -le "$_m" ]; do if "$@"; then return 0; fi; [ "$_a" -lt "$_m" ] && { _w=$((_b*_a)); log_phase retry "$_a/$_m failed ($1) retry in $${_w}s"; sleep "$_w"; }; _a=$((_a+1)); done; log_phase retry "FAILED after $_m: $1"; return 1; }
+      fetch_url() { log_phase fetch "$${3:-$1}"; retry_cmd 4 5 curl -fsSL --connect-timeout 15 --max-time 300 -o "$2" "$1"; }
+      install_packages() { log_phase apt "installing: $*"; retry_cmd 3 10 apt-get install -y -o DPkg::Lock::Timeout=60 "$@"; }
+      clone_repo() { log_phase git "cloning $1 -> $2"; retry_cmd 3 10 git clone --depth "$${3:-1}" --single-branch "$1" "$2"; }
+      wait_for_http() { _u="$1"; _m="$2"; _d="$${3:-$1}"; log_phase health "waiting $_d (max $${_m}s)"; _e=0; while [ "$_e" -lt "$_m" ]; do curl -sf --max-time 5 "$_u" >/dev/null 2>&1 && { log_phase health "$_d ready $${_e}s"; return 0; }; sleep 5; _e=$((_e+5)); done; log_phase health "TIMEOUT $_d $${_m}s"; return 1; }
+      wait_for_docker_health() { _c="$1"; _m="$2"; log_phase docker "waiting $_c (max $${_m}s)"; _e=0; while [ "$_e" -lt "$_m" ]; do _s=$(docker inspect -f '{{.State.Health.Status}}' "$_c" 2>/dev/null||echo missing); case "$_s" in healthy) log_phase docker "$_c healthy $${_e}s"; return 0;; unhealthy) log_phase docker "$_c unhealthy"; return 1;; esac; sleep 5; _e=$((_e+5)); done; log_phase docker "TIMEOUT $_c $${_m}s"; return 1; }
 
 runcmd:
   - |
