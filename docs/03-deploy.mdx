@@ -1,6 +1,6 @@
 ---
 title: Deploy
-description: "Complete Terraform IaC for Azure deployment: main.tf, variables.tf, network.tf, vm.tf, cloud-init.yaml, and outputs.tf with docker-compose for 41 containers across 9 applications. All configuration files are in the terraform/ directory."
+description: "Terraform IaC deployment following the Demo Resource Standard — 9 terraform files with Azure AD deployer auto-resolution, 25 outputs, and hardened cloud-init provisioning 41 Docker containers across 9 applications."
 sidebar:
   order: 3
 ---
@@ -16,14 +16,26 @@ cp terraform.tfvars.example terraform.tfvars
 
 ## Terraform Configuration
 
-### Provider and Variables
+### Terraform File Structure
 
-`main.tf` configures the Azure provider:
+The terraform directory contains 9 files following the Demo Resource Standard:
+
+- `versions.tf` — Terraform and provider version constraints (azurerm ~> 4.0, azuread ~> 3.0)
+- `providers.tf` — Azure RM and Azure AD provider configuration
+- `data.tf` — Azure AD data sources for deployer auto-resolution
+- `locals.tf` — Deployer resolution, Azure Cloud Adoption Framework resource naming, standard tags
+- `main.tf` — Resource group (named `rg-origin-server-{environment}-{deployer}`)
+- `variables.tf` — All input variables (1 required, 8 optional)
+- `network.tf` — VNet (10.200.0.0/16), subnet, public IP, NSG (ports 22/80/443/8888), NIC
+- `vm.tf` — Ubuntu 24.04 VM with cloud-init via templatefile()
+- `outputs.tf` — 25 outputs (15 standard + 10 component-specific application URLs)
+
+`main.tf` contains only the resource group:
 
 ```hcl file=./_data/main.tf
 ```
 
-`variables.tf` defines all configurable parameters. The `vm_size` default is `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) -- sized for 41 Docker containers under sustained load:
+`variables.tf` defines all configurable parameters. The `deployer` identifier is auto-resolved from your Azure AD account — you only need to set `subscription_id`. The `vm_size` default is `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) sized for 41 Docker containers:
 
 ```hcl file=./_data/variables.tf
 ```
@@ -44,7 +56,7 @@ cp terraform.tfvars.example terraform.tfvars
 
 ### Cloud-Init Provisioning
 
-`cloud-init.yaml` is the production-optimized configuration verified under sustained torture testing at 128+ system load and 22K concurrent connections. It provisions:
+`cloud-init.yaml` provisions the VM with a hardened configuration. A shared helper library (`/usr/local/lib/cloud-init-helpers.sh`) provides retry logic on all network operations and progress logging to `/var/log/cloud-init-progress.log`. Active health-check polling replaces fixed-duration sleep for container readiness. It provisions:
 
 - **Kernel tuning**: TCP keepalive, TIME_WAIT reuse, 2M tw_buckets, 64K somaxconn
 - **nginx**: 8 upstream blocks with sticky sessions (ip_hash, cookie hash), keepalive pools (64--128), proxy cache for Juice Shop, error_log crit level
@@ -57,7 +69,7 @@ cp terraform.tfvars.example terraform.tfvars
 
 ### Outputs
 
-`outputs.tf` exposes the public IP, SSH command, per-application URLs, and resource group name:
+`outputs.tf` exposes 25 outputs following the Demo Resource Standard — 15 standard outputs shared by all demo resources (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) plus 10 component-specific application URLs (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
 
 ```hcl file=./_data/outputs.tf
 ```
