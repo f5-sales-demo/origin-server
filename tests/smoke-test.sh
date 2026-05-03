@@ -13,8 +13,11 @@ SSH_MODE=false
 shift || true
 while [ $# -gt 0 ]; do
   case "$1" in
-    --ssh) SSH_MODE=true ;;
-    *) echo "Unknown option: $1"; exit 1 ;;
+  --ssh) SSH_MODE=true ;;
+  *)
+    echo "Unknown option: $1"
+    exit 1
+    ;;
   esac
   shift
 done
