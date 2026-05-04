@@ -2,7 +2,7 @@
   "customSets": [
     {
       "label": "Deployment",
-      "description": "Terraform IaC deployment with prerequisites and teardown",
+      "description": "Origin Server Terraform deployment — requires only subscription_id, outputs public_ip for CDN simulator and F5 XC origin pool",
       "paths": ["02-prerequisites*", "03-deploy*", "07-teardown*"]
     },
     {
