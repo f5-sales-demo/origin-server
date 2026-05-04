@@ -124,4 +124,32 @@ DVWA requires a one-time database initialization. Open `http://<PUBLIC_IP>/dvwa/
 VAmPI's SQLite database is automatically initialized by its gunicorn entrypoint script. Each container runs `db.create_all()` on startup, so no manual intervention is needed.
 :::
 
+## Wiring to Downstream Components
+
+After deployment, other components use the origin server's outputs as their inputs:
+
+```bash
+# CDN Simulator — pass origin-server's public IP as its upstream
+cd ../cdn-simulator/terraform
+origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
+cat > terraform.tfvars <<EOF
+subscription_id = "your-subscription-id"
+origin_server   = "http://${origin_ip}"
+origin_host     = "${origin_ip}:80"
+EOF
+
+# Traffic Generator — pass the F5 XC load balancer FQDN (not the origin IP directly)
+cd ../traffic-generator/terraform
+cat > terraform.tfvars <<EOF
+subscription_id = "your-subscription-id"
+target_fqdn     = "your-xc-load-balancer.example.com"
+EOF
+```
+
+| Output | Downstream Component | Input Variable |
+|---|---|---|
+| `public_ip` | CDN Simulator | `origin_server` (with `http://` prefix) |
+| `public_ip` | CDN Simulator | `origin_host` (with `:80` suffix, no scheme) |
+| `public_ip` | F5 XC Origin Pool | Origin server address |
+
 Proceed to [Applications](../04-applications/) for usage guides or [Verify](../05-verify/) for smoke tests.
