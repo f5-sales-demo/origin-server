@@ -2,6 +2,7 @@
 
 [![GitHub Pages Deploy](https://github.com/f5xc-salesdemos/origin-server/actions/workflows/github-pages-deploy.yml/badge.svg)](https://github.com/f5xc-salesdemos/origin-server/actions/workflows/github-pages-deploy.yml)
 [![Repository Settings](https://github.com/f5xc-salesdemos/origin-server/actions/workflows/enforce-repo-settings.yml/badge.svg)](https://github.com/f5xc-salesdemos/origin-server/actions/workflows/enforce-repo-settings.yml)
+[![Release](https://github.com/f5xc-salesdemos/origin-server/actions/workflows/release.yml/badge.svg)](https://github.com/f5xc-salesdemos/origin-server/actions/workflows/release.yml)
 [![License](https://img.shields.io/github/license/f5xc-salesdemos/origin-server)](LICENSE)
 
 Ubuntu 24.04 origin server with vulnerable web applications for F5 XC demo environments
