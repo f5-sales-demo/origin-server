@@ -1,0 +1,97 @@
+---
+title: Architecture
+description: >-
+  41-container deployment on Standard_D16s_v3 (16 vCPU, 64 GiB): nginx reverse
+  proxy with reuseport, sticky sessions, and proxy cache routing to
+  load-balanced instances of Juice Shop, DVWA-FPM, VAmPI, httpbin, whoami, CSD
+  Demo, DVGA, RESTaurant, and crAPI on Ubuntu 24.04
+sidebar:
+  order: 1
+i18n:
+  sourceHash: '14e795171077'
+  translator: machine
+---
+
+## उद्देश्य
+
+यह कंपोनेंट सुरक्षा परीक्षण डेमो के लिए कई कमजोर वेब एप्लिकेशन होस्ट करने वाला एकल ऑरिजिन सर्वर प्रदान करता है। यह एक सामान्य लोड बैलेंसर आर्किटेक्चर में "ऑरिजिन" का प्रतिनिधित्व करता है -- वह बैकएंड कंटेंट सर्वर जिसे F5 XC HTTP लोड बैलेंसर सुरक्षित करता है।
+
+प्रोडक्शन आर्किटेक्चर में:
+
+```
+End User -> F5 XC HTTP LB (WAF/Bot/API Security) -> Origin Server -> Application
+```
+
+यह कंपोनेंट एक वास्तविक प्रोडक्शन एप्लिकेशन सर्वर को एक उद्देश्य-निर्मित VM से प्रतिस्थापित करता है जो प्रसिद्ध कमजोर एप्लिकेशन चलाता है जो WAF नियमों, API सुरक्षा नीतियों और बॉट डिटेक्शन को ट्रिगर करते हैं।
+
+## आर्किटेक्चर
+
+```mermaid
+graph LR
+    Client[Client Browser] --> XCHLB[F5 XC HTTP LB]
+    XCHLB --> NGINX[nginx Reverse Proxy<br/>Ubuntu 24.04 · D16s_v3<br/>reuseport · 16 workers]
+    NGINX --> |/| DEFAULT[Landing Page]
+    NGINX --> |/juice-shop/| JS[Juice Shop ×4<br/>Ports 3001-3004<br/>hash cookie_token · cache]
+    NGINX --> |/dvwa/| DVWA[DVWA-FPM ×4<br/>Ports 8101-8104<br/>hash cookie_PHPSESSID]
+    NGINX --> |/vampi/| VAMPI[VAmPI ×4<br/>Ports 5101-5104<br/>ip_hash · gunicorn]
+    NGINX --> |/httpbin/| HTTPBIN[httpbin ×4<br/>Ports 8201-8204<br/>gunicorn -w 4]
+    NGINX --> |/whoami/| WHOAMI[whoami ×4<br/>Ports 8082-8085]
+    NGINX --> |/csd-demo/| CSD[CSD Demo ×4<br/>Ports 5001-5004<br/>ip_hash · gunicorn -w 1]
+    NGINX --> |/dvga/| DVGA[DVGA ×4<br/>Ports 5201-5204<br/>ip_hash · SQLite]
+    NGINX --> |/restaurant/| REST[RESTaurant ×4<br/>Ports 8301-8304<br/>round-robin]
+    XCHLB --> |:8888| CRAPI[crAPI ×7 microservices<br/>Port 8888<br/>web · identity · community<br/>workshop · postgres · mongo · mailhog]
+    DVWA --> DB[(MariaDB 10.11<br/>dvwa-db)]
+    REST --> RESTDB[(PostgreSQL 15.4<br/>restaurant-db)]
+```
+
+Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM, 60 GiB डिस्क) पर **41 कंटेनर**।
+
+nginx रिवर्स प्रॉक्सी:
+
+- उच्च-समवर्ती CDN ट्रैफ़िक के लिए `reuseport` और `backlog=4096` के साथ **पोर्ट 80 पर सुनता है**
+- लोड-बैलेंस्ड अपस्ट्रीम पूल (प्रति एप्लिकेशन 4 इंस्टेंस) को **पाथ प्रीफ़िक्स द्वारा रूट करता है**
+- **स्टिकी सेशन** स्टेट लॉस को रोकते हैं: Juice Shop के लिए `hash $cookie_token`, DVWA के लिए `hash $cookie_PHPSESSID`, VAmPI और CSD Demo के लिए `ip_hash` (प्रति इंस्टेंस SQLite/इन-मेमोरी स्टेट)
+- Juice Shop स्टैटिक एसेट्स के लिए **प्रॉक्सी कैश** (10 MB ज़ोन, 100 MB अधिकतम, 60 s TTL)
+- CDN लोड टेस्टिंग के दौरान डिस्क एक्ज़ॉशन को रोकने के लिए **एक्सेस लॉगिंग अक्षम** (डिफ़ेंस-इन-डेप्थ के रूप में logrotate)
+- ऑरिजिन विज़िबिलिटी के लिए **क्लाइंट हेडर्स पास करता है** (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`)
+- sysctl के माध्यम से **कर्नेल ट्यूनिंग**: `somaxconn=65535`, `tcp_tw_reuse=1`, `ip_local_port_range=1024-65535`
+
+## एप्लिकेशन मैपिंग
+
+| पाथ | अपस्ट्रीम | इंस्टेंस | पोर्ट | स्टिकी सेशन | उद्देश्य |
+|---|---|---|---|---|---|
+| `/` | nginx | -- | -- | -- | सभी ऐप्स के लिंक वाला लैंडिंग पेज |
+| `/health` | nginx | -- | -- | -- | JSON हेल्थ एंडपॉइंट (9 ऐप्स सूचीबद्ध) |
+| `/juice-shop/` | juice_shop | 4 | 3001-3004 | `hash $cookie_token` | आधुनिक वेब ऐप सुरक्षा (XSS, इंजेक्शन, CSRF) |
+| `/dvwa/` | dvwa | 4 + MariaDB | 8101-8104 | `hash $cookie_PHPSESSID` | समायोज्य कठिनाई के साथ क्लासिक WAF परीक्षण |
+| `/vampi/` | vampi | 4 | 5101-5104 | `ip_hash` | REST API सुरक्षा परीक्षण (OWASP API Top 10) |
+| `/httpbin/` | httpbin_up | 4 | 8201-8204 | -- | API डेमो के लिए HTTP रिक्वेस्ट/रिस्पॉन्स सेवा |
+| `/whoami/` | whoami_up | 4 | 8082-8085 | -- | रिक्वेस्ट डायग्नोस्टिक्स -- सभी हेडर्स, क्लाइंट IP दिखाता है |
+| `/csd-demo/` | csd_demo | 4 | 5001-5004 | `ip_hash` | क्लाइंट-साइड डिफ़ेंस परीक्षण (Magecart हमले) |
+| `/dvga/` | dvga | 4 | 5201-5204 | `ip_hash` | GraphQL API सुरक्षा परीक्षण (इंजेक्शन, DoS, ऑथ बाईपास) |
+| `/restaurant/` | restaurant | 4 + PostgreSQL | 8301-8304 | -- | REST API सुरक्षा (OWASP API Top 10 2023) |
+| `:8888` | crapi | 7 माइक्रोसर्विसेज़ | 8888 | -- | OWASP crAPI (BOLA, BFLA, मास असाइनमेंट, SSRF, JWT) |
+
+## मॉड्यूलर कंपोनेंट डिज़ाइन
+
+यह एक बड़े लैब वातावरण का एक हिस्सा है। प्रत्येक कंपोनेंट स्व-निहित है और स्वतंत्र रूप से तैनात किया जाता है:
+
+- **यह कंपोनेंट** ऑरिजिन सर्वर प्रदान करता है (Azure VM पर nginx + Docker कंटेनर)
+- **CDN सिम्युलेटर** CDN एज लेयर प्रदान करता है (Azure VM पर nginx कैशिंग)
+- **अन्य कंपोनेंट** F5 XC कॉन्फ़िगरेशन, DNS, WAF नीतियाँ, API सुरक्षा, आदि प्रदान करते हैं
+
+मानव ऑपरेटर एक-एक करके कंपोनेंट जोड़ता है। प्रत्येक कंपोनेंट का प्रलेखन इस प्रकार लिखा गया है कि एक AI सहायक इसे पढ़ सके और बुनियादी ढांचे को स्वायत्त रूप से तैनात कर सके।
+
+## ये एप्लिकेशन क्यों चुने गए
+
+| एप्लिकेशन | चयन का कारण |
+|---|---|
+| **Juice Shop** | OWASP फ़्लैगशिप प्रोजेक्ट; OWASP Top 10 को कवर करने वाली 100+ चुनौतियों वाला आधुनिक Node.js SPA; सक्रिय रूप से बनाए रखा गया; प्रॉक्सी कैश के साथ 4 इंस्टेंस |
+| **DVWA** | WAF परीक्षण के लिए उद्योग मानक; समायोज्य सुरक्षा स्तर (low/medium/high/impossible); प्रदर्शन के लिए कस्टम php-fpm + nginx बिल्ड; साझा MariaDB 10.11 बैकएंड |
+| **VAmPI** | OWASP API Security Top 10 के लिए उद्देश्य-निर्मित; ज्ञात कमजोरियों वाला REST API; प्रति इंस्टेंस 4 वर्कर्स के साथ gunicorn; SQLite संगतता के लिए ip_hash स्टिकी |
+| **httpbin** | Kenneth Reitz की मानक HTTP परीक्षण सेवा; 4 gevent वर्कर्स के साथ gunicorn; API डेमो और रिक्वेस्ट निरीक्षण के लिए उपयोगी |
+| **whoami** | Traefik का रिक्वेस्ट इको सर्वर; पूर्ण रिक्वेस्ट विवरण दिखाता है जैसा ऑरिजिन देखता है -- F5 XC हेडर इंजेक्शन को सत्यापित करने के लिए आवश्यक |
+| **CSD Demo** | 5 टॉगल करने योग्य Magecart-शैली हमलों (कार्ड स्किमर, फ़ॉर्मजैकर, कीलॉगर, क्रिप्टोमाइनर, DOM हाईजैक) वाला कस्टम चेकआउट पेज; एक्सफ़िल एंडपॉइंट + अटैकर डैशबोर्ड; इन-मेमोरी स्टेट पर्सिस्टेंस के लिए gunicorn सिंगल-वर्कर |
+| **DVGA** | Damn Vulnerable GraphQL Application; इंजेक्शन, DoS, बैचिंग हमले, और ऑथोराइज़ेशन बाईपास सहित GraphQL-विशिष्ट कमजोरियाँ; इंटरैक्टिव अन्वेषण के लिए GraphiQL UI; प्रति इंस्टेंस SQLite के लिए ip_hash स्टिकी |
+| **RESTaurant** | Damn Vulnerable RESTaurant API Game; OWASP API Security Top 10 2023 के लिए उद्देश्य-निर्मित; Swagger UI के साथ FastAPI; साझा PostgreSQL 15.4 बैकएंड; BOLA, BFLA, मास असाइनमेंट, SSRF, और इंजेक्शन कवर करता है |
+| **crAPI** | OWASP Completely Ridiculous API; BOLA, BFLA, मास असाइनमेंट, SSRF, JWT मैनिपुलेशन, और NoSQL इंजेक्शन कवर करने वाला 7-माइक्रोसर्विस आर्किटेक्चर; समर्पित पोर्ट 8888 (हार्डकोडेड API पाथ वाला SPA); ईमेल कैप्चर के लिए MailHog |

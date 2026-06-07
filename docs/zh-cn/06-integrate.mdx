@@ -1,0 +1,171 @@
+---
+title: 集成
+description: >-
+  Configure the VM as an F5 XC origin pool member with WAF, Bot Defense, API
+  Discovery, and Client-Side Defense policies; path-based routing through HTTP
+  load balancer; header injection verification via /whoami
+sidebar:
+  order: 6
+i18n:
+  sourceHash: 8d7b62f5e636
+  translator: machine
+---
+
+## F5 XC 源站池集成
+
+此源站服务器旨在作为 F5 Distributed Cloud HTTP 负载均衡器后面的**源站池成员**使用。F5 XC 平台在此源站前面提供 WAF、Bot Defense、API Security 和 Client-Side Defense 功能。
+
+### 架构
+
+```
+终端用户 -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> 源站服务器 VM (nginx -> Docker 应用)
+```
+
+### 源站池配置
+
+创建一个指向此 VM 公共 IP 的 F5 XC 源站池：
+
+| 设置 | 值 |
+|---|---|
+| **源站服务器类型** | Public IP of Origin Server |
+| **IP 地址** | `<terraform output public_ip>` |
+| **端口** | `80` |
+| **健康检查** | HTTP，路径 `/health` |
+
+### HTTP 负载均衡器配置
+
+使用源站池创建 HTTP 负载均衡器：
+
+| 设置 | 值 |
+|---|---|
+| **域名** | 您的演示域名（例如 `demo.example.com`） |
+| **源站池** | 上面创建的池 |
+| **WAF** | 附加您的 WAF 策略 |
+| **Bot Defense** | 根据需要启用 |
+| **API Discovery** | 为 VAmPI 端点启用 |
+
+### 基于路径的路由
+
+每个应用程序都可以通过负载均衡器的路径前缀进行访问：
+
+| F5 XC LB URL | 源站路径 | 应用程序 |
+|---|---|---|
+| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop（4 个实例，cookie 粘性） |
+| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA（4 个实例 + MariaDB，cookie 粘性） |
+| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI（4 个实例，ip_hash 粘性） |
+| `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin（4 个实例，轮询） |
+| `https://demo.example.com/whoami/` | `/whoami/` | 请求诊断（4 个实例） |
+| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo（4 个实例，ip_hash 粘性） |
+| `https://demo.example.com/dvga/` | `/dvga/` | DVGA（4 个实例，ip_hash 粘性） |
+| `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant（4 个实例，轮询） |
+| `https://demo.example.com/health` | `/health` | 健康检查（nginx 直接响应） |
+
+### 验证 F5 XC 请求头注入
+
+使用 whoami 端点验证 F5 XC 向到达源站的请求中注入了哪些请求头：
+
+```bash
+LB_DOMAIN="demo.example.com"
+
+curl -sk "https://${LB_DOMAIN}/whoami/"
+```
+
+在响应中查找以下 F5 XC 注入的请求头：
+
+| 请求头 | 含义 |
+|---|---|
+| `X-Forwarded-For` | 通过 F5 XC 的客户端 IP 链 |
+| `True-Client-IP` | 原始客户端 IP |
+| `X-Forwarded-Proto` | 如果 TLS 在 F5 XC 终止则为 `https` |
+| `X-Volterra-Bot-Type` | Bot 分类（启用 Bot Defense 时） |
+| `X-Request-ID` | F5 XC 请求跟踪 ID |
+
+### 通过 F5 XC 进行 WAF 测试
+
+在 HTTP 负载均衡器上附加 WAF 策略后，测试攻击载荷：
+
+```bash
+LB_DOMAIN="demo.example.com"
+
+# SQL Injection (should be blocked by WAF)
+curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/sqli/?id=%27+OR+1%3D1--&Submit=Submit"
+
+# XSS (should be blocked by WAF)
+curl -sk "https://${LB_DOMAIN}/juice-shop/rest/products/search?q=<script>alert(1)</script>"
+
+# Command Injection (should be blocked by WAF)
+curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/exec/" \
+  -d "ip=127.0.0.1;cat+/etc/passwd&Submit=Submit"
+
+# Normal request (should pass through)
+curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
+```
+
+### API 安全测试
+
+在 HTTP 负载均衡器上启用 API Discovery 以映射 VAmPI 的 API 端点：
+
+```bash
+# These requests build the API inventory in F5 XC
+curl -sk "https://${LB_DOMAIN}/vampi/users/v1"
+curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"apitest","password":"test123","email":"api@test.com"}'
+curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"apitest","password":"test123"}'
+```
+
+### crAPI 集成（端口 8888）
+
+crAPI 运行在专用端口（8888）上，因为它是一个单页应用程序，硬编码了其 API 路径，无法在路径前缀后面提供服务。要将 crAPI 与 F5 XC 集成：
+
+| 设置 | 值 |
+|---|---|
+| **源站服务器类型** | Public IP of Origin Server |
+| **IP 地址** | `<terraform output public_ip>` |
+| **端口** | `8888` |
+| **健康检查** | HTTP，路径 `/` |
+
+为端口 8888 上的 crAPI 创建一个**单独的源站池**，或者将第二个源站池成员添加到现有池中（使用端口 8888），并使用路由规则来引导流量：
+
+```bash
+# Test crAPI through F5 XC (if configured)
+curl -sk "https://${LB_DOMAIN}:8888/"
+
+# Or if using route rules on the same LB domain:
+# Configure an F5 XC route rule matching Host header or path prefix
+# to forward to the crAPI origin pool (port 8888)
+```
+
+:::note
+源站 VM 上的 NSG 允许端口 8888 的入站流量。无需进行额外的 Azure 网络更改。
+:::
+
+### 粘性会话注意事项
+
+源站服务器在内部使用 nginx 粘性会话将有状态应用程序路由到一致的后端容器。配置 F5 XC HTTP 负载均衡器时，请注意以下事项：
+
+| 应用程序 | 粘性方式 | 原因 |
+|---|---|---|
+| Juice Shop | `hash $cookie_token` | Node.js 会话状态 |
+| DVWA | `hash $cookie_PHPSESSID` | PHP 会话状态 |
+| VAmPI | `ip_hash` | 每个实例独立的 SQLite 数据库 |
+| CSD Demo | `ip_hash` | 每个实例的内存数据泄露日志 |
+| DVGA | `ip_hash` | 每个实例独立的 SQLite 数据库 |
+| RESTaurant | 轮询 | 共享 PostgreSQL 后端 |
+| crAPI | --（单端口 8888） | 7 个微服务，PostgreSQL + MongoDB |
+| httpbin | 轮询 | 无状态 |
+| whoami | 轮询 | 无状态 |
+
+F5 XC 不需要复制这些粘性会话——源站 VM 上的 nginx 处理后端路由。F5 XC 应将源站视为单个端点（VM 的公共 IP，端口 80）。
+
+### 多组件架构
+
+与 CDN 模拟器结合使用时，完整的实验室架构为：
+
+```
+终端用户 -> CDN 模拟器 (nginx 缓存) -> F5 XC HTTP LB -> 源站服务器（本组件）
+```
+
+CDN 模拟器使用 F5 XC HTTP 负载均衡器的 VIP 作为其源站，而 F5 XC 负载均衡器使用此源站服务器作为其后端。这创建了一个逼真的多层架构，用于全面的测试。

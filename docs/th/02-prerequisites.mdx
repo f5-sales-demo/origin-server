@@ -1,0 +1,82 @@
+---
+title: ข้อกำหนดเบื้องต้น
+description: >-
+  Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and
+  Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) for 41-container deployment
+sidebar:
+  order: 2
+i18n:
+  sourceHash: 293ed3db6122
+  translator: machine
+---
+
+## สิ่งที่จำเป็น
+
+### Azure Subscription
+
+Azure subscription ที่ใช้งานอยู่พร้อมสิทธิ์ในการสร้าง:
+
+- Resource groups
+- Virtual networks และ subnets
+- Network security groups
+- Public IP addresses
+- Virtual machines (Standard_D16s_v3 -- 16 vCPU, 64 GiB RAM สำหรับ workloads ที่มี 41 คอนเทนเนอร์)
+
+### Azure CLI
+
+ติดตั้งและยืนยันตัวตนกับ Azure CLI:
+
+```bash
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+az login
+
+az account show --query '{name:name, id:id}' -o table
+```
+
+### Terraform
+
+ต้องใช้ Terraform >= 1.5:
+
+```bash
+terraform version
+```
+
+หากยังไม่ได้ติดตั้ง ให้ใช้ HashiCorp APT repository:
+
+```bash
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+```
+
+### สิทธิ์ Azure AD
+
+บัญชี Azure AD ของคุณต้องมีสิทธิ์ `User.Read` ตัวระบุผู้ทำการ deploy (ใช้ในการตั้งชื่อทรัพยากร) จะถูกดึงมาจากโปรไฟล์ Azure AD ของคุณโดยอัตโนมัติ สำหรับการยืนยันตัวตนด้วย service principal หรือ managed identity ให้ตั้งค่าตัวแปร Terraform `deployer` อย่างชัดเจน
+
+### คู่คีย์ SSH
+
+คู่คีย์ SSH สำหรับการเข้าถึง VM:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
+```
+
+## ทรัพยากร Azure ที่จะถูกสร้าง
+
+| ทรัพยากร | SKU |
+|---|---|
+| Ubuntu 24.04 VM | Standard_D16s_v3 (16 vCPU, 64 GiB) |
+| Public IP | Standard, Static |
+| OS Disk | 60 GiB Premium SSD |
+| VNet + NSG | Default |
+
+ดู [เครื่องคำนวณราคา Azure](https://azure.microsoft.com/en-us/pricing/calculator/) สำหรับค่าใช้จ่ายปัจจุบัน ใช้ `terraform destroy` เมื่อไม่ได้ใช้งาน lab เพื่อหยุดการคิดค่าใช้จ่าย ดู [การรื้อถอน](../07-teardown/) สำหรับขั้นตอนการดำเนินการ
+
+:::note
+Standard_D16s_v3 (64 GiB RAM) จำเป็นสำหรับการ deploy 41 คอนเทนเนอร์ การจัดสรรหน่วยความจำคอนเทนเนอร์: Juice Shop 4 อินสแตนซ์ อินสแตนซ์ละ 1 GiB (4 GiB), VAmPI 4 ตัว ตัวละ 512 MiB (2 GiB), DVWA-FPM + MariaDB 4 ชุด (1.8 GiB), httpbin 4 ตัว ตัวละ 256 MiB (1 GiB), CSD Demo 4 ตัว ตัวละ 256 MiB (1 GiB), whoami 4 ตัว ตัวละ 64 MiB (256 MiB), DVGA 4 ตัว ตัวละ 256 MiB (1 GiB), RESTaurant + PostgreSQL 4 ชุด (1.5 GiB), crAPI 7 ไมโครเซอร์วิส (2 GiB) รวมถึง nginx, OS และ buffer cache การจัดสรรคอนเทนเนอร์ทั้งหมดอยู่ที่ประมาณ 14.5 GiB (22.7% ของ 64 GiB)
+:::
+
+:::note
+NSG อนุญาตทราฟฟิกขาเข้าบนพอร์ต 80 (HTTP) และ 8888 (crAPI) พอร์ต 8888 จำเป็นเนื่องจาก crAPI เป็น single-page application ที่ hardcode เส้นทาง API ของมันไว้และไม่สามารถให้บริการผ่าน path prefix ได้
+:::

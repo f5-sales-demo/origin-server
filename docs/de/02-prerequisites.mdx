@@ -1,0 +1,82 @@
+---
+title: Voraussetzungen
+description: >-
+  Azure-Abonnement, Terraform >= 1.5, Azure CLI, SSH-Schlüsselpaar und
+  Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) für 41-Container-Bereitstellung
+sidebar:
+  order: 2
+i18n:
+  sourceHash: 293ed3db6122
+  translator: machine
+---
+
+## Erforderlich
+
+### Azure-Abonnement
+
+Ein aktives Azure-Abonnement mit der Berechtigung, folgende Ressourcen zu erstellen:
+
+- Ressourcengruppen
+- Virtuelle Netzwerke und Subnetze
+- Netzwerksicherheitsgruppen
+- Öffentliche IP-Adressen
+- Virtuelle Maschinen (Standard_D16s_v3 -- 16 vCPU, 64 GiB RAM für 41-Container-Workloads)
+
+### Azure CLI
+
+Installieren und authentifizieren Sie die Azure CLI:
+
+```bash
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+az login
+
+az account show --query '{name:name, id:id}' -o table
+```
+
+### Terraform
+
+Terraform >= 1.5 ist erforderlich:
+
+```bash
+terraform version
+```
+
+Falls nicht installiert, verwenden Sie das HashiCorp APT-Repository:
+
+```bash
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+```
+
+### Azure AD-Berechtigungen
+
+Ihr Azure AD-Konto muss über `User.Read`-Berechtigungen verfügen. Der Deployer-Bezeichner (verwendet in der Ressourcenbenennung) wird automatisch aus Ihrem Azure AD-Profil abgeleitet. Bei Authentifizierung über Dienstprinzipal oder verwaltete Identität setzen Sie die Terraform-Variable `deployer` explizit.
+
+### SSH-Schlüsselpaar
+
+Ein SSH-Schlüsselpaar für den VM-Zugriff:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
+```
+
+## Erstellte Azure-Ressourcen
+
+| Ressource | SKU |
+|---|---|
+| Ubuntu 24.04 VM | Standard_D16s_v3 (16 vCPU, 64 GiB) |
+| Öffentliche IP | Standard, Statisch |
+| Betriebssystem-Datenträger | 60 GiB Premium SSD |
+| VNet + NSG | Standard |
+
+Aktuelle Kosten finden Sie im [Azure-Preisrechner](https://azure.microsoft.com/en-us/pricing/calculator/). Verwenden Sie `terraform destroy`, wenn das Lab nicht in Benutzung ist, um Kosten zu vermeiden. Das Verfahren finden Sie unter [Abbau](../07-teardown/).
+
+:::note
+Standard_D16s_v3 (64 GiB RAM) ist für die 41-Container-Bereitstellung erforderlich. Arbeitsspeicherzuweisung der Container: 4 Juice Shop-Instanzen mit je 1 GiB (4 GiB), 4 VAmPI mit je 512 MiB (2 GiB), 4 DVWA-FPM + MariaDB (1,8 GiB), 4 httpbin mit je 256 MiB (1 GiB), 4 CSD Demo mit je 256 MiB (1 GiB), 4 whoami mit je 64 MiB (256 MiB), 4 DVGA mit je 256 MiB (1 GiB), 4 RESTaurant + PostgreSQL (1,5 GiB), crAPI 7 Microservices (2 GiB), plus nginx, Betriebssystem und Puffer-Cache. Die gesamte Container-Zuweisung beträgt ungefähr 14,5 GiB (22,7 % von 64 GiB).
+:::
+
+:::note
+Die NSG erlaubt eingehenden Datenverkehr auf den Ports 80 (HTTP) und 8888 (crAPI). Port 8888 ist erforderlich, da crAPI eine Single-Page-Anwendung ist, die ihre API-Pfade fest kodiert und nicht hinter einem Pfad-Präfix bereitgestellt werden kann.
+:::

@@ -1,0 +1,161 @@
+---
+title: Deploy
+description: >-
+  Terraform IaC deployment following the Demo Resource Standard — 9 terraform
+  files with Azure AD deployer auto-resolution, 25 outputs, and hardened
+  cloud-init provisioning 41 Docker containers across 9 applications.
+sidebar:
+  order: 3
+i18n:
+  sourceHash: 29cfe8b81067
+  translator: machine
+---
+
+すべてのTerraformファイルは[`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform)ディレクトリにあります。リポジトリをクローンして直接デプロイしてください：
+
+```bash
+git clone https://github.com/f5xc-salesdemos/origin-server.git
+cd origin-server/terraform
+cp terraform.tfvars.example terraform.tfvars
+# terraform.tfvarsをAzureサブスクリプションIDとSSHキーのパスで編集してください
+```
+
+## Terraform設定
+
+### Terraformファイル構成
+
+terraformディレクトリには、Demo Resource Standardに準拠した9つのファイルが含まれています：
+
+- `versions.tf` — Terraformおよびプロバイダーのバージョン制約（azurerm ~> 4.0、azuread ~> 3.0）
+- `providers.tf` — Azure RMおよびAzure ADプロバイダーの設定
+- `data.tf` — デプロイヤー自動解決のためのAzure ADデータソース
+- `locals.tf` — デプロイヤー解決、Azure Cloud Adoption Frameworkリソース命名、標準タグ
+- `main.tf` — リソースグループ（`rg-origin-server-{environment}-{deployer}`という名前）
+- `variables.tf` — すべての入力変数（必須1つ、オプション8つ）
+- `network.tf` — VNet（10.200.0.0/16）、サブネット、パブリックIP、NSG（ポート22/80/443/8888）、NIC
+- `vm.tf` — templatefile()によるcloud-initを使用したUbuntu 24.04 VM
+- `outputs.tf` — 25の出力（標準15 + コンポーネント固有のアプリケーションURL 10）
+
+`main.tf`にはリソースグループのみが含まれています：
+
+```hcl file=./_data/main.tf
+```
+
+`variables.tf`はすべての設定可能なパラメータを定義します。`deployer`識別子はAzure ADアカウントから自動解決されるため、設定が必要なのは`subscription_id`のみです。`vm_size`のデフォルトは`Standard_D16s_v3`（16 vCPU、64 GiB RAM）で、41のDockerコンテナ向けにサイジングされています：
+
+```hcl file=./_data/variables.tf
+```
+
+### ネットワークインフラストラクチャ
+
+`network.tf`はVNet、サブネット、パブリックIP、NSG（ポート22/80/443/8888）、およびNICを作成します。ポート8888はcrAPIが専用ポートで実行されるために必要です：
+
+```hcl file=./_data/network.tf
+```
+
+### Cloud-Initを使用した仮想マシン
+
+`vm.tf`はUbuntu 24.04 VMを作成し、cloud-initプロビジョニングスクリプトを渡します。60 GiBのPremium SSDはDockerイメージとコンテナボリュームに十分な容量を提供します：
+
+```hcl file=./_data/vm.tf
+```
+
+### Cloud-Initプロビジョニング
+
+`cloud-init.yaml`はハードニングされた設定でVMをプロビジョニングします。共有ヘルパーライブラリ（`/usr/local/lib/cloud-init-helpers.sh`）は、すべてのネットワーク操作にリトライロジックを提供し、`/var/log/cloud-init-progress.log`に進捗ログを記録します。コンテナの準備完了確認には、固定時間のsleepの代わりにアクティブなヘルスチェックポーリングを使用します。プロビジョニング内容：
+
+- **カーネルチューニング**: TCPキープアライブ、TIME_WAIT再利用、2M tw_buckets、64K somaxconn
+- **nginx**: スティッキーセッション（ip_hash、cookieハッシュ）付き8つのupstreamブロック、キープアライブプール（64--128）、Juice Shop用プロキシキャッシュ、error_log critレベル
+- **Docker Compose**: 9つのアプリケーションにわたる41のコンテナ、コンテナごとのCPU/メモリ制限付き
+- **カスタムビルド**: DVWA-FPM（php-fpm、pm.max_requests=200）、CSD Demo（Flask + gunicorn）、RESTaurant（GitHubからクローン）
+- **ワーカーリサイクル**: 持続的な負荷下でのメモリリークを防止するためのuvicorn --limit-max-requests 200（RESTaurant）、pm.max_requests 200（DVWA-FPM）
+
+```yaml file=./_data/cloud-init.yaml
+```
+
+### 出力
+
+`outputs.tf`はDemo Resource Standardに準拠した25の出力を公開します — すべてのデモリソースで共有される15の標準出力（`deployer`、`public_ip`、`private_ip`、`ssh_command`、`resource_group_name`、`vm_name`、`nsg_name`、`vnet_name`、`subnet_id`、`component`、`environment`、`resource_group_id`、`vm_id`、`nsg_id`、`location`）と、10のコンポーネント固有のアプリケーションURL（`origin_url`、`health_check_url`、`juice_shop_url`、`dvwa_url`、`vampi_url`、`httpbin_url`、`whoami_url`、`dvga_url`、`restaurant_url`、`crapi_url`）：
+
+```hcl file=./_data/outputs.tf
+```
+
+### 変数ファイルの例
+
+`terraform.tfvars.example`を`terraform.tfvars`にコピーして値を入力してください。`.gitignore`は認証情報のコミットを防ぐため`terraform.tfvars`を除外しています：
+
+```hcl file=./_data/terraform.tfvars.example
+```
+
+## デプロイ
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+# terraform.tfvarsをAzureサブスクリプションIDとSSHキーのパスで編集してください
+
+terraform init
+
+terraform plan
+
+terraform apply
+```
+
+デプロイが成功すると、TerraformはパブリックIP、SSHコマンド、およびアプリケーションURLを出力します。
+
+## デプロイ後
+
+`terraform apply`が完了した後、cloud-initがDockerのインストール、コンテナイメージのプル、およびnginxの設定を完了するまで5〜10分かかります。Dockerイメージのプルがボトルネックとなります — Juice Shop単体で約400 MiBあります。
+
+ヘルスエンドポイントを確認してください：
+
+```bash
+curl -s "http://$(terraform output -raw public_ip)/health" | jq .
+```
+
+期待されるレスポンス：
+
+```json
+{
+  "status": "healthy",
+  "component": "origin-server",
+  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami", "csd-demo", "dvga", "restaurant", "crapi"]
+}
+```
+
+### DVWAデータベースセットアップ
+
+DVWAには1回限りのデータベース初期化が必要です。ブラウザで`http://<PUBLIC_IP>/dvwa/setup.php`を開き、**Create / Reset Database**をクリックしてください。デフォルトの認証情報は`admin` / `password`です。
+
+:::note
+VAmPIのSQLiteデータベースはgunicornのエントリポイントスクリプトによって自動的に初期化されます。各コンテナは起動時に`db.create_all()`を実行するため、手動での操作は不要です。
+:::
+
+## ダウンストリームコンポーネントへの接続
+
+デプロイ後、他のコンポーネントはオリジンサーバーの出力を入力として使用します：
+
+```bash
+# CDN Simulator — origin-serverのパブリックIPをupstreamとして渡す
+cd ../cdn-simulator/terraform
+origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
+cat > terraform.tfvars <<EOF
+subscription_id = "your-subscription-id"
+origin_server   = "http://${origin_ip}"
+origin_host     = "${origin_ip}:80"
+EOF
+
+# Traffic Generator — F5 XCロードバランサーのFQDNを渡す（オリジンIPを直接渡すのではない）
+cd ../traffic-generator/terraform
+cat > terraform.tfvars <<EOF
+subscription_id = "your-subscription-id"
+target_fqdn     = "your-xc-load-balancer.example.com"
+EOF
+```
+
+| 出力 | ダウンストリームコンポーネント | 入力変数 |
+|---|---|---|
+| `public_ip` | CDN Simulator | `origin_server`（`http://`プレフィックス付き） |
+| `public_ip` | CDN Simulator | `origin_host`（`:80`サフィックス付き、スキームなし） |
+| `public_ip` | F5 XC Origin Pool | オリジンサーバーアドレス |
+
+使用ガイドについては[Applications](../04-applications/)へ、スモークテストについては[Verify](../05-verify/)へ進んでください。

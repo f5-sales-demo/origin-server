@@ -1,0 +1,97 @@
+---
+title: Arquitetura
+description: >-
+  41-container deployment on Standard_D16s_v3 (16 vCPU, 64 GiB): nginx reverse
+  proxy with reuseport, sticky sessions, and proxy cache routing to
+  load-balanced instances of Juice Shop, DVWA-FPM, VAmPI, httpbin, whoami, CSD
+  Demo, DVGA, RESTaurant, and crAPI on Ubuntu 24.04
+sidebar:
+  order: 1
+i18n:
+  sourceHash: '14e795171077'
+  translator: machine
+---
+
+## Propósito
+
+Este componente fornece um único servidor de origem hospedando múltiplas aplicações web vulneráveis para demonstrações de testes de segurança. Ele representa a "origem" em uma arquitetura típica de balanceador de carga -- o servidor de conteúdo backend que um HTTP load balancer do F5 XC protege.
+
+Em arquiteturas de produção:
+
+```
+End User -> F5 XC HTTP LB (WAF/Bot/API Security) -> Origin Server -> Application
+```
+
+Este componente substitui um servidor de aplicação de produção real por uma VM construída especificamente, executando aplicações vulneráveis bem conhecidas que acionam regras de WAF, políticas de segurança de API e detecção de bots.
+
+## Arquitetura
+
+```mermaid
+graph LR
+    Client[Client Browser] --> XCHLB[F5 XC HTTP LB]
+    XCHLB --> NGINX[nginx Reverse Proxy<br/>Ubuntu 24.04 · D16s_v3<br/>reuseport · 16 workers]
+    NGINX --> |/| DEFAULT[Landing Page]
+    NGINX --> |/juice-shop/| JS[Juice Shop ×4<br/>Ports 3001-3004<br/>hash cookie_token · cache]
+    NGINX --> |/dvwa/| DVWA[DVWA-FPM ×4<br/>Ports 8101-8104<br/>hash cookie_PHPSESSID]
+    NGINX --> |/vampi/| VAMPI[VAmPI ×4<br/>Ports 5101-5104<br/>ip_hash · gunicorn]
+    NGINX --> |/httpbin/| HTTPBIN[httpbin ×4<br/>Ports 8201-8204<br/>gunicorn -w 4]
+    NGINX --> |/whoami/| WHOAMI[whoami ×4<br/>Ports 8082-8085]
+    NGINX --> |/csd-demo/| CSD[CSD Demo ×4<br/>Ports 5001-5004<br/>ip_hash · gunicorn -w 1]
+    NGINX --> |/dvga/| DVGA[DVGA ×4<br/>Ports 5201-5204<br/>ip_hash · SQLite]
+    NGINX --> |/restaurant/| REST[RESTaurant ×4<br/>Ports 8301-8304<br/>round-robin]
+    XCHLB --> |:8888| CRAPI[crAPI ×7 microservices<br/>Port 8888<br/>web · identity · community<br/>workshop · postgres · mongo · mailhog]
+    DVWA --> DB[(MariaDB 10.11<br/>dvwa-db)]
+    REST --> RESTDB[(PostgreSQL 15.4<br/>restaurant-db)]
+```
+
+**41 containers** em uma VM Standard_D16s_v3 (16 vCPU, 64 GiB RAM, 60 GiB disco).
+
+O proxy reverso nginx:
+
+- **Escuta na porta 80** com `reuseport` e `backlog=4096` para tráfego CDN de alta concorrência
+- **Roteia por prefixo de caminho** para pools de upstream com balanceamento de carga (4 instâncias por aplicação)
+- **Sessões persistentes (sticky sessions)** previnem perda de estado: `hash $cookie_token` para Juice Shop, `hash $cookie_PHPSESSID` para DVWA, `ip_hash` para VAmPI e CSD Demo (estado SQLite/em memória por instância)
+- **Cache de proxy** para ativos estáticos do Juice Shop (zona de 10 MB, máximo de 100 MB, TTL de 60 s)
+- **Log de acesso desabilitado** para prevenir esgotamento de disco durante testes de carga CDN (logrotate como defesa em profundidade)
+- **Repassa cabeçalhos do cliente** (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`) para visibilidade na origem
+- **Ajuste de kernel** via sysctl: `somaxconn=65535`, `tcp_tw_reuse=1`, `ip_local_port_range=1024-65535`
+
+## Mapeamento de Aplicações
+
+| Caminho | Upstream | Instâncias | Portas | Sessão Persistente | Propósito |
+|---|---|---|---|---|---|
+| `/` | nginx | -- | -- | -- | Página inicial com links para todas as aplicações |
+| `/health` | nginx | -- | -- | -- | Endpoint de saúde em JSON (9 aplicações listadas) |
+| `/juice-shop/` | juice_shop | 4 | 3001-3004 | `hash $cookie_token` | Segurança de aplicações web modernas (XSS, injeção, CSRF) |
+| `/dvwa/` | dvwa | 4 + MariaDB | 8101-8104 | `hash $cookie_PHPSESSID` | Teste clássico de WAF com dificuldade ajustável |
+| `/vampi/` | vampi | 4 | 5101-5104 | `ip_hash` | Teste de segurança de API REST (OWASP API Top 10) |
+| `/httpbin/` | httpbin_up | 4 | 8201-8204 | -- | Serviço de requisição/resposta HTTP para demos de API |
+| `/whoami/` | whoami_up | 4 | 8082-8085 | -- | Diagnóstico de requisições -- exibe todos os cabeçalhos, IP do cliente |
+| `/csd-demo/` | csd_demo | 4 | 5001-5004 | `ip_hash` | Teste de Client-Side Defense (ataques Magecart) |
+| `/dvga/` | dvga | 4 | 5201-5204 | `ip_hash` | Teste de segurança de API GraphQL (injeção, DoS, bypass de autenticação) |
+| `/restaurant/` | restaurant | 4 + PostgreSQL | 8301-8304 | -- | Segurança de API REST (OWASP API Top 10 2023) |
+| `:8888` | crapi | 7 microsserviços | 8888 | -- | OWASP crAPI (BOLA, BFLA, mass assignment, SSRF, JWT) |
+
+## Design Modular de Componentes
+
+Este é uma peça de um ambiente de laboratório maior. Cada componente é autocontido e implantado independentemente:
+
+- **Este componente** fornece o servidor de origem (nginx + containers Docker em VM Azure)
+- **CDN Simulator** fornece a camada de borda CDN (nginx com cache em VM Azure)
+- **Outros componentes** fornecem a configuração do F5 XC, DNS, políticas de WAF, segurança de API, etc.
+
+O operador humano adiciona componentes um de cada vez. A documentação de cada componente é escrita de forma que um assistente de IA possa lê-la e implantar a infraestrutura de forma autônoma.
+
+## Por que Estas Aplicações
+
+| Aplicação | Por que Foi Selecionada |
+|---|---|
+| **Juice Shop** | Projeto principal da OWASP; SPA moderna em Node.js com mais de 100 desafios cobrindo o OWASP Top 10; mantida ativamente; 4 instâncias com cache de proxy |
+| **DVWA** | Padrão da indústria para testes de WAF; níveis de segurança ajustáveis (low/medium/high/impossible); build customizado de php-fpm + nginx para desempenho; backend compartilhado MariaDB 10.11 |
+| **VAmPI** | Construída especificamente para o OWASP API Security Top 10; API REST com vulnerabilidades conhecidas; gunicorn com 4 workers por instância; ip_hash sticky para consistência do SQLite |
+| **httpbin** | Serviço canônico de teste HTTP de Kenneth Reitz; gunicorn com 4 workers gevent; útil para demos de API e inspeção de requisições |
+| **whoami** | Servidor de eco de requisições do Traefik; exibe detalhes completos da requisição como a origem os vê -- essencial para verificar a injeção de cabeçalhos do F5 XC |
+| **CSD Demo** | Página de checkout customizada com 5 ataques estilo Magecart alternáveis (card skimmer, formjacker, keylogger, cryptominer, DOM hijack); endpoint de exfiltração + dashboard do atacante; gunicorn single-worker para persistência de estado em memória |
+| **DVGA** | Damn Vulnerable GraphQL Application; vulnerabilidades específicas de GraphQL incluindo injeção, DoS, ataques de batching e bypass de autorização; UI GraphiQL para exploração interativa; ip_hash sticky para SQLite por instância |
+| **RESTaurant** | Damn Vulnerable RESTaurant API Game; construída especificamente para o OWASP API Security Top 10 2023; FastAPI com Swagger UI; backend compartilhado PostgreSQL 15.4; cobre BOLA, BFLA, mass assignment, SSRF e injeção |
+| **crAPI** | OWASP Completely Ridiculous API; arquitetura de 7 microsserviços cobrindo BOLA, BFLA, mass assignment, SSRF, manipulação de JWT e injeção NoSQL; porta dedicada 8888 (SPA com caminhos de API hardcoded); MailHog para captura de e-mail |

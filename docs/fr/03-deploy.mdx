@@ -1,0 +1,161 @@
+---
+title: Deploy
+description: >-
+  Terraform IaC deployment following the Demo Resource Standard — 9 terraform
+  files with Azure AD deployer auto-resolution, 25 outputs, and hardened
+  cloud-init provisioning 41 Docker containers across 9 applications.
+sidebar:
+  order: 3
+i18n:
+  sourceHash: 29cfe8b81067
+  translator: machine
+---
+
+Tous les fichiers Terraform se trouvent dans le répertoire [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform). Clonez le dépôt et déployez directement :
+
+```bash
+git clone https://github.com/f5xc-salesdemos/origin-server.git
+cd origin-server/terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+```
+
+## Configuration Terraform
+
+### Structure des fichiers Terraform
+
+Le répertoire terraform contient 9 fichiers suivant le Demo Resource Standard :
+
+- `versions.tf` — Contraintes de version de Terraform et des fournisseurs (azurerm ~> 4.0, azuread ~> 3.0)
+- `providers.tf` — Configuration des fournisseurs Azure RM et Azure AD
+- `data.tf` — Sources de données Azure AD pour la résolution automatique du déployeur
+- `locals.tf` — Résolution du déployeur, nommage des ressources selon le Azure Cloud Adoption Framework, tags standards
+- `main.tf` — Groupe de ressources (nommé `rg-origin-server-{environment}-{deployer}`)
+- `variables.tf` — Toutes les variables d'entrée (1 requise, 8 optionnelles)
+- `network.tf` — VNet (10.200.0.0/16), sous-réseau, IP publique, NSG (ports 22/80/443/8888), NIC
+- `vm.tf` — VM Ubuntu 24.04 avec cloud-init via templatefile()
+- `outputs.tf` — 25 sorties (15 standards + 10 URLs d'applications spécifiques au composant)
+
+`main.tf` contient uniquement le groupe de ressources :
+
+```hcl file=./_data/main.tf
+```
+
+`variables.tf` définit tous les paramètres configurables. L'identifiant `deployer` est résolu automatiquement depuis votre compte Azure AD — vous devez uniquement définir `subscription_id`. La valeur par défaut de `vm_size` est `Standard_D16s_v3` (16 vCPU, 64 Gio de RAM) dimensionnée pour 41 conteneurs Docker :
+
+```hcl file=./_data/variables.tf
+```
+
+### Infrastructure réseau
+
+`network.tf` crée le VNet, le sous-réseau, l'IP publique, le NSG (ports 22/80/443/8888) et la NIC. Le port 8888 est requis pour crAPI qui s'exécute sur un port dédié :
+
+```hcl file=./_data/network.tf
+```
+
+### Machine virtuelle avec Cloud-Init
+
+`vm.tf` crée la VM Ubuntu 24.04 et transmet le script de provisionnement cloud-init. Le SSD Premium de 60 Gio fournit un espace suffisant pour les images Docker et les volumes des conteneurs :
+
+```hcl file=./_data/vm.tf
+```
+
+### Provisionnement Cloud-Init
+
+`cloud-init.yaml` provisionne la VM avec une configuration renforcée. Une bibliothèque d'aide partagée (`/usr/local/lib/cloud-init-helpers.sh`) fournit une logique de réessai sur toutes les opérations réseau et une journalisation de la progression dans `/var/log/cloud-init-progress.log`. Un polling actif de vérification de santé remplace les délais d'attente à durée fixe pour la disponibilité des conteneurs. Il provisionne :
+
+- **Optimisation du noyau** : TCP keepalive, réutilisation TIME_WAIT, 2M tw_buckets, 64K somaxconn
+- **nginx** : 8 blocs upstream avec sessions persistantes (ip_hash, cookie hash), pools keepalive (64--128), cache proxy pour Juice Shop, error_log au niveau crit
+- **Docker Compose** : 41 conteneurs répartis sur 9 applications avec des limites CPU/mémoire par conteneur
+- **Builds personnalisés** : DVWA-FPM (php-fpm avec pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (cloné depuis GitHub)
+- **Recyclage des workers** : uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) pour prévenir les fuites mémoire sous charge soutenue
+
+```yaml file=./_data/cloud-init.yaml
+```
+
+### Sorties
+
+`outputs.tf` expose 25 sorties suivant le Demo Resource Standard — 15 sorties standards partagées par toutes les ressources de démonstration (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) plus 10 URLs d'applications spécifiques au composant (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`) :
+
+```hcl file=./_data/outputs.tf
+```
+
+### Exemple de fichier de variables
+
+Copiez `terraform.tfvars.example` vers `terraform.tfvars` et renseignez vos valeurs. Le `.gitignore` exclut `terraform.tfvars` pour éviter de commiter des identifiants :
+
+```hcl file=./_data/terraform.tfvars.example
+```
+
+## Déploiement
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+
+terraform init
+
+terraform plan
+
+terraform apply
+```
+
+Terraform affiche l'IP publique, la commande SSH et les URLs des applications après un déploiement réussi.
+
+## Post-déploiement
+
+Après la fin de `terraform apply`, prévoyez 5 à 10 minutes pour que cloud-init termine l'installation de Docker, le téléchargement des images de conteneurs et la configuration de nginx. Les téléchargements d'images Docker constituent le goulot d'étranglement — Juice Shop seul fait environ 400 Mio.
+
+Vérifiez le point de terminaison de santé :
+
+```bash
+curl -s "http://$(terraform output -raw public_ip)/health" | jq .
+```
+
+Réponse attendue :
+
+```json
+{
+  "status": "healthy",
+  "component": "origin-server",
+  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami", "csd-demo", "dvga", "restaurant", "crapi"]
+}
+```
+
+### Configuration de la base de données DVWA
+
+DVWA nécessite une initialisation unique de la base de données. Ouvrez `http://<PUBLIC_IP>/dvwa/setup.php` dans un navigateur et cliquez sur **Create / Reset Database**. Les identifiants par défaut sont `admin` / `password`.
+
+:::note
+La base de données SQLite de VAmPI est automatiquement initialisée par son script d'entrée gunicorn. Chaque conteneur exécute `db.create_all()` au démarrage, aucune intervention manuelle n'est donc nécessaire.
+:::
+
+## Connexion aux composants en aval
+
+Après le déploiement, les autres composants utilisent les sorties du serveur d'origine comme entrées :
+
+```bash
+# CDN Simulator — pass origin-server's public IP as its upstream
+cd ../cdn-simulator/terraform
+origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
+cat > terraform.tfvars <<EOF
+subscription_id = "your-subscription-id"
+origin_server   = "http://${origin_ip}"
+origin_host     = "${origin_ip}:80"
+EOF
+
+# Traffic Generator — pass the F5 XC load balancer FQDN (not the origin IP directly)
+cd ../traffic-generator/terraform
+cat > terraform.tfvars <<EOF
+subscription_id = "your-subscription-id"
+target_fqdn     = "your-xc-load-balancer.example.com"
+EOF
+```
+
+| Sortie | Composant en aval | Variable d'entrée |
+|---|---|---|
+| `public_ip` | CDN Simulator | `origin_server` (avec le préfixe `http://`) |
+| `public_ip` | CDN Simulator | `origin_host` (avec le suffixe `:80`, sans schéma) |
+| `public_ip` | F5 XC Origin Pool | Adresse du serveur d'origine |
+
+Poursuivez vers [Applications](../04-applications/) pour les guides d'utilisation ou [Vérification](../05-verify/) pour les tests de validation.

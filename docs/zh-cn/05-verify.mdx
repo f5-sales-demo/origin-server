@@ -1,0 +1,208 @@
+---
+title: 验证
+description: curl 冒烟测试覆盖全部九个应用端点、Docker 容器健康检查、nginx 状态验证、cloud-init 日志检查以及常见故障排查步骤
+sidebar:
+  order: 5
+i18n:
+  sourceHash: 62e714ae2d90
+  translator: machine
+---
+
+## 冒烟测试
+
+在 cloud-init 完成后等待 5--10 分钟，然后运行以下检查。
+
+### 健康检查端点
+
+```bash
+ORIGIN_IP=$(terraform output -raw public_ip)
+
+curl -sf "http://${ORIGIN_IP}/health" | jq .
+```
+
+预期输出：
+
+```json
+{
+  "status": "healthy",
+  "component": "origin-server",
+  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami", "csd-demo", "dvga", "restaurant", "crapi"]
+}
+```
+
+### 应用端点
+
+```bash
+# Default landing page
+curl -sf "http://${ORIGIN_IP}/" -o /dev/null -w "Landing: %{http_code}\n"
+
+# Juice Shop
+curl -sf "http://${ORIGIN_IP}/juice-shop/" -o /dev/null -w "Juice Shop: %{http_code}\n"
+
+# DVWA
+curl -sf "http://${ORIGIN_IP}/dvwa/" -o /dev/null -w "DVWA: %{http_code}\n"
+
+# VAmPI
+curl -sf "http://${ORIGIN_IP}/vampi/" -o /dev/null -w "VAmPI: %{http_code}\n"
+
+# httpbin
+curl -sf "http://${ORIGIN_IP}/httpbin/get" -o /dev/null -w "httpbin: %{http_code}\n"
+
+# whoami
+curl -sf "http://${ORIGIN_IP}/whoami/" -o /dev/null -w "whoami: %{http_code}\n"
+
+# DVGA
+curl -sf "http://${ORIGIN_IP}/dvga/" -o /dev/null -w "DVGA: %{http_code}\n"
+
+# RESTaurant
+curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{http_code}\n"
+
+# crAPI (port 8888)
+curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
+```
+
+所有端点应返回 `200`（DVWA 返回 `302` 重定向到登录页面）。
+
+### 自动化冒烟测试
+
+仓库中包含一个 39 项检查的冒烟测试套件：
+
+```bash
+./tests/smoke-test.sh ${ORIGIN_IP}
+```
+
+该测试验证全部 9 个应用、健康检查端点、VAmPI 注册/登录、CSD Demo 数据泄露往返测试、DVGA GraphQL、RESTaurant Swagger、crAPI 8888 端口、nginx gzip 以及版本隐藏。
+
+### Docker 容器状态
+
+通过 SSH 登录虚拟机，验证全部 41 个容器是否正在运行：
+
+```bash
+ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
+```
+
+预期输出（41 个容器）：
+
+```
+NAMES              STATUS         PORTS
+crapi-community    Up X minutes
+crapi-identity     Up X minutes
+crapi-mailhog      Up X minutes   0.0.0.0:18025->8025/tcp
+crapi-mongo        Up X minutes   27017/tcp
+crapi-postgres     Up X minutes   5432/tcp
+crapi-web          Up X minutes   0.0.0.0:8888->80/tcp
+crapi-workshop     Up X minutes
+csd-demo-1         Up X minutes   127.0.0.1:5001->5001/tcp
+csd-demo-2         Up X minutes   127.0.0.1:5002->5001/tcp
+csd-demo-3         Up X minutes   127.0.0.1:5003->5001/tcp
+csd-demo-4         Up X minutes   127.0.0.1:5004->5001/tcp
+dvga-1             Up X minutes   127.0.0.1:5201->5013/tcp
+dvga-2             Up X minutes   127.0.0.1:5202->5013/tcp
+dvga-3             Up X minutes   127.0.0.1:5203->5013/tcp
+dvga-4             Up X minutes   127.0.0.1:5204->5013/tcp
+dvwa-1             Up X minutes   127.0.0.1:8101->80/tcp
+dvwa-2             Up X minutes   127.0.0.1:8102->80/tcp
+dvwa-3             Up X minutes   127.0.0.1:8103->80/tcp
+dvwa-4             Up X minutes   127.0.0.1:8104->80/tcp
+dvwa-db            Up X minutes   3306/tcp
+httpbin-1          Up X minutes   127.0.0.1:8201->80/tcp
+httpbin-2          Up X minutes   127.0.0.1:8202->80/tcp
+httpbin-3          Up X minutes   127.0.0.1:8203->80/tcp
+httpbin-4          Up X minutes   127.0.0.1:8204->80/tcp
+juice-shop-1       Up X minutes   127.0.0.1:3001->3000/tcp
+juice-shop-2       Up X minutes   127.0.0.1:3002->3000/tcp
+juice-shop-3       Up X minutes   127.0.0.1:3003->3000/tcp
+juice-shop-4       Up X minutes   127.0.0.1:3004->3000/tcp
+restaurant-1       Up X minutes   127.0.0.1:8301->8080/tcp
+restaurant-2       Up X minutes   127.0.0.1:8302->8080/tcp
+restaurant-3       Up X minutes   127.0.0.1:8303->8080/tcp
+restaurant-4       Up X minutes   127.0.0.1:8304->8080/tcp
+restaurant-db      Up X minutes   5432/tcp
+vampi-1            Up X minutes   127.0.0.1:5101->5000/tcp
+vampi-2            Up X minutes   127.0.0.1:5102->5000/tcp
+vampi-3            Up X minutes   127.0.0.1:5103->5000/tcp
+vampi-4            Up X minutes   127.0.0.1:5104->5000/tcp
+whoami-1           Up X minutes   127.0.0.1:8082->80/tcp
+whoami-2           Up X minutes   127.0.0.1:8083->80/tcp
+whoami-3           Up X minutes   127.0.0.1:8084->80/tcp
+whoami-4           Up X minutes   127.0.0.1:8085->80/tcp
+```
+
+### nginx 状态
+
+```bash
+ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pager"
+```
+
+## 故障排查
+
+### Cloud-init 仍在运行
+
+如果端点返回 502 或连接被拒绝，cloud-init 可能仍在进行配置：
+
+```bash
+ssh azureuser@${ORIGIN_IP} "cloud-init status"
+```
+
+- `status: running` -- 仍在配置中，请等待几分钟
+- `status: done` -- 配置已完成，请检查 Docker 容器
+- `status: error` -- 请查看下方日志
+
+### Cloud-init 日志
+
+```bash
+ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
+```
+
+### 容器无法启动
+
+```bash
+# Check container logs (each app has 4 instances: -1 through -4)
+ssh azureuser@${ORIGIN_IP} "sudo docker logs juice-shop-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs dvwa-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs vampi-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs httpbin-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs csd-demo-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs dvga-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs restaurant-1 2>&1 | tail -20"
+ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
+```
+
+### nginx 返回 502
+
+上游容器尚未就绪或已崩溃：
+
+```bash
+# Check nginx error log
+ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
+
+# Restart all instances of a specific app
+ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
+
+# Rebuild and restart all containers
+ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
+```
+
+### 磁盘空间
+
+Docker 镜像大约占用 4.7 GiB。为防止在 CDN 负载测试期间磁盘耗尽，访问日志已被禁用。Logrotate 已配置为纵深防御措施（上限 500 MiB）。验证磁盘使用情况：
+
+```bash
+ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
+```
+
+### 容器内存
+
+检查是否有容器接近其内存限制（存在 OOM 风险）：
+
+```bash
+ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
+```
+
+### 重启所有服务
+
+如有需要，重新构建并重启所有服务：
+
+```bash
+ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"
+```

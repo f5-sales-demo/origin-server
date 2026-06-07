@@ -1,0 +1,437 @@
+---
+title: 應用程式
+description: >-
+  URL paths, request/response behavior, default credentials, and attack
+  scenarios for Juice Shop (/juice-shop), DVWA (/dvwa), VAmPI (/vampi), httpbin
+  (/httpbin), whoami (/whoami), CSD Demo (/csd-demo), DVGA (/dvga), RESTaurant
+  (/restaurant), and crAPI (:8888)
+sidebar:
+  order: 4
+i18n:
+  sourceHash: c7035e8c4210
+  translator: machine
+---
+
+## 應用程式概覽
+
+每個應用程式以 4 個負載平衡的 Docker 容器運行，位於 nginx 上游池後方，透過虛擬機上的 nginx 反向代理進行存取。黏性工作階段確保有狀態的應用程式（Juice Shop、DVWA、VAmPI、CSD Demo）能夠一致地路由。所有應用程式皆為刻意設計的漏洞應用，專為安全測試而設計。
+
+在以下所有範例中，將 `<ORIGIN>` 替換為 `http://<PUBLIC_IP>`。透過 Terraform 部署後，使用 `terraform output -raw public_ip` 取得 IP。
+
+## 快速參考 -- 所有 URL 路徑
+
+| 路徑 | 應用程式 | HTTP 方法 | 預期回應 |
+|---|---|---|---|
+| `/` | 登陸頁面 | GET | 200 HTML，包含所有應用程式的連結 |
+| `/health` | 健康檢查 | GET | 200 JSON `{"status":"healthy","component":"origin-server",...}` |
+| `/juice-shop/` | Juice Shop | GET | 200 HTML（Angular SPA，約 75 KB） |
+| `/juice-shop/rest/products/search?q=` | Juice Shop API | GET | 200 JSON `{"status":"success","data":[...]}` (36 個產品) |
+| `/dvwa/` | DVWA | GET | 302 重導向至 `/dvwa/login.php` |
+| `/dvwa/login.php` | DVWA 登入 | GET | 200 HTML 登入表單 |
+| `/dvwa/setup.php` | DVWA 設定 | GET | 200 HTML（首次執行資料庫初始化） |
+| `/vampi/` | VAmPI | GET | 200 HTML（API 文件） |
+| `/vampi/users/v1` | VAmPI API | GET | 200 JSON `{"users":[...]}` |
+| `/vampi/users/v1/register` | VAmPI API | POST | 200 JSON `{"status":"success",...}` |
+| `/vampi/users/v1/login` | VAmPI API | POST | 200 JSON `{"auth_token":"...","status":"success"}` |
+| `/httpbin/get` | httpbin | GET | 200 JSON，包含請求詳細資訊 |
+| `/httpbin/post` | httpbin | POST | 200 JSON，包含已提交的資料 |
+| `/httpbin/headers` | httpbin | GET | 200 JSON `{"headers":{...}}` |
+| `/httpbin/status/:code` | httpbin | GET | 回傳指定的 HTTP 狀態碼 |
+| `/whoami/` | whoami | GET | 200 純文字，包含主機名稱、IP、所有標頭 |
+| `/csd-demo/` | CSD Demo | GET | 200 HTML 結帳表單，包含攻擊面板 |
+| `/csd-demo/dashboard` | CSD 攻擊者檢視 | GET | 200 HTML，顯示已竊取的資料 |
+| `/csd-demo/health` | CSD 健康檢查 | GET | 200 JSON `{"status":"healthy","component":"csd-demo",...}` |
+| `/csd-demo/exfil/log` | CSD 竊取日誌 | GET | 200 JSON 陣列，包含擷取的資料 |
+| `/dvga/` | DVGA GraphiQL | GET | 200 HTML（GraphiQL IDE） |
+| `/dvga/graphql` | DVGA GraphQL API | POST | 200 JSON GraphQL 回應 |
+| `/restaurant/` | RESTaurant | GET | 200（重導向至文件） |
+| `/restaurant/docs` | RESTaurant Swagger | GET | 200 HTML（FastAPI Swagger UI） |
+| `/restaurant/openapi.json` | RESTaurant OpenAPI | GET | 200 JSON OpenAPI 規格 |
+| `http://<PUBLIC_IP>:8888` | crAPI | GET | 200 HTML（SPA） |
+| `http://<PUBLIC_IP>:8888/identity/api/auth/signup` | crAPI 註冊 | POST | 200 JSON |
+| `http://<PUBLIC_IP>:8888/identity/api/auth/login` | crAPI 登入 | POST | 200 JSON `{"token":"..."}` |
+
+## OWASP Juice Shop
+
+| | |
+|---|---|
+| **路徑** | `/juice-shop/` |
+| **映像** | `bkimminich/juice-shop:latest` |
+| **實例** | 4 個（連接埠 3001-3004），透過 `hash $cookie_token` 實現黏性，代理快取（60 秒 TTL） |
+| **資源** | 每個實例 2 CPU / 1 GiB RAM |
+| **框架** | Node.js / Angular |
+| **專案** | [owasp.org/www-project-juice-shop](https://owasp.org/www-project-juice-shop/) |
+
+OWASP Juice Shop 是最現代化且積極維護的漏洞 Web 應用程式。它在一個逼真的電子商務應用程式中涵蓋了整個 OWASP Top 10，包含超過 100 個挑戰。
+
+### 示範場景
+
+| 場景 | 類別 | 攻擊向量 |
+|---|---|---|
+| SQL 注入登入繞過 | WAF | 在登入電子郵件欄位中輸入 `' OR 1=1--` |
+| 反射式 XSS | WAF、CSD | 透過搜尋參數注入指令碼 |
+| DOM 型 XSS | CSD | URL 片段中的酬載 |
+| 損壞的身分驗證 | WAF | 暴力破解登入、JWT 篡改 |
+| API 濫用 | API 安全 | 未授權存取 `/api/` 端點 |
+| 敏感資料暴露 | API 安全 | 在未經授權的情況下存取使用者資料 |
+| CSRF | WAF | 對個人資料變更的跨站請求偽造 |
+
+### 存取
+
+```bash
+curl -s "http://<PUBLIC_IP>/juice-shop/" -o /dev/null -w "%{http_code}"
+```
+
+## DVWA（Damn Vulnerable Web Application）
+
+| | |
+|---|---|
+| **路徑** | `/dvwa/` |
+| **映像** | 自訂 `dvwa-fpm:latest`（php-fpm + nginx，基於 `ghcr.io/digininja/dvwa:latest` 建置） |
+| **實例** | 4 個（連接埠 8101-8104），透過 `hash $cookie_PHPSESSID` 實現黏性 |
+| **資源** | 每個實例 0.5 CPU / 256 MiB RAM |
+| **資料庫** | 共用 MariaDB 10.11（`dvwa-db` 容器，1 CPU / 768 MiB） |
+| **框架** | PHP 8 / php-fpm / MariaDB |
+| **憑證** | `admin` / `password` |
+
+DVWA 是 WAF 測試的業界標準。它具有可調整的安全等級（Low、Medium、High、Impossible），逐步新增輸入驗證和輸出編碼。
+
+### 示範場景
+
+| 場景 | 類別 | 安全等級 |
+|---|---|---|
+| SQL 注入 | WAF | Low：簡單的 `' OR 1=1#`，High：盲注 SQLi |
+| 命令注入 | WAF | Low：`; ls`，High：字元過濾 |
+| 檔案包含 | WAF | Low：直接路徑穿越，High：已清理 |
+| XSS（反射式） | WAF、CSD | Low：基本的 `<script>`，High：編碼繞過 |
+| XSS（儲存式） | WAF、CSD | Low：留言簿中的持久性指令碼 |
+| 檔案上傳 | WAF | Low：PHP shell 上傳，High：副檔名過濾 |
+| 暴力破解 | Bot 防護 | 自動化登入嘗試 |
+
+### 安全等級
+
+登入後在 `/dvwa/security.php` 設定安全等級：
+
+- **Low** -- 無輸入驗證。所有攻擊都有效。適合 WAF 特徵碼展示。
+- **Medium** -- 基本過濾。某些攻擊需要編碼或繞過技術。
+- **High** -- 強力過濾。只有進階技術才能成功。適合展示 WAF 的限制。
+- **Impossible** -- 完全安全的實作。展示正確的防禦性編碼。
+
+### 初始設定
+
+DVWA 在首次部署後需要一次性的資料庫設定：
+
+1. 導覽至 `http://<PUBLIC_IP>/dvwa/setup.php`
+2. 點擊 **Create / Reset Database**
+3. 使用 `admin` / `password` 登入
+
+## VAmPI（Vulnerable API）
+
+| | |
+|---|---|
+| **路徑** | `/vampi/` |
+| **映像** | `erev0s/vampi:latest`，使用 gunicorn 進入點（4 個 worker） |
+| **實例** | 4 個（連接埠 5101-5104），透過 `ip_hash` 實現黏性（每個實例獨立的 SQLite） |
+| **資源** | 每個實例 0.5 CPU / 512 MiB RAM |
+| **框架** | Python / Flask / gunicorn |
+| **專案** | [github.com/erev0s/VAmPI](https://github.com/erev0s/VAmPI) |
+
+VAmPI 是專為測試 OWASP API 安全 Top 10 而建立的。它提供一個具有刻意漏洞的逼真 REST API。每個實例執行 gunicorn 搭配 4 個 worker 及其自己的 SQLite 資料庫。`ip_hash` 黏性工作階段確保來自相同客戶端 IP 的註冊和登入始終命中相同的實例。
+
+### 示範場景
+
+| 場景 | OWASP API Top 10 | 方法 |
+|---|---|---|
+| 損壞的物件層級授權（BOLA） | API1 | 透過操控 ID 存取其他使用者的資料 |
+| 損壞的身分驗證 | API2 | 弱令牌處理、無速率限制 |
+| 過度資料暴露 | API3 | API 回傳比客戶端所需更多的資料 |
+| 大量賦值 | API6 | 透過意外參數修改管理員欄位 |
+| SQL 注入 | API8 | 透過 API 參數進行注入 |
+| 不當資產管理 | API9 | 未記錄的 API 端點 |
+
+### API 端點
+
+```bash
+# Register a new user
+curl -X POST "http://<PUBLIC_IP>/vampi/users/v1/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test123","email":"test@test.com"}'
+
+# Login
+curl -X POST "http://<PUBLIC_IP>/vampi/users/v1/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test123"}'
+
+# List users (excessive data exposure)
+curl "http://<PUBLIC_IP>/vampi/users/v1"
+```
+
+## httpbin
+
+| | |
+|---|---|
+| **路徑** | `/httpbin/` |
+| **映像** | `kennethreitz/httpbin:latest`，使用 gunicorn CMD 覆寫（`-w 4 -k gevent --timeout 30`） |
+| **實例** | 4 個（連接埠 8201-8204），輪詢（無狀態） |
+| **資源** | 每個實例 0.5 CPU / 256 MiB RAM |
+| **框架** | Python / Flask / gunicorn + gevent |
+| **專案** | [httpbin.org](https://httpbin.org) |
+
+httpbin 是一個簡單的 HTTP 請求/回應服務，適用於基本 API 示範、測試請求標頭以及驗證代理行為。
+
+### 實用端點
+
+| 端點 | 用途 |
+|---|---|
+| `/httpbin/get` | 回傳 GET 請求資料（標頭、參數、來源） |
+| `/httpbin/post` | 回傳 POST 請求資料（主體、表單、JSON） |
+| `/httpbin/headers` | 回傳請求標頭 |
+| `/httpbin/ip` | 回傳來源 IP |
+| `/httpbin/user-agent` | 回傳 User-Agent 標頭 |
+| `/httpbin/status/:code` | 回傳指定的 HTTP 狀態碼 |
+| `/httpbin/delay/:seconds` | 延遲回應 N 秒 |
+| `/httpbin/anything` | 回傳請求中傳入的任何內容 |
+
+### 範例
+
+```bash
+# Check what headers the origin sees (useful for verifying F5 XC header injection)
+curl -s "http://<PUBLIC_IP>/httpbin/headers" | jq .
+
+# Test a specific HTTP status code
+curl -s -o /dev/null -w "%{http_code}" "http://<PUBLIC_IP>/httpbin/status/403"
+```
+
+## whoami（請求診斷）
+
+| | |
+|---|---|
+| **路徑** | `/whoami/` |
+| **映像** | `traefik/whoami:latest` |
+| **實例** | 4 個（連接埠 8082-8085），輪詢（無狀態） |
+| **資源** | 每個實例 0.25 CPU / 64 MiB RAM |
+| **框架** | Go |
+| **專案** | [github.com/traefik/whoami](https://github.com/traefik/whoami) |
+
+whoami 是 Traefik 的輕量級請求回顯伺服器。它顯示來源伺服器所看到的傳入 HTTP 請求的每一個細節——主機名稱、IP 位址、所有標頭、方法和 URL。這是驗證 F5 XC 是否注入正確標頭時最重要的單一診斷工具。
+
+### 主要使用案例
+
+| 使用案例 | 要查看的內容 |
+|---|---|
+| 驗證 F5 XC 標頭注入 | `X-Forwarded-For`、`True-Client-IP`、`X-Volterra-*` 標頭 |
+| 確認客戶端 IP 可見性 | `X-Real-IP` 與 `RemoteAddr` |
+| 除錯 WAF 誤判 | 比較經過 F5 XC 前後的請求標頭 |
+| 驗證 Bot 防護標記 | `X-Volterra-Bot-Type`、`X-Volterra-Bot-Verified` 標頭 |
+| 檢查 TLS 終止 | `X-Forwarded-Proto` 在 TLS 於 F5 XC 終止時顯示 `https` |
+
+### 範例
+
+```bash
+# Basic request -- see what the origin receives
+curl "http://<PUBLIC_IP>/whoami/"
+
+# Simulate request through F5 XC (with injected headers)
+curl "http://<PUBLIC_IP>/whoami/" \
+  -H "X-Forwarded-For: 203.0.113.50" \
+  -H "True-Client-IP: 203.0.113.50" \
+  -H "X-Forwarded-Proto: https"
+```
+
+範例輸出：
+
+```
+Hostname: 534c5084e169
+IP: 127.0.0.1
+RemoteAddr: 172.17.0.1:55118
+GET / HTTP/1.1
+Host: 20.12.78.159
+User-Agent: curl/8.5.0
+Accept: */*
+True-Client-Ip: 203.0.113.50
+X-Forwarded-For: 203.0.113.50, 10.0.0.1
+X-Forwarded-Proto: https
+X-Real-Ip: 104.219.105.84
+```
+
+## DVGA（Damn Vulnerable GraphQL Application）
+
+| | |
+|---|---|
+| **路徑** | `/dvga/` |
+| **映像** | `dolevf/dvga:latest` |
+| **實例** | 4 個（連接埠 5201-5204），透過 `ip_hash` 實現黏性（每個實例獨立的 SQLite） |
+| **資源** | 每個實例 0.5 CPU / 256 MiB RAM |
+| **框架** | Python / Flask / GraphQL |
+| **專案** | [github.com/dolevf/Damn-Vulnerable-GraphQL-Application](https://github.com/dolevf/Damn-Vulnerable-GraphQL-Application) |
+
+DVGA 是專為測試 GraphQL 特定漏洞而建立的。它在 `/dvga/` 提供 GraphiQL IDE 用於互動式查詢探索，並在 `/dvga/graphql` 提供 GraphQL API 端點。每個實例使用其自己的 SQLite 資料庫，因此 `ip_hash` 黏性工作階段確保狀態一致。
+
+### 示範場景
+
+| 場景 | 類別 | 攻擊向量 |
+|---|---|---|
+| GraphQL 注入 | API 安全 | 透過字串插值的惡意查詢 |
+| 阻斷服務 | API 安全 | 深度巢狀查詢、批次查詢、資源耗盡 |
+| 授權繞過 | API 安全 | 透過 GraphQL 存取未授權的資料 |
+| 資訊洩露 | API 安全 | 內省查詢揭露結構描述詳細資訊 |
+| 批次攻擊 | API 安全 | 在單一請求中包含多個操作 |
+
+### 主要端點
+
+```bash
+# GraphiQL UI (interactive IDE)
+curl -sf "http://<PUBLIC_IP>/dvga/" -o /dev/null -w "%{http_code}"
+
+# Introspection query -- enumerate the full schema
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ __schema { types { name fields { name } } } }"}'
+
+# List pastes (example query)
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ pastes { title content } }"}'
+
+# Create a paste (mutation)
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"mutation { createPaste(title:\"test\", content:\"hello\", public:true) { paste { title } } }"}'
+```
+
+## RESTaurant（Damn Vulnerable RESTaurant API Game）
+
+| | |
+|---|---|
+| **路徑** | `/restaurant/` |
+| **映像** | 基於 `theowni/Damn-Vulnerable-RESTaurant-API-Game` 的自訂建置 |
+| **實例** | 4 個（連接埠 8301-8304），輪詢（共用 PostgreSQL） |
+| **資源** | 每個實例 0.5 CPU / 256 MiB RAM |
+| **資料庫** | 共用 PostgreSQL 15.4（`restaurant-db` 容器，0.5 CPU / 512 MiB） |
+| **框架** | Python / FastAPI / PostgreSQL |
+| **憑證** | `admin` / `password`（PostgreSQL） |
+| **專案** | [github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game](https://github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game) |
+
+RESTaurant 是一個遊戲化的漏洞 REST API，涵蓋 OWASP API 安全 Top 10 2023。它使用 FastAPI，並在 `/restaurant/docs` 提供自動 Swagger UI 文件。所有 4 個實例共用單一 PostgreSQL 資料庫，因此輪詢負載平衡無需黏性工作階段即可運作。
+
+### 示範場景
+
+| 場景 | OWASP API Top 10 2023 | 方法 |
+|---|---|---|
+| 損壞的物件層級授權（BOLA） | API1 | 透過操控 ID 存取其他使用者的訂單 |
+| 損壞的身分驗證 | API2 | 弱令牌處理、憑證填充 |
+| 損壞的物件屬性層級授權 | API3 | 對使用者個人資料欄位的大量賦值 |
+| 不受限制的資源消耗 | API4 | 端點無速率限制 |
+| 損壞的功能層級授權（BFLA） | API5 | 以一般使用者身分存取管理員端點 |
+| 伺服器端請求偽造（SSRF） | API7 | 操控伺服器端 URL 請求 |
+| 安全性設定錯誤 | API8 | 詳細的錯誤訊息、預設憑證 |
+
+### 主要端點
+
+```bash
+# Swagger UI
+curl -sf "http://<PUBLIC_IP>/restaurant/docs" -o /dev/null -w "%{http_code}"
+
+# OpenAPI spec
+curl -s "http://<PUBLIC_IP>/restaurant/openapi.json" | jq .info
+
+# BOLA -- access another user's order (after authentication)
+curl -s "http://<PUBLIC_IP>/restaurant/orders/1" \
+  -H "Authorization: Bearer <token>"
+
+# BFLA -- attempt admin action as regular user
+curl -s -X POST "http://<PUBLIC_IP>/restaurant/admin/users" \
+  -H "Authorization: Bearer <user_token>" \
+  -H "Content-Type: application/json"
+```
+
+## crAPI（OWASP Completely Ridiculous API）
+
+| | |
+|---|---|
+| **連接埠** | `8888`（專用——非路徑前綴方式） |
+| **映像** | `crapi/crapi-web`、`crapi/crapi-identity`、`crapi/crapi-community`、`crapi/crapi-workshop`、PostgreSQL、MongoDB、MailHog |
+| **實例** | 7 個微服務（每個單一實例） |
+| **資源** | 總計約 3.0 CPU / 約 2.0 GiB RAM |
+| **框架** | React SPA + Java/Go/Python 微服務 |
+| **專案** | [github.com/OWASP/crAPI](https://github.com/OWASP/crAPI) |
+
+crAPI 是 OWASP 的旗艦 API 安全測試專案。它以 7 個微服務在專用連接埠（8888）上執行，因為 React SPA 硬編碼了其 API 路徑，無法在路徑前綴後方提供服務。NSG 允許連接埠 8888 的入站流量。
+
+MailHog 擷取 crAPI 發送的所有電子郵件（帳戶驗證、密碼重設）。透過連接埠 18025 的 SSH 通道存取 MailHog。
+
+### 挑戰類別
+
+| 類別 | 漏洞 |
+|---|---|
+| BOLA（損壞的物件層級授權） | 存取其他使用者的車輛、訂單和報告 |
+| BFLA（損壞的功能層級授權） | 提升至管理員、存取受限端點 |
+| 大量賦值 | 透過 API 修改受保護的欄位（角色、餘額） |
+| SSRF（伺服器端請求偽造） | 操控伺服器端 URL 擷取 |
+| JWT 篡改 | 偽造或修改 JWT 令牌以進行權限提升 |
+| NoSQL 注入 | 對 MongoDB 後端的端點注入查詢 |
+| 過度資料暴露 | API 回傳敏感的使用者資料 |
+
+### 開始使用
+
+```bash
+# Verify crAPI is running
+curl -sf "http://<PUBLIC_IP>:8888" -o /dev/null -w "%{http_code}"
+
+# Sign up a new user
+curl -s -X POST "http://<PUBLIC_IP>:8888/identity/api/auth/signup" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test User","email":"test@example.com","number":"1234567890","password":"Test1234!"}'
+
+# Log in
+curl -s -X POST "http://<PUBLIC_IP>:8888/identity/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"Test1234!"}'
+
+# Access MailHog (via SSH tunnel for email verification)
+# ssh -L 18025:localhost:18025 azureuser@<PUBLIC_IP>
+# Then open http://localhost:18025 in your browser
+```
+
+### crAPI 架構
+
+```
+Port 8888 -> crapi-web (React SPA + nginx)
+             -> crapi-identity (Java, user auth, JWT)
+             -> crapi-community (Go, forums, posts)
+             -> crapi-workshop (Python, vehicle service)
+             -> crapi-postgres (PostgreSQL)
+             -> crapi-mongo (MongoDB)
+             -> crapi-mailhog (email capture, port 18025)
+```
+
+## 應用程式涵蓋範圍矩陣
+
+| 示範使用案例 | 主要應用程式 | 次要應用程式 |
+|---|---|---|
+| WAF -- SQL 注入 | DVWA | Juice Shop |
+| WAF -- XSS | DVWA | Juice Shop |
+| WAF -- 命令注入 | DVWA | -- |
+| API 安全 -- BOLA | VAmPI | -- |
+| API 安全 -- 身分驗證繞過 | VAmPI | Juice Shop |
+| API 安全 -- 資料暴露 | VAmPI | httpbin |
+| Bot 防護 -- 暴力破解 | DVWA | Juice Shop |
+| Bot 防護 -- 爬取 | Juice Shop | -- |
+| 客戶端防護 -- DOM XSS | Juice Shop | -- |
+| 客戶端防護 -- 儲存式 XSS | DVWA | Juice Shop |
+| 客戶端防護 -- 信用卡竊取器 | CSD Demo | -- |
+| 客戶端防護 -- 表單劫持 | CSD Demo | -- |
+| 客戶端防護 -- 鍵盤側錄 | CSD Demo | -- |
+| 客戶端防護 -- 挖礦程式 | CSD Demo | -- |
+| 客戶端防護 -- DOM 劫持 | CSD Demo | -- |
+| API 安全 -- GraphQL 注入 | DVGA | -- |
+| API 安全 -- GraphQL DoS | DVGA | -- |
+| API 安全 -- OWASP API Top 10 2023 | RESTaurant | crAPI |
+| API 安全 -- BFLA | RESTaurant | crAPI |
+| API 安全 -- 大量賦值 | crAPI | RESTaurant |
+| API 安全 -- SSRF | crAPI | RESTaurant |
+| API 安全 -- JWT 篡改 | crAPI | -- |
+| API 安全 -- NoSQL 注入 | crAPI | -- |
+| 基本連線測試 | httpbin | -- |
+| 請求診斷 | whoami | httpbin |
+| 標頭注入驗證 | whoami | -- |

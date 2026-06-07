@@ -1,0 +1,161 @@
+---
+title: Deploy
+description: >-
+  Terraform IaC deployment following the Demo Resource Standard — 9 terraform
+  files with Azure AD deployer auto-resolution, 25 outputs, and hardened
+  cloud-init provisioning 41 Docker containers across 9 applications.
+sidebar:
+  order: 3
+i18n:
+  sourceHash: 29cfe8b81067
+  translator: machine
+---
+
+ไฟล์ Terraform ทั้งหมดอยู่ในไดเรกทอรี [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform) โคลนรีโพซิทอรีและเริ่มการ deploy ได้โดยตรง:
+
+```bash
+git clone https://github.com/f5xc-salesdemos/origin-server.git
+cd origin-server/terraform
+cp terraform.tfvars.example terraform.tfvars
+# แก้ไข terraform.tfvars ด้วย Azure subscription ID และเส้นทาง SSH key ของคุณ
+```
+
+## การกำหนดค่า Terraform
+
+### โครงสร้างไฟล์ Terraform
+
+ไดเรกทอรี terraform ประกอบด้วย 9 ไฟล์ตามมาตรฐาน Demo Resource Standard:
+
+- `versions.tf` — ข้อกำหนดเวอร์ชันของ Terraform และ provider (azurerm ~> 4.0, azuread ~> 3.0)
+- `providers.tf` — การกำหนดค่า Azure RM และ Azure AD provider
+- `data.tf` — Azure AD data sources สำหรับการระบุตัวตน deployer อัตโนมัติ
+- `locals.tf` — การระบุตัวตน deployer, การตั้งชื่อทรัพยากรตาม Azure Cloud Adoption Framework, แท็กมาตรฐาน
+- `main.tf` — Resource group (ชื่อ `rg-origin-server-{environment}-{deployer}`)
+- `variables.tf` — ตัวแปร input ทั้งหมด (1 ตัวที่จำเป็น, 8 ตัวที่เป็นตัวเลือก)
+- `network.tf` — VNet (10.200.0.0/16), subnet, public IP, NSG (พอร์ต 22/80/443/8888), NIC
+- `vm.tf` — Ubuntu 24.04 VM พร้อม cloud-init ผ่าน templatefile()
+- `outputs.tf` — 25 outputs (15 มาตรฐาน + 10 URL แอปพลิเคชันเฉพาะคอมโพเนนต์)
+
+`main.tf` ประกอบด้วย resource group เท่านั้น:
+
+```hcl file=./_data/main.tf
+```
+
+`variables.tf` กำหนดพารามิเตอร์ที่ปรับแต่งได้ทั้งหมด ตัวระบุ `deployer` จะถูกระบุอัตโนมัติจากบัญชี Azure AD ของคุณ — คุณเพียงแค่ต้องตั้งค่า `subscription_id` ค่าเริ่มต้นของ `vm_size` คือ `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) ซึ่งมีขนาดเหมาะสมสำหรับ Docker container 41 ตัว:
+
+```hcl file=./_data/variables.tf
+```
+
+### โครงสร้างพื้นฐานเครือข่าย
+
+`network.tf` สร้าง VNet, subnet, public IP, NSG (พอร์ต 22/80/443/8888) และ NIC พอร์ต 8888 จำเป็นสำหรับ crAPI ซึ่งทำงานบนพอร์ตเฉพาะ:
+
+```hcl file=./_data/network.tf
+```
+
+### เครื่องเสมือนพร้อม Cloud-Init
+
+`vm.tf` สร้าง Ubuntu 24.04 VM และส่งสคริปต์ provisioning cloud-init Premium SSD ขนาด 60 GiB ให้พื้นที่เพียงพอสำหรับ Docker image และ container volumes:
+
+```hcl file=./_data/vm.tf
+```
+
+### การ Provisioning ด้วย Cloud-Init
+
+`cloud-init.yaml` ทำการ provision VM ด้วยการกำหนดค่าที่แข็งแกร่ง ไลบรารีตัวช่วยที่ใช้ร่วมกัน (`/usr/local/lib/cloud-init-helpers.sh`) จัดเตรียมตรรกะการลองใหม่สำหรับการดำเนินการเครือข่ายทั้งหมดและบันทึกความคืบหน้าไปที่ `/var/log/cloud-init-progress.log` การตรวจสอบสถานะ health-check แบบ active polling มาแทนที่ sleep ที่มีระยะเวลาคงที่สำหรับความพร้อมของ container ระบบจะ provision:
+
+- **การปรับแต่ง Kernel**: TCP keepalive, TIME_WAIT reuse, 2M tw_buckets, 64K somaxconn
+- **nginx**: 8 upstream blocks พร้อม sticky sessions (ip_hash, cookie hash), keepalive pools (64--128), proxy cache สำหรับ Juice Shop, error_log ระดับ crit
+- **Docker Compose**: 41 containers ใน 9 แอปพลิเคชัน พร้อมขีดจำกัด CPU/หน่วยความจำต่อ container
+- **Custom builds**: DVWA-FPM (php-fpm พร้อม pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (โคลนจาก GitHub)
+- **Worker recycling**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) เพื่อป้องกันการรั่วไหลของหน่วยความจำภายใต้โหลดต่อเนื่อง
+
+```yaml file=./_data/cloud-init.yaml
+```
+
+### Outputs
+
+`outputs.tf` เปิดเผย 25 outputs ตามมาตรฐาน Demo Resource Standard — 15 outputs มาตรฐานที่ใช้ร่วมกันในทุก demo resources (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) บวกกับ 10 URL แอปพลิเคชันเฉพาะคอมโพเนนต์ (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
+
+```hcl file=./_data/outputs.tf
+```
+
+### ไฟล์ตัวแปรตัวอย่าง
+
+คัดลอก `terraform.tfvars.example` เป็น `terraform.tfvars` และกรอกค่าของคุณ `.gitignore` จะยกเว้น `terraform.tfvars` เพื่อป้องกันการ commit ข้อมูลรับรอง:
+
+```hcl file=./_data/terraform.tfvars.example
+```
+
+## Deploy
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+# แก้ไข terraform.tfvars ด้วย Azure subscription ID และเส้นทาง SSH key ของคุณ
+
+terraform init
+
+terraform plan
+
+terraform apply
+```
+
+Terraform จะแสดง public IP, คำสั่ง SSH และ URL ของแอปพลิเคชันหลังจากการ deploy สำเร็จ
+
+## หลังการ Deploy
+
+หลังจาก `terraform apply` เสร็จสมบูรณ์ ให้รอประมาณ 5--10 นาทีเพื่อให้ cloud-init ทำการติดตั้ง Docker, ดึง container images และกำหนดค่า nginx เสร็จสิ้น การดึง Docker image เป็นคอขวด — Juice Shop เพียงอย่างเดียวมีขนาด ~400 MiB
+
+ตรวจสอบ health endpoint:
+
+```bash
+curl -s "http://$(terraform output -raw public_ip)/health" | jq .
+```
+
+การตอบกลับที่คาดหวัง:
+
+```json
+{
+  "status": "healthy",
+  "component": "origin-server",
+  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami", "csd-demo", "dvga", "restaurant", "crapi"]
+}
+```
+
+### การตั้งค่าฐานข้อมูล DVWA
+
+DVWA ต้องการการเริ่มต้นฐานข้อมูลครั้งเดียว เปิด `http://<PUBLIC_IP>/dvwa/setup.php` ในเบราว์เซอร์และคลิก **Create / Reset Database** ข้อมูลรับรองเริ่มต้นคือ `admin` / `password`
+
+:::note
+ฐานข้อมูล SQLite ของ VAmPI จะถูกเริ่มต้นโดยอัตโนมัติจากสคริปต์ entrypoint ของ gunicorn แต่ละ container จะรัน `db.create_all()` เมื่อเริ่มต้น ดังนั้นไม่จำเป็นต้องดำเนินการด้วยตนเอง
+:::
+
+## การเชื่อมต่อกับ Downstream Components
+
+หลังจากการ deploy คอมโพเนนต์อื่นๆ จะใช้ outputs ของ origin server เป็น inputs ของพวกเขา:
+
+```bash
+# CDN Simulator — ส่ง public IP ของ origin-server เป็น upstream
+cd ../cdn-simulator/terraform
+origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
+cat > terraform.tfvars <<EOF
+subscription_id = "your-subscription-id"
+origin_server   = "http://${origin_ip}"
+origin_host     = "${origin_ip}:80"
+EOF
+
+# Traffic Generator — ส่ง FQDN ของ F5 XC load balancer (ไม่ใช่ origin IP โดยตรง)
+cd ../traffic-generator/terraform
+cat > terraform.tfvars <<EOF
+subscription_id = "your-subscription-id"
+target_fqdn     = "your-xc-load-balancer.example.com"
+EOF
+```
+
+| Output | Downstream Component | Input Variable |
+|---|---|---|
+| `public_ip` | CDN Simulator | `origin_server` (พร้อมคำนำหน้า `http://`) |
+| `public_ip` | CDN Simulator | `origin_host` (พร้อมคำต่อท้าย `:80`, ไม่มี scheme) |
+| `public_ip` | F5 XC Origin Pool | ที่อยู่ origin server |
+
+ดำเนินการต่อที่ [Applications](../04-applications/) สำหรับคู่มือการใช้งาน หรือ [Verify](../05-verify/) สำหรับ smoke tests

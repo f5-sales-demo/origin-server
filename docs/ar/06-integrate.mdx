@@ -1,0 +1,171 @@
+---
+title: Integrate
+description: >-
+  Configure the VM as an F5 XC origin pool member with WAF, Bot Defense, API
+  Discovery, and Client-Side Defense policies; path-based routing through HTTP
+  load balancer; header injection verification via /whoami
+sidebar:
+  order: 6
+i18n:
+  sourceHash: 8d7b62f5e636
+  translator: machine
+---
+
+## تكامل مجموعة أصول F5 XC
+
+تم تصميم خادم الأصل هذا ليُستخدم كـ**عضو في مجموعة أصول** خلف موزع حمل HTTP في F5 Distributed Cloud. توفر منصة F5 XC جدار حماية تطبيقات الويب (WAF)، والحماية من الروبوتات، وأمان واجهات برمجة التطبيقات، والحماية من جانب العميل أمام هذا الأصل.
+
+### البنية المعمارية
+
+```
+End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker apps)
+```
+
+### تكوين مجموعة الأصول
+
+أنشئ مجموعة أصول F5 XC تشير إلى عنوان IP العام لهذا الجهاز الافتراضي:
+
+| الإعداد | القيمة |
+|---|---|
+| **نوع خادم الأصل** | عنوان IP عام لخادم الأصل |
+| **عنوان IP** | `<terraform output public_ip>` |
+| **المنفذ** | `80` |
+| **فحص الصحة** | HTTP، المسار `/health` |
+
+### تكوين موزع حمل HTTP
+
+أنشئ موزع حمل HTTP مع مجموعة الأصول:
+
+| الإعداد | القيمة |
+|---|---|
+| **النطاقات** | نطاق العرض التوضيحي الخاص بك (مثال: `demo.example.com`) |
+| **مجموعة الأصول** | المجموعة المُنشأة أعلاه |
+| **WAF** | أرفق سياسة WAF الخاصة بك |
+| **الحماية من الروبوتات** | فعّلها حسب الحاجة |
+| **اكتشاف واجهات برمجة التطبيقات** | فعّله لنقاط نهاية VAmPI |
+
+### التوجيه المبني على المسار
+
+كل تطبيق يمكن الوصول إليه عبر بادئة مساره من خلال موزع الحمل:
+
+| عنوان URL لموزع حمل F5 XC | مسار الأصل | التطبيق |
+|---|---|---|
+| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop (4 نسخ، ثبات عبر ملفات تعريف الارتباط) |
+| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA (4 نسخ + MariaDB، ثبات عبر ملفات تعريف الارتباط) |
+| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 نسخ، ثبات ip_hash) |
+| `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin (4 نسخ، توزيع دوري) |
+| `https://demo.example.com/whoami/` | `/whoami/` | تشخيص الطلبات (4 نسخ) |
+| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo (4 نسخ، ثبات ip_hash) |
+| `https://demo.example.com/dvga/` | `/dvga/` | DVGA (4 نسخ، ثبات ip_hash) |
+| `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant (4 نسخ، توزيع دوري) |
+| `https://demo.example.com/health` | `/health` | فحص الصحة (nginx مباشر) |
+
+### التحقق من حقن ترويسات F5 XC
+
+استخدم نقطة نهاية whoami للتحقق من الترويسات التي يحقنها F5 XC في الطلبات التي تصل إلى الأصل:
+
+```bash
+LB_DOMAIN="demo.example.com"
+
+curl -sk "https://${LB_DOMAIN}/whoami/"
+```
+
+ابحث عن ترويسات F5 XC المحقونة هذه في الاستجابة:
+
+| الترويسة | المعنى |
+|---|---|
+| `X-Forwarded-For` | سلسلة عناوين IP للعميل عبر F5 XC |
+| `True-Client-IP` | عنوان IP الأصلي للعميل |
+| `X-Forwarded-Proto` | `https` إذا تم إنهاء TLS عند F5 XC |
+| `X-Volterra-Bot-Type` | تصنيف الروبوت (عند تفعيل الحماية من الروبوتات) |
+| `X-Request-ID` | معرّف تتبع طلبات F5 XC |
+
+### اختبار WAF عبر F5 XC
+
+مع إرفاق سياسة WAF بموزع حمل HTTP، اختبر حمولات الهجوم:
+
+```bash
+LB_DOMAIN="demo.example.com"
+
+# SQL Injection (should be blocked by WAF)
+curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/sqli/?id=%27+OR+1%3D1--&Submit=Submit"
+
+# XSS (should be blocked by WAF)
+curl -sk "https://${LB_DOMAIN}/juice-shop/rest/products/search?q=<script>alert(1)</script>"
+
+# Command Injection (should be blocked by WAF)
+curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/exec/" \
+  -d "ip=127.0.0.1;cat+/etc/passwd&Submit=Submit"
+
+# Normal request (should pass through)
+curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
+```
+
+### اختبار أمان واجهات برمجة التطبيقات
+
+فعّل اكتشاف واجهات برمجة التطبيقات على موزع حمل HTTP لرسم خريطة نقاط نهاية VAmPI:
+
+```bash
+# These requests build the API inventory in F5 XC
+curl -sk "https://${LB_DOMAIN}/vampi/users/v1"
+curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"apitest","password":"test123","email":"api@test.com"}'
+curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"apitest","password":"test123"}'
+```
+
+### تكامل crAPI (المنفذ 8888)
+
+يعمل crAPI على منفذ مخصص (8888) لأنه تطبيق صفحة واحدة يستخدم مسارات API مُضمّنة في الكود ولا يمكن تقديمه خلف بادئة مسار. لتكامل crAPI مع F5 XC:
+
+| الإعداد | القيمة |
+|---|---|
+| **نوع خادم الأصل** | عنوان IP عام لخادم الأصل |
+| **عنوان IP** | `<terraform output public_ip>` |
+| **المنفذ** | `8888` |
+| **فحص الصحة** | HTTP، المسار `/` |
+
+أنشئ **مجموعة أصول منفصلة** لـ crAPI على المنفذ 8888، أو أضف عضو مجموعة أصول ثانيًا إلى مجموعتك الحالية بالمنفذ 8888 واستخدم قواعد التوجيه لتوجيه حركة المرور:
+
+```bash
+# Test crAPI through F5 XC (if configured)
+curl -sk "https://${LB_DOMAIN}:8888/"
+
+# Or if using route rules on the same LB domain:
+# Configure an F5 XC route rule matching Host header or path prefix
+# to forward to the crAPI origin pool (port 8888)
+```
+
+:::note
+يسمح NSG على الجهاز الافتراضي للأصل بحركة المرور الواردة على المنفذ 8888. لا حاجة لتغييرات إضافية في شبكة Azure.
+:::
+
+### الوعي بالجلسات الثابتة
+
+يستخدم خادم الأصل جلسات nginx الثابتة داخليًا لتوجيه التطبيقات ذات الحالة إلى حاويات خلفية متسقة. عند تكوين موزع حمل HTTP في F5 XC، انتبه لما يلي:
+
+| التطبيق | طريقة الثبات | السبب |
+|---|---|---|
+| Juice Shop | `hash $cookie_token` | حالة جلسة Node.js |
+| DVWA | `hash $cookie_PHPSESSID` | حالة جلسة PHP |
+| VAmPI | `ip_hash` | قاعدة بيانات SQLite لكل نسخة |
+| CSD Demo | `ip_hash` | سجل تسريب في الذاكرة لكل نسخة |
+| DVGA | `ip_hash` | قاعدة بيانات SQLite لكل نسخة |
+| RESTaurant | توزيع دوري | واجهة خلفية PostgreSQL مشتركة |
+| crAPI | -- (منفذ واحد 8888) | 7 خدمات مصغرة، PostgreSQL + MongoDB |
+| httpbin | توزيع دوري | بدون حالة |
+| whoami | توزيع دوري | بدون حالة |
+
+لا يحتاج F5 XC إلى تكرار هذه الجلسات الثابتة -- يتولى nginx على الجهاز الافتراضي للأصل التوجيه الخلفي. يجب أن يتعامل F5 XC مع الأصل كنقطة نهاية واحدة (عنوان IP العام للجهاز الافتراضي على المنفذ 80).
+
+### البنية المعمارية متعددة المكونات
+
+عند الدمج مع محاكي CDN، تكون البنية المعمارية الكاملة للمختبر:
+
+```
+End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this component)
+```
+
+يستخدم محاكي CDN عنوان VIP لموزع حمل HTTP في F5 XC كأصل له، ويستخدم موزع حمل F5 XC خادم الأصل هذا كواجهة خلفية. ينشئ هذا بنية معمارية واقعية متعددة الطبقات لإجراء اختبارات شاملة.
