@@ -1,0 +1,97 @@
+---
+title: Architecture
+description: >-
+  41-container deployment on Standard_D16s_v3 (16 vCPU, 64 GiB): nginx reverse
+  proxy with reuseport, sticky sessions, and proxy cache routing to
+  load-balanced instances of Juice Shop, DVWA-FPM, VAmPI, httpbin, whoami, CSD
+  Demo, DVGA, RESTaurant, and crAPI on Ubuntu 24.04
+sidebar:
+  order: 1
+i18n:
+  sourceHash: '14e795171077'
+  translator: machine
+---
+
+## 目的
+
+此元件提供一個單一的源站伺服器，託管多個具有已知弱點的網頁應用程式，用於安全測試示範。它代表典型負載平衡器架構中的「源站」——即 F5 XC HTTP 負載平衡器所保護的後端內容伺服器。
+
+在正式環境架構中：
+
+```
+End User -> F5 XC HTTP LB (WAF/Bot/API Security) -> Origin Server -> Application
+```
+
+此元件以一個專門建構的虛擬機取代真正的正式環境應用程式伺服器，該虛擬機執行知名的弱點應用程式，用於觸發 WAF 規則、API 安全策略和機器人偵測。
+
+## 架構
+
+```mermaid
+graph LR
+    Client[Client Browser] --> XCHLB[F5 XC HTTP LB]
+    XCHLB --> NGINX[nginx Reverse Proxy<br/>Ubuntu 24.04 · D16s_v3<br/>reuseport · 16 workers]
+    NGINX --> |/| DEFAULT[Landing Page]
+    NGINX --> |/juice-shop/| JS[Juice Shop ×4<br/>Ports 3001-3004<br/>hash cookie_token · cache]
+    NGINX --> |/dvwa/| DVWA[DVWA-FPM ×4<br/>Ports 8101-8104<br/>hash cookie_PHPSESSID]
+    NGINX --> |/vampi/| VAMPI[VAmPI ×4<br/>Ports 5101-5104<br/>ip_hash · gunicorn]
+    NGINX --> |/httpbin/| HTTPBIN[httpbin ×4<br/>Ports 8201-8204<br/>gunicorn -w 4]
+    NGINX --> |/whoami/| WHOAMI[whoami ×4<br/>Ports 8082-8085]
+    NGINX --> |/csd-demo/| CSD[CSD Demo ×4<br/>Ports 5001-5004<br/>ip_hash · gunicorn -w 1]
+    NGINX --> |/dvga/| DVGA[DVGA ×4<br/>Ports 5201-5204<br/>ip_hash · SQLite]
+    NGINX --> |/restaurant/| REST[RESTaurant ×4<br/>Ports 8301-8304<br/>round-robin]
+    XCHLB --> |:8888| CRAPI[crAPI ×7 microservices<br/>Port 8888<br/>web · identity · community<br/>workshop · postgres · mongo · mailhog]
+    DVWA --> DB[(MariaDB 10.11<br/>dvwa-db)]
+    REST --> RESTDB[(PostgreSQL 15.4<br/>restaurant-db)]
+```
+
+在 Standard_D16s_v3 虛擬機（16 vCPU、64 GiB RAM、60 GiB 磁碟）上運行 **41 個容器**。
+
+nginx 反向代理：
+
+- **監聽 80 埠**，使用 `reuseport` 和 `backlog=4096` 以處理高並發 CDN 流量
+- **依路徑前綴路由** 至負載平衡的上游池（每個應用程式 4 個實例）
+- **黏性工作階段** 防止狀態遺失：Juice Shop 使用 `hash $cookie_token`，DVWA 使用 `hash $cookie_PHPSESSID`，VAmPI 和 CSD Demo 使用 `ip_hash`（每個實例的 SQLite/記憶體內狀態）
+- **代理快取** 用於 Juice Shop 靜態資源（10 MB 區域、100 MB 上限、60 秒 TTL）
+- **停用存取日誌** 以防止 CDN 負載測試時磁碟耗盡（logrotate 作為縱深防禦）
+- **傳遞客戶端標頭**（`X-Real-IP`、`X-Forwarded-For`、`X-Forwarded-Proto`）以提供源站可見性
+- **核心調優** 透過 sysctl：`somaxconn=65535`、`tcp_tw_reuse=1`、`ip_local_port_range=1024-65535`
+
+## 應用程式對應
+
+| 路徑 | 上游 | 實例數 | 連接埠 | 黏性工作階段 | 用途 |
+|---|---|---|---|---|---|
+| `/` | nginx | -- | -- | -- | 含所有應用程式連結的登陸頁面 |
+| `/health` | nginx | -- | -- | -- | JSON 健康檢查端點（列出 9 個應用程式） |
+| `/juice-shop/` | juice_shop | 4 | 3001-3004 | `hash $cookie_token` | 現代網頁應用程式安全（XSS、注入、CSRF） |
+| `/dvwa/` | dvwa | 4 + MariaDB | 8101-8104 | `hash $cookie_PHPSESSID` | 具可調難度的經典 WAF 測試 |
+| `/vampi/` | vampi | 4 | 5101-5104 | `ip_hash` | REST API 安全測試（OWASP API Top 10） |
+| `/httpbin/` | httpbin_up | 4 | 8201-8204 | -- | 用於 API 示範的 HTTP 請求/回應服務 |
+| `/whoami/` | whoami_up | 4 | 8082-8085 | -- | 請求診斷——顯示所有標頭、客戶端 IP |
+| `/csd-demo/` | csd_demo | 4 | 5001-5004 | `ip_hash` | 客戶端防禦測試（Magecart 攻擊） |
+| `/dvga/` | dvga | 4 | 5201-5204 | `ip_hash` | GraphQL API 安全測試（注入、DoS、授權繞過） |
+| `/restaurant/` | restaurant | 4 + PostgreSQL | 8301-8304 | -- | REST API 安全（OWASP API Top 10 2023） |
+| `:8888` | crapi | 7 微服務 | 8888 | -- | OWASP crAPI（BOLA、BFLA、大量賦值、SSRF、JWT） |
+
+## 模組化元件設計
+
+這是大型實驗環境的一個組成部分。每個元件都是獨立的，並可獨立部署：
+
+- **此元件** 提供源站伺服器（Azure 虛擬機上的 nginx + Docker 容器）
+- **CDN 模擬器** 提供 CDN 邊緣層（Azure 虛擬機上的 nginx 快取）
+- **其他元件** 提供 F5 XC 設定、DNS、WAF 策略、API 安全等
+
+人類操作員逐一新增元件。每個元件的文件撰寫方式使 AI 助理能夠閱讀並自主部署基礎設施。
+
+## 為何選擇這些應用程式
+
+| 應用程式 | 選擇原因 |
+|---|---|
+| **Juice Shop** | OWASP 旗艦專案；現代 Node.js SPA，包含 100 多個涵蓋 OWASP Top 10 的挑戰；積極維護中；4 個實例搭配代理快取 |
+| **DVWA** | WAF 測試的業界標準；可調整的安全等級（low/medium/high/impossible）；自訂 php-fpm + nginx 建構以提升效能；共用 MariaDB 10.11 後端 |
+| **VAmPI** | 專為 OWASP API Security Top 10 打造；具有已知弱點的 REST API；每個實例使用 gunicorn 搭配 4 個 worker；ip_hash 黏性確保 SQLite 一致性 |
+| **httpbin** | Kenneth Reitz 的經典 HTTP 測試服務；gunicorn 搭配 4 個 gevent worker；適用於 API 示範和請求檢查 |
+| **whoami** | Traefik 的請求回顯伺服器；顯示源站所看到的完整請求詳情——對於驗證 F5 XC 標頭注入至關重要 |
+| **CSD Demo** | 自訂結帳頁面，包含 5 種可切換的 Magecart 風格攻擊（卡片側錄器、表單劫持器、鍵盤記錄器、加密貨幣挖礦器、DOM 劫持）；資料外洩端點 + 攻擊者儀表板；gunicorn 單 worker 以維持記憶體內狀態持久性 |
+| **DVGA** | Damn Vulnerable GraphQL Application；GraphQL 特定弱點，包括注入、DoS、批次攻擊和授權繞過；GraphiQL UI 供互動式探索；ip_hash 黏性確保每個實例的 SQLite 一致性 |
+| **RESTaurant** | Damn Vulnerable RESTaurant API Game；專為 OWASP API Security Top 10 2023 打造；FastAPI 搭配 Swagger UI；共用 PostgreSQL 15.4 後端；涵蓋 BOLA、BFLA、大量賦值、SSRF 和注入 |
+| **crAPI** | OWASP Completely Ridiculous API；7 微服務架構，涵蓋 BOLA、BFLA、大量賦值、SSRF、JWT 操控和 NoSQL 注入；專用 8888 埠（SPA 含硬編碼 API 路徑）；MailHog 用於電子郵件擷取 |

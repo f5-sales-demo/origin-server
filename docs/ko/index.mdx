@@ -1,0 +1,62 @@
+---
+title: Origin Server
+description: >-
+  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
+  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
+  WAF, API security, bot defense, and client-side defense testing with F5
+  Distributed Cloud
+template: splash
+sidebar:
+  hidden: true
+hero:
+  tagline: >-
+    Deploy a multi-app origin server in Azure for WAF, API security, bot
+    defense, and client-side defense testing with F5 Distributed Cloud.
+  image:
+    html: '<div style="font-size:4rem;">&#128421;</div>'
+  actions:
+    - text: Get Started
+      link: 01-architecture/
+      icon: right-arrow
+      variant: primary
+    - text: Deploy Now
+      link: 03-deploy/
+      icon: rocket
+      variant: minimal
+i18n:
+  sourceHash: 659c78136774
+  translator: machine
+---
+
+import { CardGrid } from '@astrojs/starlight/components';
+import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
+
+## 제공 내용
+
+<CardGrid>
+  <LinkCard
+    title="멀티 앱 오리진"
+    description="nginx를 리버스 프록시로 사용하여 41개의 Docker 컨테이너(Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, crAPI)를 실행하는 하나의 Ubuntu 24.04 VM(16 vCPU, 64 GiB)."
+    href="01-architecture/"
+  />
+  <LinkCard
+    title="Terraform 배포"
+    description="완전한 Azure 코드형 인프라: VNet, PIP, NSG, 그리고 Docker + nginx cloud-init 프로비저닝이 포함된 Standard_D16s_v3 VM. 60 GiB 디스크, logrotate 및 journald 제한 포함."
+    href="03-deploy/"
+  />
+  <LinkCard
+    title="취약한 애플리케이션"
+    description="WAF, API 보안, 봇 방어, 클라이언트 측 방어, GraphQL 보안 및 요청 진단을 다루는 Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, crAPI."
+    href="04-applications/"
+  />
+  <LinkCard
+    title="F5 XC 통합"
+    description="WAF, Bot Defense 및 API Security가 적용된 F5 XC HTTP 로드 밸런서 뒤의 오리진 풀 멤버로 사용합니다."
+    href="06-integrate/"
+  />
+  <LinkCard
+    title="API 테스트 가이드"
+    description="DVGA(GraphQL), RESTaurant(OWASP 2023), crAPI(마이크로서비스)에 대한 종합 엔드포인트 카탈로그, 취약점 매핑 및 공격 페이로드 — 트래픽 생성 및 API 보호 프로필 개발용."
+    href="08-api-testing-guide/"
+  />
+</CardGrid>

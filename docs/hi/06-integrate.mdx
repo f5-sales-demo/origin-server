@@ -1,0 +1,171 @@
+---
+title: Integrate
+description: >-
+  Configure the VM as an F5 XC origin pool member with WAF, Bot Defense, API
+  Discovery, and Client-Side Defense policies; path-based routing through HTTP
+  load balancer; header injection verification via /whoami
+sidebar:
+  order: 6
+i18n:
+  sourceHash: 8d7b62f5e636
+  translator: machine
+---
+
+## F5 XC Origin Pool एकीकरण
+
+यह origin सर्वर F5 Distributed Cloud HTTP लोड बैलेंसर के पीछे एक **origin pool सदस्य** के रूप में उपयोग किए जाने के लिए डिज़ाइन किया गया है। F5 XC प्लेटफ़ॉर्म इस origin के सामने WAF, Bot Defense, API Security, और Client-Side Defense प्रदान करता है।
+
+### आर्किटेक्चर
+
+```
+End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker apps)
+```
+
+### Origin Pool कॉन्फ़िगरेशन
+
+इस VM के पब्लिक IP की ओर इंगित करने वाला एक F5 XC origin pool बनाएँ:
+
+| सेटिंग | मान |
+|---|---|
+| **Origin Server Type** | Origin Server का पब्लिक IP |
+| **IP Address** | `<terraform output public_ip>` |
+| **Port** | `80` |
+| **Health Check** | HTTP, पथ `/health` |
+
+### HTTP Load Balancer कॉन्फ़िगरेशन
+
+Origin pool के साथ एक HTTP लोड बैलेंसर बनाएँ:
+
+| सेटिंग | मान |
+|---|---|
+| **Domains** | आपका डेमो डोमेन (उदा., `demo.example.com`) |
+| **Origin Pool** | ऊपर बनाया गया pool |
+| **WAF** | अपनी WAF पॉलिसी जोड़ें |
+| **Bot Defense** | आवश्यकतानुसार सक्षम करें |
+| **API Discovery** | VAmPI endpoints के लिए सक्षम करें |
+
+### पथ-आधारित रूटिंग
+
+प्रत्येक एप्लिकेशन लोड बैलेंसर के माध्यम से अपने पथ प्रीफ़िक्स के द्वारा पहुँच योग्य है:
+
+| F5 XC LB URL | Origin पथ | एप्लिकेशन |
+|---|---|---|
+| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop (4 इंस्टेंस, cookie sticky) |
+| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA (4 इंस्टेंस + MariaDB, cookie sticky) |
+| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 इंस्टेंस, ip_hash sticky) |
+| `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin (4 इंस्टेंस, round-robin) |
+| `https://demo.example.com/whoami/` | `/whoami/` | अनुरोध डायग्नोस्टिक्स (4 इंस्टेंस) |
+| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo (4 इंस्टेंस, ip_hash sticky) |
+| `https://demo.example.com/dvga/` | `/dvga/` | DVGA (4 इंस्टेंस, ip_hash sticky) |
+| `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant (4 इंस्टेंस, round-robin) |
+| `https://demo.example.com/health` | `/health` | हेल्थ चेक (nginx डायरेक्ट) |
+
+### F5 XC Header Injection सत्यापित करें
+
+whoami endpoint का उपयोग करके सत्यापित करें कि F5 XC origin तक पहुँचने वाले अनुरोधों में कौन से हेडर इंजेक्ट करता है:
+
+```bash
+LB_DOMAIN="demo.example.com"
+
+curl -sk "https://${LB_DOMAIN}/whoami/"
+```
+
+प्रतिक्रिया में इन F5 XC इंजेक्टेड हेडर्स को देखें:
+
+| हेडर | अर्थ |
+|---|---|
+| `X-Forwarded-For` | F5 XC के माध्यम से क्लाइंट IP श्रृंखला |
+| `True-Client-IP` | मूल क्लाइंट IP |
+| `X-Forwarded-Proto` | `https` यदि TLS F5 XC पर समाप्त होता है |
+| `X-Volterra-Bot-Type` | Bot वर्गीकरण (जब Bot Defense सक्षम हो) |
+| `X-Request-ID` | F5 XC अनुरोध ट्रैकिंग ID |
+
+### F5 XC के माध्यम से WAF परीक्षण
+
+HTTP लोड बैलेंसर से जुड़ी WAF पॉलिसी के साथ, हमले के पेलोड का परीक्षण करें:
+
+```bash
+LB_DOMAIN="demo.example.com"
+
+# SQL Injection (WAF द्वारा अवरुद्ध होना चाहिए)
+curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/sqli/?id=%27+OR+1%3D1--&Submit=Submit"
+
+# XSS (WAF द्वारा अवरुद्ध होना चाहिए)
+curl -sk "https://${LB_DOMAIN}/juice-shop/rest/products/search?q=<script>alert(1)</script>"
+
+# Command Injection (WAF द्वारा अवरुद्ध होना चाहिए)
+curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/exec/" \
+  -d "ip=127.0.0.1;cat+/etc/passwd&Submit=Submit"
+
+# सामान्य अनुरोध (पास होना चाहिए)
+curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
+```
+
+### API Security परीक्षण
+
+VAmPI के API endpoints को मैप करने के लिए HTTP लोड बैलेंसर पर API Discovery सक्षम करें:
+
+```bash
+# ये अनुरोध F5 XC में API इन्वेंटरी बनाते हैं
+curl -sk "https://${LB_DOMAIN}/vampi/users/v1"
+curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"apitest","password":"test123","email":"api@test.com"}'
+curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"apitest","password":"test123"}'
+```
+
+### crAPI एकीकरण (पोर्ट 8888)
+
+crAPI एक समर्पित पोर्ट (8888) पर चलता है क्योंकि यह एक सिंगल-पेज एप्लिकेशन है जो अपने API पथों को हार्डकोड करता है और पथ प्रीफ़िक्स के पीछे सर्व नहीं किया जा सकता। crAPI को F5 XC के साथ एकीकृत करने के लिए:
+
+| सेटिंग | मान |
+|---|---|
+| **Origin Server Type** | Origin Server का पब्लिक IP |
+| **IP Address** | `<terraform output public_ip>` |
+| **Port** | `8888` |
+| **Health Check** | HTTP, पथ `/` |
+
+पोर्ट 8888 पर crAPI के लिए एक **अलग origin pool** बनाएँ, या अपने मौजूदा pool में पोर्ट 8888 के साथ दूसरा origin pool सदस्य जोड़ें और ट्रैफ़िक निर्देशित करने के लिए route rules का उपयोग करें:
+
+```bash
+# F5 XC के माध्यम से crAPI का परीक्षण करें (यदि कॉन्फ़िगर किया गया हो)
+curl -sk "https://${LB_DOMAIN}:8888/"
+
+# या यदि उसी LB डोमेन पर route rules का उपयोग कर रहे हैं:
+# Host हेडर या पथ प्रीफ़िक्स से मिलान करने वाला एक F5 XC route rule कॉन्फ़िगर करें
+# जो crAPI origin pool (पोर्ट 8888) पर फ़ॉरवर्ड करे
+```
+
+:::note
+Origin VM पर NSG पोर्ट 8888 पर इनबाउंड ट्रैफ़िक की अनुमति देता है। किसी अतिरिक्त Azure नेटवर्क परिवर्तन की आवश्यकता नहीं है।
+:::
+
+### Sticky Session जागरूकता
+
+Origin सर्वर आंतरिक रूप से nginx sticky sessions का उपयोग करता है ताकि stateful एप्लिकेशन को सुसंगत बैकएंड कंटेनरों तक रूट किया जा सके। F5 XC HTTP लोड बैलेंसर कॉन्फ़िगर करते समय, इसका ध्यान रखें:
+
+| एप्लिकेशन | Sticky विधि | कारण |
+|---|---|---|
+| Juice Shop | `hash $cookie_token` | Node.js सत्र स्थिति |
+| DVWA | `hash $cookie_PHPSESSID` | PHP सत्र स्थिति |
+| VAmPI | `ip_hash` | प्रति इंस्टेंस SQLite डेटाबेस |
+| CSD Demo | `ip_hash` | प्रति इंस्टेंस इन-मेमोरी exfil लॉग |
+| DVGA | `ip_hash` | प्रति इंस्टेंस SQLite डेटाबेस |
+| RESTaurant | Round-robin | साझा PostgreSQL बैकएंड |
+| crAPI | -- (एकल पोर्ट 8888) | 7 माइक्रोसर्विसेज, PostgreSQL + MongoDB |
+| httpbin | Round-robin | स्टेटलेस |
+| whoami | Round-robin | स्टेटलेस |
+
+F5 XC को इन sticky sessions को दोहराने की आवश्यकता नहीं है -- origin VM पर nginx बैकएंड रूटिंग संभालता है। F5 XC को origin को एक एकल endpoint (VM का पब्लिक IP पोर्ट 80 पर) के रूप में मानना चाहिए।
+
+### मल्टी-कंपोनेंट आर्किटेक्चर
+
+जब CDN Simulator के साथ संयुक्त किया जाता है, तो पूर्ण लैब आर्किटेक्चर यह है:
+
+```
+End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this component)
+```
+
+CDN Simulator अपने origin के रूप में F5 XC HTTP लोड बैलेंसर VIP का उपयोग करता है, और F5 XC लोड बैलेंसर इस origin सर्वर को अपने बैकएंड के रूप में उपयोग करता है। यह व्यापक परीक्षण के लिए एक यथार्थवादी बहु-परत आर्किटेक्चर बनाता है।

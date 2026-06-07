@@ -1,0 +1,82 @@
+---
+title: 先決條件
+description: >-
+  Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and
+  Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) for 41-container deployment
+sidebar:
+  order: 2
+i18n:
+  sourceHash: 293ed3db6122
+  translator: machine
+---
+
+## 必要條件
+
+### Azure 訂閱
+
+一個有效的 Azure 訂閱，並具有建立以下資源的權限：
+
+- 資源群組
+- 虛擬網路和子網路
+- 網路安全性群組
+- 公用 IP 位址
+- 虛擬機器（Standard_D16s_v3 -- 16 vCPU、64 GiB RAM，用於 41 個容器的工作負載）
+
+### Azure CLI
+
+安裝並驗證 Azure CLI：
+
+```bash
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+az login
+
+az account show --query '{name:name, id:id}' -o table
+```
+
+### Terraform
+
+需要 Terraform >= 1.5：
+
+```bash
+terraform version
+```
+
+如果尚未安裝，請使用 HashiCorp APT 儲存庫：
+
+```bash
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+```
+
+### Azure AD 權限
+
+您的 Azure AD 帳戶必須具有 `User.Read` 權限。部署者識別碼（用於資源命名）會自動從您的 Azure AD 設定檔中取得。若使用服務主體或受控識別進行驗證，請明確設定 `deployer` Terraform 變數。
+
+### SSH 金鑰對
+
+用於 VM 存取的 SSH 金鑰對：
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
+```
+
+## 建立的 Azure 資源
+
+| 資源 | SKU |
+|---|---|
+| Ubuntu 24.04 VM | Standard_D16s_v3 (16 vCPU, 64 GiB) |
+| 公用 IP | Standard、靜態 |
+| 作業系統磁碟 | 60 GiB Premium SSD |
+| VNet + NSG | 預設 |
+
+請參閱 [Azure 定價計算機](https://azure.microsoft.com/en-us/pricing/calculator/) 以了解目前費用。當實驗室未使用時，請執行 `terraform destroy` 以停止計費。請參閱[清除資源](../07-teardown/)以了解操作程序。
+
+:::note
+Standard_D16s_v3（64 GiB RAM）是 41 個容器部署的必要條件。容器記憶體配置：4 個 Juice Shop 實例，每個 1 GiB（共 4 GiB）；4 個 VAmPI，每個 512 MiB（共 2 GiB）；4 個 DVWA-FPM + MariaDB（1.8 GiB）；4 個 httpbin，每個 256 MiB（共 1 GiB）；4 個 CSD Demo，每個 256 MiB（共 1 GiB）；4 個 whoami，每個 64 MiB（共 256 MiB）；4 個 DVGA，每個 256 MiB（共 1 GiB）；4 個 RESTaurant + PostgreSQL（1.5 GiB）；crAPI 7 個微服務（2 GiB）；再加上 nginx、作業系統和緩衝快取。容器總配置約為 14.5 GiB（佔 64 GiB 的 22.7%）。
+:::
+
+:::note
+NSG 允許連接埠 80（HTTP）和 8888（crAPI）的入站流量。需要連接埠 8888 是因為 crAPI 是一個單頁應用程式，其 API 路徑為硬式編碼，無法在路徑前綴後方提供服務。
+:::

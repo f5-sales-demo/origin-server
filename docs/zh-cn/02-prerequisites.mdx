@@ -1,0 +1,82 @@
+---
+title: 前提条件
+description: >-
+  Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and
+  Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) for 41-container deployment
+sidebar:
+  order: 2
+i18n:
+  sourceHash: 293ed3db6122
+  translator: machine
+---
+
+## 必需条件
+
+### Azure 订阅
+
+一个有效的 Azure 订阅，具有创建以下资源的权限：
+
+- 资源组
+- 虚拟网络和子网
+- 网络安全组
+- 公共 IP 地址
+- 虚拟机（Standard_D16s_v3 -- 16 vCPU、64 GiB RAM，用于 41 个容器的工作负载）
+
+### Azure CLI
+
+安装并认证 Azure CLI：
+
+```bash
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+az login
+
+az account show --query '{name:name, id:id}' -o table
+```
+
+### Terraform
+
+需要 Terraform >= 1.5：
+
+```bash
+terraform version
+```
+
+如果尚未安装，请使用 HashiCorp APT 仓库：
+
+```bash
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+```
+
+### Azure AD 权限
+
+您的 Azure AD 账户必须具有 `User.Read` 权限。部署者标识符（用于资源命名）会自动从您的 Azure AD 配置文件中获取。如果使用服务主体或托管身份进行身份验证，请显式设置 `deployer` Terraform 变量。
+
+### SSH 密钥对
+
+用于 VM 访问的 SSH 密钥对：
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
+```
+
+## 创建的 Azure 资源
+
+| 资源 | SKU |
+|---|---|
+| Ubuntu 24.04 虚拟机 | Standard_D16s_v3 (16 vCPU, 64 GiB) |
+| 公共 IP | 标准版，静态 |
+| OS 磁盘 | 60 GiB 高级 SSD |
+| 虚拟网络 + 网络安全组 | 默认 |
+
+请参阅 [Azure 定价计算器](https://azure.microsoft.com/en-us/pricing/calculator/) 了解当前费用。实验室不使用时请执行 `terraform destroy` 以停止计费。相关操作步骤请参阅[资源清理](../07-teardown/)。
+
+:::note
+41 个容器的部署需要 Standard_D16s_v3（64 GiB RAM）。容器内存分配：4 个 Juice Shop 实例各 1 GiB（共 4 GiB）、4 个 VAmPI 各 512 MiB（共 2 GiB）、4 个 DVWA-FPM + MariaDB（1.8 GiB）、4 个 httpbin 各 256 MiB（共 1 GiB）、4 个 CSD Demo 各 256 MiB（共 1 GiB）、4 个 whoami 各 64 MiB（共 256 MiB）、4 个 DVGA 各 256 MiB（共 1 GiB）、4 个 RESTaurant + PostgreSQL（1.5 GiB）、crAPI 7 个微服务（2 GiB），加上 nginx、操作系统和缓冲区缓存。容器总分配约为 14.5 GiB（占 64 GiB 的 22.7%）。
+:::
+
+:::note
+网络安全组允许端口 80（HTTP）和 8888（crAPI）的入站流量。需要端口 8888 是因为 crAPI 是一个单页应用程序，其 API 路径被硬编码，无法通过路径前缀代理提供服务。
+:::

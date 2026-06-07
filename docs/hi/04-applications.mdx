@@ -1,0 +1,437 @@
+---
+title: Applications
+description: >-
+  URL paths, request/response behavior, default credentials, and attack
+  scenarios for Juice Shop (/juice-shop), DVWA (/dvwa), VAmPI (/vampi), httpbin
+  (/httpbin), whoami (/whoami), CSD Demo (/csd-demo), DVGA (/dvga), RESTaurant
+  (/restaurant), and crAPI (:8888)
+sidebar:
+  order: 4
+i18n:
+  sourceHash: c7035e8c4210
+  translator: machine
+---
+
+## एप्लिकेशन अवलोकन
+
+प्रत्येक एप्लिकेशन nginx upstream pools के पीछे 4 लोड-बैलेंस्ड Docker कंटेनरों के रूप में चलता है, जो VM पर nginx रिवर्स प्रॉक्सी के माध्यम से सुलभ है। स्टिकी सेशन यह सुनिश्चित करते हैं कि स्टेटफुल एप्लिकेशन (Juice Shop, DVWA, VAmPI, CSD Demo) लगातार एक ही सर्वर पर रूट हों। सभी एप्लिकेशन जानबूझकर कमजोर हैं और सुरक्षा परीक्षण के लिए डिज़ाइन किए गए हैं।
+
+नीचे दिए गए सभी उदाहरणों में `<ORIGIN>` को `http://<PUBLIC_IP>` से बदलें। Terraform के माध्यम से डिप्लॉय करने के बाद, `terraform output -raw public_ip` से IP प्राप्त करें।
+
+## त्वरित संदर्भ -- सभी URL पथ
+
+| पथ | एप्लिकेशन | HTTP मेथड | अपेक्षित प्रतिक्रिया |
+|---|---|---|---|
+| `/` | लैंडिंग पेज | GET | 200 HTML जिसमें सभी ऐप्स के लिंक हैं |
+| `/health` | हेल्थ चेक | GET | 200 JSON `{"status":"healthy","component":"origin-server",...}` |
+| `/juice-shop/` | Juice Shop | GET | 200 HTML (Angular SPA, ~75 KB) |
+| `/juice-shop/rest/products/search?q=` | Juice Shop API | GET | 200 JSON `{"status":"success","data":[...]}` (36 उत्पाद) |
+| `/dvwa/` | DVWA | GET | 302 रीडायरेक्ट `/dvwa/login.php` पर |
+| `/dvwa/login.php` | DVWA लॉगिन | GET | 200 HTML लॉगिन फॉर्म |
+| `/dvwa/setup.php` | DVWA सेटअप | GET | 200 HTML (प्रथम-रन डेटाबेस इनिट) |
+| `/vampi/` | VAmPI | GET | 200 HTML (API डॉक्स) |
+| `/vampi/users/v1` | VAmPI API | GET | 200 JSON `{"users":[...]}` |
+| `/vampi/users/v1/register` | VAmPI API | POST | 200 JSON `{"status":"success",...}` |
+| `/vampi/users/v1/login` | VAmPI API | POST | 200 JSON `{"auth_token":"...","status":"success"}` |
+| `/httpbin/get` | httpbin | GET | 200 JSON जिसमें अनुरोध विवरण हैं |
+| `/httpbin/post` | httpbin | POST | 200 JSON जिसमें पोस्ट किया गया डेटा है |
+| `/httpbin/headers` | httpbin | GET | 200 JSON `{"headers":{...}}` |
+| `/httpbin/status/:code` | httpbin | GET | निर्दिष्ट HTTP स्टेटस कोड लौटाता है |
+| `/whoami/` | whoami | GET | 200 प्लेन टेक्स्ट जिसमें होस्टनेम, IP, सभी हेडर हैं |
+| `/csd-demo/` | CSD Demo | GET | 200 HTML चेकआउट फॉर्म जिसमें अटैक पैनल है |
+| `/csd-demo/dashboard` | CSD अटैकर व्यू | GET | 200 HTML जो एक्सफिल्ट्रेटेड डेटा दिखाता है |
+| `/csd-demo/health` | CSD हेल्थ | GET | 200 JSON `{"status":"healthy","component":"csd-demo",...}` |
+| `/csd-demo/exfil/log` | CSD एक्सफिल लॉग | GET | 200 JSON कैप्चर किए गए डेटा की ऐरे |
+| `/dvga/` | DVGA GraphiQL | GET | 200 HTML (GraphiQL IDE) |
+| `/dvga/graphql` | DVGA GraphQL API | POST | 200 JSON GraphQL प्रतिक्रिया |
+| `/restaurant/` | RESTaurant | GET | 200 (डॉक्स पर रीडायरेक्ट) |
+| `/restaurant/docs` | RESTaurant Swagger | GET | 200 HTML (FastAPI Swagger UI) |
+| `/restaurant/openapi.json` | RESTaurant OpenAPI | GET | 200 JSON OpenAPI स्पेक |
+| `http://<PUBLIC_IP>:8888` | crAPI | GET | 200 HTML (SPA) |
+| `http://<PUBLIC_IP>:8888/identity/api/auth/signup` | crAPI साइनअप | POST | 200 JSON |
+| `http://<PUBLIC_IP>:8888/identity/api/auth/login` | crAPI लॉगिन | POST | 200 JSON `{"token":"..."}` |
+
+## OWASP Juice Shop
+
+| | |
+|---|---|
+| **पथ** | `/juice-shop/` |
+| **इमेज** | `bkimminich/juice-shop:latest` |
+| **इंस्टेंस** | 4 (पोर्ट 3001-3004), `hash $cookie_token` के माध्यम से स्टिकी, प्रॉक्सी कैश (60 s TTL) |
+| **संसाधन** | 2 CPU / 1 GiB RAM प्रति इंस्टेंस |
+| **फ्रेमवर्क** | Node.js / Angular |
+| **प्रोजेक्ट** | [owasp.org/www-project-juice-shop](https://owasp.org/www-project-juice-shop/) |
+
+OWASP Juice Shop सबसे आधुनिक और सक्रिय रूप से अनुरक्षित कमजोर वेब एप्लिकेशन है। यह एक यथार्थवादी ई-कॉमर्स एप्लिकेशन में 100+ चुनौतियों के साथ संपूर्ण OWASP Top 10 को कवर करता है।
+
+### डेमो परिदृश्य
+
+| परिदृश्य | श्रेणी | अटैक वेक्टर |
+|---|---|---|
+| SQL Injection लॉगिन बाइपास | WAF | लॉगिन ईमेल फील्ड में `' OR 1=1--` |
+| Reflected XSS | WAF, CSD | सर्च पैरामीटर के माध्यम से स्क्रिप्ट इंजेक्शन |
+| DOM-based XSS | CSD | URL फ्रैगमेंट में पेलोड |
+| ब्रोकन ऑथेंटिकेशन | WAF | ब्रूट फोर्स लॉगिन, JWT मैनिपुलेशन |
+| API दुरुपयोग | API Security | `/api/` एंडपॉइंट्स तक अनधिकृत पहुँच |
+| संवेदनशील डेटा एक्सपोजर | API Security | बिना प्राधिकरण के उपयोगकर्ता डेटा तक पहुँच |
+| CSRF | WAF | प्रोफ़ाइल परिवर्तनों पर क्रॉस-साइट रिक्वेस्ट फोर्जरी |
+
+### पहुँच
+
+```bash
+curl -s "http://<PUBLIC_IP>/juice-shop/" -o /dev/null -w "%{http_code}"
+```
+
+## DVWA (Damn Vulnerable Web Application)
+
+| | |
+|---|---|
+| **पथ** | `/dvwa/` |
+| **इमेज** | कस्टम `dvwa-fpm:latest` (php-fpm + nginx, `ghcr.io/digininja/dvwa:latest` से बिल्ट) |
+| **इंस्टेंस** | 4 (पोर्ट 8101-8104), `hash $cookie_PHPSESSID` के माध्यम से स्टिकी |
+| **संसाधन** | 0.5 CPU / 256 MiB RAM प्रति इंस्टेंस |
+| **डेटाबेस** | साझा MariaDB 10.11 (`dvwa-db` कंटेनर, 1 CPU / 768 MiB) |
+| **फ्रेमवर्क** | PHP 8 / php-fpm / MariaDB |
+| **क्रेडेंशियल्स** | `admin` / `password` |
+
+DVWA WAF परीक्षण के लिए उद्योग मानक है। इसमें समायोज्य सुरक्षा स्तर (Low, Medium, High, Impossible) हैं जो क्रमशः इनपुट वैलिडेशन और आउटपुट एन्कोडिंग जोड़ते हैं।
+
+### डेमो परिदृश्य
+
+| परिदृश्य | श्रेणी | सुरक्षा स्तर |
+|---|---|---|
+| SQL Injection | WAF | Low: सामान्य `' OR 1=1#`, High: ब्लाइंड SQLi |
+| Command Injection | WAF | Low: `; ls`, High: फ़िल्टर किए गए कैरेक्टर |
+| File Inclusion | WAF | Low: सीधा पथ ट्रैवर्सल, High: सैनिटाइज़्ड |
+| XSS (Reflected) | WAF, CSD | Low: बेसिक `<script>`, High: एन्कोडेड बाइपास |
+| XSS (Stored) | WAF, CSD | Low: गेस्टबुक में पर्सिस्टेंट स्क्रिप्ट |
+| File Upload | WAF | Low: PHP शेल अपलोड, High: एक्सटेंशन फ़िल्टरिंग |
+| Brute Force | Bot Defense | स्वचालित लॉगिन प्रयास |
+
+### सुरक्षा स्तर
+
+लॉगिन करने के बाद `/dvwa/security.php` पर सुरक्षा स्तर सेट करें:
+
+- **Low** -- कोई इनपुट वैलिडेशन नहीं। हर अटैक काम करता है। WAF सिग्नेचर प्रदर्शन के लिए अच्छा है।
+- **Medium** -- बेसिक फ़िल्टरिंग। कुछ अटैक के लिए एन्कोडिंग या बाइपास तकनीकों की आवश्यकता होती है।
+- **High** -- मजबूत फ़िल्टरिंग। केवल उन्नत तकनीकें सफल होती हैं। WAF की सीमाओं को दिखाने के लिए अच्छा है।
+- **Impossible** -- पूर्ण रूप से सुरक्षित कार्यान्वयन। उचित रक्षात्मक कोडिंग प्रदर्शित करता है।
+
+### प्रारंभिक सेटअप
+
+DVWA को पहली डिप्लॉयमेंट के बाद एक बार डेटाबेस सेटअप की आवश्यकता होती है:
+
+1. `http://<PUBLIC_IP>/dvwa/setup.php` पर नेविगेट करें
+2. **Create / Reset Database** पर क्लिक करें
+3. `admin` / `password` से लॉगिन करें
+
+## VAmPI (Vulnerable API)
+
+| | |
+|---|---|
+| **पथ** | `/vampi/` |
+| **इमेज** | `erev0s/vampi:latest` gunicorn एंट्रीपॉइंट के साथ (4 वर्कर) |
+| **इंस्टेंस** | 4 (पोर्ट 5101-5104), `ip_hash` के माध्यम से स्टिकी (प्रति इंस्टेंस SQLite) |
+| **संसाधन** | 0.5 CPU / 512 MiB RAM प्रति इंस्टेंस |
+| **फ्रेमवर्क** | Python / Flask / gunicorn |
+| **प्रोजेक्ट** | [github.com/erev0s/VAmPI](https://github.com/erev0s/VAmPI) |
+
+VAmPI विशेष रूप से OWASP API Security Top 10 के परीक्षण के लिए बनाया गया है। यह जानबूझकर कमजोरियों के साथ एक यथार्थवादी REST API प्रदान करता है। प्रत्येक इंस्टेंस 4 वर्कर्स के साथ gunicorn और अपना स्वयं का SQLite डेटाबेस चलाता है। `ip_hash` स्टिकी सेशन यह सुनिश्चित करता है कि एक ही क्लाइंट IP से रजिस्ट्रेशन और लॉगिन हमेशा एक ही इंस्टेंस पर जाएं।
+
+### डेमो परिदृश्य
+
+| परिदृश्य | OWASP API Top 10 | विधि |
+|---|---|---|
+| ब्रोकन ऑब्जेक्ट लेवल ऑथोराइज़ेशन (BOLA) | API1 | ID में हेरफेर करके अन्य उपयोगकर्ताओं के डेटा तक पहुँच |
+| ब्रोकन ऑथेंटिकेशन | API2 | कमजोर टोकन हैंडलिंग, कोई रेट लिमिटिंग नहीं |
+| अत्यधिक डेटा एक्सपोजर | API3 | API क्लाइंट की जरूरत से ज्यादा डेटा लौटाता है |
+| मास असाइनमेंट | API6 | अप्रत्याशित पैरामीटर के माध्यम से एडमिन फील्ड संशोधित करना |
+| SQL Injection | API8 | API पैरामीटर के माध्यम से इंजेक्शन |
+| अनुचित एसेट्स प्रबंधन | API9 | अप्रलेखित API एंडपॉइंट्स |
+
+### API एंडपॉइंट्स
+
+```bash
+# Register a new user
+curl -X POST "http://<PUBLIC_IP>/vampi/users/v1/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test123","email":"test@test.com"}'
+
+# Login
+curl -X POST "http://<PUBLIC_IP>/vampi/users/v1/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test123"}'
+
+# List users (excessive data exposure)
+curl "http://<PUBLIC_IP>/vampi/users/v1"
+```
+
+## httpbin
+
+| | |
+|---|---|
+| **पथ** | `/httpbin/` |
+| **इमेज** | `kennethreitz/httpbin:latest` gunicorn CMD ओवरराइड के साथ (`-w 4 -k gevent --timeout 30`) |
+| **इंस्टेंस** | 4 (पोर्ट 8201-8204), राउंड-रॉबिन (स्टेटलेस) |
+| **संसाधन** | 0.5 CPU / 256 MiB RAM प्रति इंस्टेंस |
+| **फ्रेमवर्क** | Python / Flask / gunicorn + gevent |
+| **प्रोजेक्ट** | [httpbin.org](https://httpbin.org) |
+
+httpbin एक सरल HTTP अनुरोध/प्रतिक्रिया सेवा है जो बेसिक API डेमो, रिक्वेस्ट हेडर परीक्षण और प्रॉक्सी व्यवहार सत्यापन के लिए उपयोगी है।
+
+### उपयोगी एंडपॉइंट्स
+
+| एंडपॉइंट | उद्देश्य |
+|---|---|
+| `/httpbin/get` | GET रिक्वेस्ट डेटा लौटाता है (हेडर, args, origin) |
+| `/httpbin/post` | POST रिक्वेस्ट डेटा लौटाता है (body, form, JSON) |
+| `/httpbin/headers` | रिक्वेस्ट हेडर लौटाता है |
+| `/httpbin/ip` | ऑरिजिन IP लौटाता है |
+| `/httpbin/user-agent` | User-Agent हेडर लौटाता है |
+| `/httpbin/status/:code` | निर्दिष्ट HTTP स्टेटस कोड लौटाता है |
+| `/httpbin/delay/:seconds` | N सेकंड तक प्रतिक्रिया में विलंब करता है |
+| `/httpbin/anything` | रिक्वेस्ट में पास की गई कोई भी चीज़ लौटाता है |
+
+### उदाहरण
+
+```bash
+# Check what headers the origin sees (useful for verifying F5 XC header injection)
+curl -s "http://<PUBLIC_IP>/httpbin/headers" | jq .
+
+# Test a specific HTTP status code
+curl -s -o /dev/null -w "%{http_code}" "http://<PUBLIC_IP>/httpbin/status/403"
+```
+
+## whoami (रिक्वेस्ट डायग्नोस्टिक्स)
+
+| | |
+|---|---|
+| **पथ** | `/whoami/` |
+| **इमेज** | `traefik/whoami:latest` |
+| **इंस्टेंस** | 4 (पोर्ट 8082-8085), राउंड-रॉबिन (स्टेटलेस) |
+| **संसाधन** | 0.25 CPU / 64 MiB RAM प्रति इंस्टेंस |
+| **फ्रेमवर्क** | Go |
+| **प्रोजेक्ट** | [github.com/traefik/whoami](https://github.com/traefik/whoami) |
+
+whoami Traefik का लाइटवेट रिक्वेस्ट इको सर्वर है। यह आने वाले HTTP रिक्वेस्ट के हर विवरण को दिखाता है जैसा कि ऑरिजिन इसे देखता है -- होस्टनेम, IP एड्रेस, सभी हेडर, मेथड और URL। यह सबसे महत्वपूर्ण डायग्नोस्टिक टूल है जब आप सत्यापित कर रहे हों कि F5 XC सही हेडर इंजेक्ट कर रहा है।
+
+### प्रमुख उपयोग के मामले
+
+| उपयोग का मामला | क्या देखना है |
+|---|---|
+| F5 XC हेडर इंजेक्शन सत्यापित करें | `X-Forwarded-For`, `True-Client-IP`, `X-Volterra-*` हेडर |
+| क्लाइंट IP विज़िबिलिटी की पुष्टि करें | `X-Real-IP` बनाम `RemoteAddr` |
+| WAF फॉल्स पॉजिटिव डीबग करें | F5 XC से पहले/बाद में रिक्वेस्ट हेडर की तुलना करें |
+| बॉट डिफेंस टैगिंग मान्य करें | `X-Volterra-Bot-Type`, `X-Volterra-Bot-Verified` हेडर |
+| TLS टर्मिनेशन जांचें | जब TLS F5 XC पर टर्मिनेट होता है तो `X-Forwarded-Proto` `https` दिखाता है |
+
+### उदाहरण
+
+```bash
+# Basic request -- see what the origin receives
+curl "http://<PUBLIC_IP>/whoami/"
+
+# Simulate request through F5 XC (with injected headers)
+curl "http://<PUBLIC_IP>/whoami/" \
+  -H "X-Forwarded-For: 203.0.113.50" \
+  -H "True-Client-IP: 203.0.113.50" \
+  -H "X-Forwarded-Proto: https"
+```
+
+उदाहरण आउटपुट:
+
+```
+Hostname: 534c5084e169
+IP: 127.0.0.1
+RemoteAddr: 172.17.0.1:55118
+GET / HTTP/1.1
+Host: 20.12.78.159
+User-Agent: curl/8.5.0
+Accept: */*
+True-Client-Ip: 203.0.113.50
+X-Forwarded-For: 203.0.113.50, 10.0.0.1
+X-Forwarded-Proto: https
+X-Real-Ip: 104.219.105.84
+```
+
+## DVGA (Damn Vulnerable GraphQL Application)
+
+| | |
+|---|---|
+| **पथ** | `/dvga/` |
+| **इमेज** | `dolevf/dvga:latest` |
+| **इंस्टेंस** | 4 (पोर्ट 5201-5204), `ip_hash` के माध्यम से स्टिकी (प्रति इंस्टेंस SQLite) |
+| **संसाधन** | 0.5 CPU / 256 MiB RAM प्रति इंस्टेंस |
+| **फ्रेमवर्क** | Python / Flask / GraphQL |
+| **प्रोजेक्ट** | [github.com/dolevf/Damn-Vulnerable-GraphQL-Application](https://github.com/dolevf/Damn-Vulnerable-GraphQL-Application) |
+
+DVGA विशेष रूप से GraphQL-विशिष्ट कमजोरियों के परीक्षण के लिए बनाया गया है। यह इंटरैक्टिव क्वेरी एक्सप्लोरेशन के लिए `/dvga/` पर एक GraphiQL IDE और `/dvga/graphql` पर एक GraphQL API एंडपॉइंट प्रदान करता है। प्रत्येक इंस्टेंस अपना स्वयं का SQLite डेटाबेस उपयोग करता है, इसलिए `ip_hash` स्टिकी सेशन सुसंगत स्टेट सुनिश्चित करते हैं।
+
+### डेमो परिदृश्य
+
+| परिदृश्य | श्रेणी | अटैक वेक्टर |
+|---|---|---|
+| GraphQL Injection | API Security | स्ट्रिंग इंटरपोलेशन के माध्यम से दुर्भावनापूर्ण क्वेरी |
+| सेवा अस्वीकृति (Denial of Service) | API Security | गहरे नेस्टेड क्वेरी, बैच क्वेरी, संसाधन थकान |
+| प्राधिकरण बाइपास | API Security | GraphQL के माध्यम से अनधिकृत डेटा तक पहुँच |
+| सूचना प्रकटीकरण | API Security | स्कीमा विवरण प्रकट करने वाली इंट्रोस्पेक्शन क्वेरी |
+| बैचिंग अटैक | API Security | एक ही रिक्वेस्ट में कई ऑपरेशन |
+
+### प्रमुख एंडपॉइंट्स
+
+```bash
+# GraphiQL UI (interactive IDE)
+curl -sf "http://<PUBLIC_IP>/dvga/" -o /dev/null -w "%{http_code}"
+
+# Introspection query -- enumerate the full schema
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ __schema { types { name fields { name } } } }"}'
+
+# List pastes (example query)
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ pastes { title content } }"}'
+
+# Create a paste (mutation)
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"mutation { createPaste(title:\"test\", content:\"hello\", public:true) { paste { title } } }"}'
+```
+
+## RESTaurant (Damn Vulnerable RESTaurant API Game)
+
+| | |
+|---|---|
+| **पथ** | `/restaurant/` |
+| **इमेज** | `theowni/Damn-Vulnerable-RESTaurant-API-Game` से कस्टम बिल्ड |
+| **इंस्टेंस** | 4 (पोर्ट 8301-8304), राउंड-रॉबिन (साझा PostgreSQL) |
+| **संसाधन** | 0.5 CPU / 256 MiB RAM प्रति इंस्टेंस |
+| **डेटाबेस** | साझा PostgreSQL 15.4 (`restaurant-db` कंटेनर, 0.5 CPU / 512 MiB) |
+| **फ्रेमवर्क** | Python / FastAPI / PostgreSQL |
+| **क्रेडेंशियल्स** | `admin` / `password` (PostgreSQL) |
+| **प्रोजेक्ट** | [github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game](https://github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game) |
+
+RESTaurant एक गेमिफाइड कमजोर REST API है जो OWASP API Security Top 10 2023 को कवर करता है। यह `/restaurant/docs` पर स्वचालित Swagger UI डॉक्यूमेंटेशन के साथ FastAPI का उपयोग करता है। सभी 4 इंस्टेंस एक ही PostgreSQL डेटाबेस साझा करते हैं, इसलिए राउंड-रॉबिन लोड बैलेंसिंग बिना स्टिकी सेशन के काम करता है।
+
+### डेमो परिदृश्य
+
+| परिदृश्य | OWASP API Top 10 2023 | विधि |
+|---|---|---|
+| ब्रोकन ऑब्जेक्ट लेवल ऑथोराइज़ेशन (BOLA) | API1 | ID में हेरफेर करके अन्य उपयोगकर्ताओं के ऑर्डर तक पहुँच |
+| ब्रोकन ऑथेंटिकेशन | API2 | कमजोर टोकन हैंडलिंग, क्रेडेंशियल स्टफिंग |
+| ब्रोकन ऑब्जेक्ट प्रॉपर्टी लेवल ऑथोराइज़ेशन | API3 | यूजर प्रोफ़ाइल फील्ड पर मास असाइनमेंट |
+| अनियंत्रित संसाधन उपभोग | API4 | एंडपॉइंट्स पर कोई रेट लिमिटिंग नहीं |
+| ब्रोकन फंक्शन लेवल ऑथोराइज़ेशन (BFLA) | API5 | सामान्य उपयोगकर्ता के रूप में एडमिन एंडपॉइंट्स तक पहुँच |
+| सर्वर साइड रिक्वेस्ट फोर्जरी (SSRF) | API7 | सर्वर-साइड URL रिक्वेस्ट में हेरफेर |
+| सुरक्षा गलत कॉन्फ़िगरेशन | API8 | विस्तृत त्रुटि संदेश, डिफ़ॉल्ट क्रेडेंशियल्स |
+
+### प्रमुख एंडपॉइंट्स
+
+```bash
+# Swagger UI
+curl -sf "http://<PUBLIC_IP>/restaurant/docs" -o /dev/null -w "%{http_code}"
+
+# OpenAPI spec
+curl -s "http://<PUBLIC_IP>/restaurant/openapi.json" | jq .info
+
+# BOLA -- access another user's order (after authentication)
+curl -s "http://<PUBLIC_IP>/restaurant/orders/1" \
+  -H "Authorization: Bearer <token>"
+
+# BFLA -- attempt admin action as regular user
+curl -s -X POST "http://<PUBLIC_IP>/restaurant/admin/users" \
+  -H "Authorization: Bearer <user_token>" \
+  -H "Content-Type: application/json"
+```
+
+## crAPI (OWASP Completely Ridiculous API)
+
+| | |
+|---|---|
+| **पोर्ट** | `8888` (समर्पित -- पथ-प्रीफिक्स्ड नहीं) |
+| **इमेज** | `crapi/crapi-web`, `crapi/crapi-identity`, `crapi/crapi-community`, `crapi/crapi-workshop`, PostgreSQL, MongoDB, MailHog |
+| **इंस्टेंस** | 7 माइक्रोसर्विसेज (प्रत्येक का एक इंस्टेंस) |
+| **संसाधन** | कुल ~3.0 CPU / ~2.0 GiB RAM |
+| **फ्रेमवर्क** | React SPA + Java/Go/Python माइक्रोसर्विसेज |
+| **प्रोजेक्ट** | [github.com/OWASP/crAPI](https://github.com/OWASP/crAPI) |
+
+crAPI API सुरक्षा परीक्षण के लिए OWASP का प्रमुख प्रोजेक्ट है। यह एक समर्पित पोर्ट (8888) पर 7 माइक्रोसर्विसेज के रूप में चलता है क्योंकि React SPA अपने API पथों को हार्डकोड करता है और पथ प्रीफिक्स के पीछे सर्व नहीं किया जा सकता। NSG पोर्ट 8888 पर इनबाउंड ट्रैफ़िक की अनुमति देता है।
+
+MailHog crAPI द्वारा भेजे गए सभी ईमेल (अकाउंट वेरिफिकेशन, पासवर्ड रीसेट) को कैप्चर करता है। पोर्ट 18025 पर SSH टनल के माध्यम से MailHog एक्सेस करें।
+
+### चुनौती श्रेणियाँ
+
+| श्रेणी | कमजोरियाँ |
+|---|---|
+| BOLA (ब्रोकन ऑब्जेक्ट लेवल ऑथोराइज़ेशन) | अन्य उपयोगकर्ताओं के वाहनों, ऑर्डर और रिपोर्ट तक पहुँच |
+| BFLA (ब्रोकन फंक्शन लेवल ऑथोराइज़ेशन) | एडमिन तक एस्केलेट, प्रतिबंधित एंडपॉइंट्स तक पहुँच |
+| मास असाइनमेंट | API के माध्यम से सुरक्षित फील्ड (रोल, बैलेंस) संशोधित करना |
+| SSRF (सर्वर साइड रिक्वेस्ट फोर्जरी) | सर्वर-साइड URL फ़ेचिंग में हेरफेर |
+| JWT मैनिपुलेशन | विशेषाधिकार वृद्धि के लिए JWT टोकन फ़ोर्ज या संशोधित करना |
+| NoSQL Injection | MongoDB-बैक्ड एंडपॉइंट्स में क्वेरी इंजेक्ट करना |
+| अत्यधिक डेटा एक्सपोजर | API संवेदनशील उपयोगकर्ता डेटा लौटाता है |
+
+### शुरुआत करना
+
+```bash
+# Verify crAPI is running
+curl -sf "http://<PUBLIC_IP>:8888" -o /dev/null -w "%{http_code}"
+
+# Sign up a new user
+curl -s -X POST "http://<PUBLIC_IP>:8888/identity/api/auth/signup" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test User","email":"test@example.com","number":"1234567890","password":"Test1234!"}'
+
+# Log in
+curl -s -X POST "http://<PUBLIC_IP>:8888/identity/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"Test1234!"}'
+
+# Access MailHog (via SSH tunnel for email verification)
+# ssh -L 18025:localhost:18025 azureuser@<PUBLIC_IP>
+# Then open http://localhost:18025 in your browser
+```
+
+### crAPI आर्किटेक्चर
+
+```
+Port 8888 -> crapi-web (React SPA + nginx)
+             -> crapi-identity (Java, user auth, JWT)
+             -> crapi-community (Go, forums, posts)
+             -> crapi-workshop (Python, vehicle service)
+             -> crapi-postgres (PostgreSQL)
+             -> crapi-mongo (MongoDB)
+             -> crapi-mailhog (email capture, port 18025)
+```
+
+## एप्लिकेशन कवरेज मैट्रिक्स
+
+| डेमो उपयोग का मामला | प्राथमिक ऐप | द्वितीयक ऐप |
+|---|---|---|
+| WAF -- SQL Injection | DVWA | Juice Shop |
+| WAF -- XSS | DVWA | Juice Shop |
+| WAF -- Command Injection | DVWA | -- |
+| API Security -- BOLA | VAmPI | -- |
+| API Security -- ऑथ बाइपास | VAmPI | Juice Shop |
+| API Security -- डेटा एक्सपोजर | VAmPI | httpbin |
+| Bot Defense -- ब्रूट फोर्स | DVWA | Juice Shop |
+| Bot Defense -- स्क्रैपिंग | Juice Shop | -- |
+| Client-Side Defense -- DOM XSS | Juice Shop | -- |
+| Client-Side Defense -- Stored XSS | DVWA | Juice Shop |
+| Client-Side Defense -- कार्ड स्किमर | CSD Demo | -- |
+| Client-Side Defense -- फॉर्मजैकर | CSD Demo | -- |
+| Client-Side Defense -- कीलॉगर | CSD Demo | -- |
+| Client-Side Defense -- क्रिप्टोमाइनर | CSD Demo | -- |
+| Client-Side Defense -- DOM हाइजैक | CSD Demo | -- |
+| API Security -- GraphQL injection | DVGA | -- |
+| API Security -- GraphQL DoS | DVGA | -- |
+| API Security -- OWASP API Top 10 2023 | RESTaurant | crAPI |
+| API Security -- BFLA | RESTaurant | crAPI |
+| API Security -- मास असाइनमेंट | crAPI | RESTaurant |
+| API Security -- SSRF | crAPI | RESTaurant |
+| API Security -- JWT मैनिपुलेशन | crAPI | -- |
+| API Security -- NoSQL injection | crAPI | -- |
+| बेसिक कनेक्टिविटी परीक्षण | httpbin | -- |
+| रिक्वेस्ट डायग्नोस्टिक्स | whoami | httpbin |
+| हेडर इंजेक्शन सत्यापन | whoami | -- |

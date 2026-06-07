@@ -1,0 +1,82 @@
+---
+title: المتطلبات الأساسية
+description: >-
+  Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and
+  Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) for 41-container deployment
+sidebar:
+  order: 2
+i18n:
+  sourceHash: 293ed3db6122
+  translator: machine
+---
+
+## المتطلبات الإلزامية
+
+### اشتراك Azure
+
+اشتراك Azure نشط مع صلاحيات لإنشاء:
+
+- مجموعات الموارد
+- الشبكات الافتراضية والشبكات الفرعية
+- مجموعات أمان الشبكة
+- عناوين IP العامة
+- الأجهزة الافتراضية (Standard_D16s_v3 -- 16 وحدة معالجة مركزية افتراضية، 64 جيبي بايت ذاكرة لأحمال العمل المكونة من 41 حاوية)
+
+### واجهة سطر أوامر Azure
+
+قم بتثبيت واجهة سطر أوامر Azure والمصادقة عليها:
+
+```bash
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+az login
+
+az account show --query '{name:name, id:id}' -o table
+```
+
+### Terraform
+
+مطلوب Terraform بإصدار 1.5 أو أحدث:
+
+```bash
+terraform version
+```
+
+إذا لم يكن مثبتاً، استخدم مستودع HashiCorp APT:
+
+```bash
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+```
+
+### صلاحيات Azure AD
+
+يجب أن يمتلك حساب Azure AD الخاص بك صلاحيات `User.Read`. يتم اشتقاق معرّف المُنشئ (المستخدم في تسمية الموارد) تلقائياً من ملفك الشخصي في Azure AD. بالنسبة للمصادقة باستخدام كيان الخدمة أو الهوية المُدارة، قم بتعيين متغير Terraform المسمى `deployer` بشكل صريح.
+
+### زوج مفاتيح SSH
+
+زوج مفاتيح SSH للوصول إلى الجهاز الافتراضي:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
+```
+
+## موارد Azure التي يتم إنشاؤها
+
+| المورد | المواصفات |
+|---|---|
+| جهاز افتراضي Ubuntu 24.04 | Standard_D16s_v3 (16 وحدة معالجة مركزية افتراضية، 64 جيبي بايت) |
+| عنوان IP عام | قياسي، ثابت |
+| قرص نظام التشغيل | 60 جيبي بايت SSD متميز |
+| شبكة افتراضية + مجموعة أمان الشبكة | افتراضي |
+
+راجع [حاسبة أسعار Azure](https://azure.microsoft.com/en-us/pricing/calculator/) للاطلاع على التكاليف الحالية. استخدم `terraform destroy` عندما لا يكون المختبر قيد الاستخدام لإيقاف الرسوم. راجع [الإزالة](../07-teardown/) للاطلاع على الإجراء.
+
+:::note
+مواصفات Standard_D16s_v3 (64 جيبي بايت ذاكرة) مطلوبة لنشر 41 حاوية. تخصيص ذاكرة الحاويات: 4 نسخ من Juice Shop بمعدل 1 جيبي بايت لكل منها (4 جيبي بايت)، 4 نسخ من VAmPI بمعدل 512 ميبي بايت لكل منها (2 جيبي بايت)، 4 نسخ من DVWA-FPM + MariaDB (1.8 جيبي بايت)، 4 نسخ من httpbin بمعدل 256 ميبي بايت (1 جيبي بايت)، 4 نسخ من CSD Demo بمعدل 256 ميبي بايت (1 جيبي بايت)، 4 نسخ من whoami بمعدل 64 ميبي بايت (256 ميبي بايت)، 4 نسخ من DVGA بمعدل 256 ميبي بايت لكل منها (1 جيبي بايت)، 4 نسخ من RESTaurant + PostgreSQL (1.5 جيبي بايت)، 7 خدمات مصغرة لـ crAPI (2 جيبي بايت)، بالإضافة إلى nginx ونظام التشغيل وذاكرة التخزين المؤقت. إجمالي تخصيص الحاويات حوالي 14.5 جيبي بايت (22.7% من 64 جيبي بايت).
+:::
+
+:::note
+تسمح مجموعة أمان الشبكة بحركة المرور الواردة على المنفذين 80 (HTTP) و8888 (crAPI). المنفذ 8888 مطلوب لأن crAPI هو تطبيق صفحة واحدة يحتوي على مسارات API مضمنة في الكود ولا يمكن تقديمه خلف بادئة مسار.
+:::

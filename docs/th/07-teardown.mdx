@@ -1,0 +1,53 @@
+---
+title: Teardown
+description: >-
+  terraform destroy to remove all Azure resources, verify cleanup with az CLI,
+  clean local state files, and remove associated F5 XC origin pool and HTTP load
+  balancer
+sidebar:
+  order: 7
+i18n:
+  sourceHash: f4bb422b2c48
+  translator: machine
+---
+
+เมื่อเซสชันแล็บเสร็จสิ้นแล้ว ให้ลบทรัพยากร Azure ทั้งหมดเพื่อหยุดการเรียกเก็บเงิน
+
+## Terraform Destroy
+
+จากไดเรกทอรีที่มีการกำหนดค่า Terraform:
+
+```bash
+terraform plan -destroy
+
+terraform destroy
+```
+
+Terraform จะขอการยืนยัน พิมพ์ `yes` เพื่อดำเนินการต่อ
+
+## ตรวจสอบการล้างข้อมูล
+
+ยืนยันว่าทรัพยากรทั้งหมดถูกลบออกแล้ว:
+
+```bash
+az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
+  | grep -q "ResourceGroupNotFound" \
+  && echo "Resource group deleted" \
+  || echo "Resource group still exists"
+```
+
+## ล้าง State ในเครื่อง
+
+ลบไฟล์ Terraform state และไฟล์แคช:
+
+```bash
+rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+```
+
+## ล้างทรัพยากร F5 XC
+
+หากคุณสร้างทรัพยากร F5 XC ที่ชี้ไปยัง origin server นี้ ให้ลบออก:
+
+1. ลบ HTTP load balancer
+2. ลบ origin pool
+3. ลบนโยบาย WAF ที่สร้างขึ้นเพื่อการทดสอบ

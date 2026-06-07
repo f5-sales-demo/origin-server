@@ -1,0 +1,82 @@
+---
+title: 前提条件
+description: >-
+  Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and
+  Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) for 41-container deployment
+sidebar:
+  order: 2
+i18n:
+  sourceHash: 293ed3db6122
+  translator: machine
+---
+
+## 必須要件
+
+### Azure サブスクリプション
+
+以下のリソースを作成する権限を持つアクティブな Azure サブスクリプション：
+
+- リソースグループ
+- 仮想ネットワークとサブネット
+- ネットワークセキュリティグループ
+- パブリック IP アドレス
+- 仮想マシン（Standard_D16s_v3 -- 16 vCPU、64 GiB RAM、41 コンテナワークロード向け）
+
+### Azure CLI
+
+Azure CLI をインストールして認証します：
+
+```bash
+curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+
+az login
+
+az account show --query '{name:name, id:id}' -o table
+```
+
+### Terraform
+
+Terraform >= 1.5 が必要です：
+
+```bash
+terraform version
+```
+
+インストールされていない場合は、HashiCorp APT リポジトリを使用してください：
+
+```bash
+wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+sudo apt update && sudo apt install terraform
+```
+
+### Azure AD の権限
+
+Azure AD アカウントには `User.Read` 権限が必要です。デプロイヤー識別子（リソース命名に使用）は、Azure AD プロファイルから自動的に導出されます。サービスプリンシパルまたはマネージド ID 認証の場合は、Terraform 変数 `deployer` を明示的に設定してください。
+
+### SSH キーペア
+
+VM アクセス用の SSH キーペア：
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
+```
+
+## 作成される Azure リソース
+
+| リソース | SKU |
+|---|---|
+| Ubuntu 24.04 VM | Standard_D16s_v3 (16 vCPU, 64 GiB) |
+| パブリック IP | Standard、静的 |
+| OS ディスク | 60 GiB Premium SSD |
+| VNet + NSG | デフォルト |
+
+現在のコストについては [Azure 料金計算ツール](https://azure.microsoft.com/en-us/pricing/calculator/) を参照してください。ラボを使用していないときは `terraform destroy` を使用して課金を停止してください。手順については [環境の破棄](../07-teardown/) を参照してください。
+
+:::note
+41 コンテナのデプロイには Standard_D16s_v3（64 GiB RAM）が必要です。コンテナのメモリ割り当て：Juice Shop インスタンス 4 つ（各 1 GiB、合計 4 GiB）、VAmPI 4 つ（各 512 MiB、合計 2 GiB）、DVWA-FPM + MariaDB 4 つ（1.8 GiB）、httpbin 4 つ（各 256 MiB、合計 1 GiB）、CSD Demo 4 つ（各 256 MiB、合計 1 GiB）、whoami 4 つ（各 64 MiB、合計 256 MiB）、DVGA 4 つ（各 256 MiB、合計 1 GiB）、RESTaurant + PostgreSQL 4 つ（1.5 GiB）、crAPI マイクロサービス 7 つ（2 GiB）、さらに nginx、OS、バッファキャッシュ。コンテナの合計割り当ては約 14.5 GiB（64 GiB の 22.7%）です。
+:::
+
+:::note
+NSG はポート 80（HTTP）および 8888（crAPI）のインバウンドトラフィックを許可します。ポート 8888 が必要な理由は、crAPI が API パスをハードコードしたシングルページアプリケーションであり、パスプレフィックスの背後で配信できないためです。
+:::

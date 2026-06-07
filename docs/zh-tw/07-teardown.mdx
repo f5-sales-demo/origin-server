@@ -1,0 +1,53 @@
+---
+title: Teardown
+description: >-
+  terraform destroy to remove all Azure resources, verify cleanup with az CLI,
+  clean local state files, and remove associated F5 XC origin pool and HTTP load
+  balancer
+sidebar:
+  order: 7
+i18n:
+  sourceHash: f4bb422b2c48
+  translator: machine
+---
+
+當實驗課程完成後，請銷毀所有 Azure 資源以停止計費。
+
+## Terraform Destroy
+
+從包含 Terraform 配置的目錄中執行：
+
+```bash
+terraform plan -destroy
+
+terraform destroy
+```
+
+Terraform 會提示確認。輸入 `yes` 以繼續。
+
+## 驗證清理
+
+確認所有資源已被移除：
+
+```bash
+az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
+  | grep -q "ResourceGroupNotFound" \
+  && echo "Resource group deleted" \
+  || echo "Resource group still exists"
+```
+
+## 清理本機狀態
+
+移除 Terraform 狀態和快取檔案：
+
+```bash
+rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+```
+
+## F5 XC 清理
+
+如果您建立了指向此來源伺服器的 F5 XC 資源，請將其移除：
+
+1. 刪除 HTTP 負載平衡器
+2. 刪除來源池（origin pool）
+3. 刪除為測試所建立的任何 WAF 策略

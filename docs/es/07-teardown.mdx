@@ -1,0 +1,53 @@
+---
+title: Teardown
+description: >-
+  terraform destroy to remove all Azure resources, verify cleanup with az CLI,
+  clean local state files, and remove associated F5 XC origin pool and HTTP load
+  balancer
+sidebar:
+  order: 7
+i18n:
+  sourceHash: f4bb422b2c48
+  translator: machine
+---
+
+Cuando la sesión del laboratorio haya finalizado, destruya todos los recursos de Azure para detener la facturación.
+
+## Terraform Destroy
+
+Desde el directorio que contiene la configuración de Terraform:
+
+```bash
+terraform plan -destroy
+
+terraform destroy
+```
+
+Terraform solicitará confirmación. Escriba `yes` para continuar.
+
+## Verificar la limpieza
+
+Confirme que todos los recursos han sido eliminados:
+
+```bash
+az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
+  | grep -q "ResourceGroupNotFound" \
+  && echo "Resource group deleted" \
+  || echo "Resource group still exists"
+```
+
+## Limpiar el estado local
+
+Elimine el estado de Terraform y los archivos en caché:
+
+```bash
+rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+```
+
+## Limpieza de F5 XC
+
+Si creó recursos de F5 XC apuntando a este servidor de origen, elimínelos:
+
+1. Elimine el balanceador de carga HTTP
+2. Elimine el origin pool
+3. Elimine cualquier política WAF creada para las pruebas

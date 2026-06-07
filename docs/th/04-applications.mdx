@@ -1,0 +1,437 @@
+---
+title: Applications
+description: >-
+  URL paths, request/response behavior, default credentials, and attack
+  scenarios for Juice Shop (/juice-shop), DVWA (/dvwa), VAmPI (/vampi), httpbin
+  (/httpbin), whoami (/whoami), CSD Demo (/csd-demo), DVGA (/dvga), RESTaurant
+  (/restaurant), and crAPI (:8888)
+sidebar:
+  order: 4
+i18n:
+  sourceHash: c7035e8c4210
+  translator: machine
+---
+
+## ภาพรวมแอปพลิเคชัน
+
+แอปพลิเคชันแต่ละตัวทำงานเป็น Docker container จำนวน 4 ตัวที่มีการ load balance อยู่เบื้องหลัง nginx upstream pools โดยสามารถเข้าถึงผ่าน nginx reverse proxy บน VM ได้ Sticky sessions ช่วยให้แอปพลิเคชันที่มี state (Juice Shop, DVWA, VAmPI, CSD Demo) ถูก route อย่างสม่ำเสมอ แอปพลิเคชันทั้งหมดมีช่องโหว่โดยตั้งใจและออกแบบมาเพื่อการทดสอบความปลอดภัย
+
+แทนที่ `<ORIGIN>` ด้วย `http://<PUBLIC_IP>` ในตัวอย่างทั้งหมดด้านล่าง หลังจาก deploy ผ่าน Terraform แล้ว รับ IP ด้วย `terraform output -raw public_ip`
+
+## ข้อมูลอ้างอิงด่วน -- เส้นทาง URL ทั้งหมด
+
+| เส้นทาง | แอปพลิเคชัน | HTTP Method | การตอบสนองที่คาดหวัง |
+|---|---|---|---|
+| `/` | หน้า Landing | GET | 200 HTML พร้อมลิงก์ไปยังแอปทั้งหมด |
+| `/health` | Health check | GET | 200 JSON `{"status":"healthy","component":"origin-server",...}` |
+| `/juice-shop/` | Juice Shop | GET | 200 HTML (Angular SPA, ~75 KB) |
+| `/juice-shop/rest/products/search?q=` | Juice Shop API | GET | 200 JSON `{"status":"success","data":[...]}` (36 ผลิตภัณฑ์) |
+| `/dvwa/` | DVWA | GET | 302 redirect ไปยัง `/dvwa/login.php` |
+| `/dvwa/login.php` | DVWA login | GET | 200 HTML ฟอร์มเข้าสู่ระบบ |
+| `/dvwa/setup.php` | DVWA setup | GET | 200 HTML (เริ่มต้นฐานข้อมูลครั้งแรก) |
+| `/vampi/` | VAmPI | GET | 200 HTML (เอกสาร API) |
+| `/vampi/users/v1` | VAmPI API | GET | 200 JSON `{"users":[...]}` |
+| `/vampi/users/v1/register` | VAmPI API | POST | 200 JSON `{"status":"success",...}` |
+| `/vampi/users/v1/login` | VAmPI API | POST | 200 JSON `{"auth_token":"...","status":"success"}` |
+| `/httpbin/get` | httpbin | GET | 200 JSON พร้อมรายละเอียดคำขอ |
+| `/httpbin/post` | httpbin | POST | 200 JSON พร้อมข้อมูลที่ส่ง |
+| `/httpbin/headers` | httpbin | GET | 200 JSON `{"headers":{...}}` |
+| `/httpbin/status/:code` | httpbin | GET | ส่งคืน HTTP status code ที่ระบุ |
+| `/whoami/` | whoami | GET | 200 ข้อความธรรมดาพร้อม hostname, IP, headers ทั้งหมด |
+| `/csd-demo/` | CSD Demo | GET | 200 HTML ฟอร์มชำระเงินพร้อมแผงโจมตี |
+| `/csd-demo/dashboard` | CSD มุมมองผู้โจมตี | GET | 200 HTML แสดงข้อมูลที่ถูกขโมย |
+| `/csd-demo/health` | CSD health | GET | 200 JSON `{"status":"healthy","component":"csd-demo",...}` |
+| `/csd-demo/exfil/log` | CSD exfil log | GET | 200 JSON array ของข้อมูลที่จับได้ |
+| `/dvga/` | DVGA GraphiQL | GET | 200 HTML (GraphiQL IDE) |
+| `/dvga/graphql` | DVGA GraphQL API | POST | 200 JSON การตอบสนอง GraphQL |
+| `/restaurant/` | RESTaurant | GET | 200 (redirect ไปยัง docs) |
+| `/restaurant/docs` | RESTaurant Swagger | GET | 200 HTML (FastAPI Swagger UI) |
+| `/restaurant/openapi.json` | RESTaurant OpenAPI | GET | 200 JSON OpenAPI spec |
+| `http://<PUBLIC_IP>:8888` | crAPI | GET | 200 HTML (SPA) |
+| `http://<PUBLIC_IP>:8888/identity/api/auth/signup` | crAPI signup | POST | 200 JSON |
+| `http://<PUBLIC_IP>:8888/identity/api/auth/login` | crAPI login | POST | 200 JSON `{"token":"..."}` |
+
+## OWASP Juice Shop
+
+| | |
+|---|---|
+| **เส้นทาง** | `/juice-shop/` |
+| **Image** | `bkimminich/juice-shop:latest` |
+| **จำนวนอินสแตนซ์** | 4 (ports 3001-3004), sticky ผ่าน `hash $cookie_token`, proxy cache (60 s TTL) |
+| **ทรัพยากร** | 2 CPU / 1 GiB RAM ต่ออินสแตนซ์ |
+| **เฟรมเวิร์ก** | Node.js / Angular |
+| **โปรเจกต์** | [owasp.org/www-project-juice-shop](https://owasp.org/www-project-juice-shop/) |
+
+OWASP Juice Shop เป็นเว็บแอปพลิเคชันที่มีช่องโหว่ที่ทันสมัยและได้รับการดูแลอย่างต่อเนื่องมากที่สุด ครอบคลุม OWASP Top 10 ทั้งหมดพร้อม challenge มากกว่า 100 รายการในแอปพลิเคชัน e-commerce ที่สมจริง
+
+### สถานการณ์สาธิต
+
+| สถานการณ์ | หมวดหมู่ | เวกเตอร์โจมตี |
+|---|---|---|
+| SQL Injection หลีกเลี่ยงการเข้าสู่ระบบ | WAF | `' OR 1=1--` ในฟิลด์อีเมลเข้าสู่ระบบ |
+| Reflected XSS | WAF, CSD | การฉีดสคริปต์ผ่านพารามิเตอร์ค้นหา |
+| DOM-based XSS | CSD | Payload ใน URL fragment |
+| การยืนยันตัวตนที่เสียหาย | WAF | Brute force เข้าสู่ระบบ, การจัดการ JWT |
+| การใช้งาน API ในทางที่ผิด | API Security | การเข้าถึง `/api/` endpoints โดยไม่ได้รับอนุญาต |
+| การเปิดเผยข้อมูลที่สำคัญ | API Security | การเข้าถึงข้อมูลผู้ใช้โดยไม่ได้รับอนุญาต |
+| CSRF | WAF | Cross-site request forgery บนการเปลี่ยนแปลงโปรไฟล์ |
+
+### การเข้าถึง
+
+```bash
+curl -s "http://<PUBLIC_IP>/juice-shop/" -o /dev/null -w "%{http_code}"
+```
+
+## DVWA (Damn Vulnerable Web Application)
+
+| | |
+|---|---|
+| **เส้นทาง** | `/dvwa/` |
+| **Image** | Custom `dvwa-fpm:latest` (php-fpm + nginx, สร้างจาก `ghcr.io/digininja/dvwa:latest`) |
+| **จำนวนอินสแตนซ์** | 4 (ports 8101-8104), sticky ผ่าน `hash $cookie_PHPSESSID` |
+| **ทรัพยากร** | 0.5 CPU / 256 MiB RAM ต่ออินสแตนซ์ |
+| **ฐานข้อมูล** | Shared MariaDB 10.11 (`dvwa-db` container, 1 CPU / 768 MiB) |
+| **เฟรมเวิร์ก** | PHP 8 / php-fpm / MariaDB |
+| **ข้อมูลประจำตัว** | `admin` / `password` |
+
+DVWA เป็นมาตรฐานอุตสาหกรรมสำหรับการทดสอบ WAF มีระดับความปลอดภัยที่ปรับได้ (Low, Medium, High, Impossible) ซึ่งเพิ่มการตรวจสอบ input validation และ output encoding เป็นลำดับ
+
+### สถานการณ์สาธิต
+
+| สถานการณ์ | หมวดหมู่ | ระดับความปลอดภัย |
+|---|---|---|
+| SQL Injection | WAF | Low: ง่ายดาย `' OR 1=1#`, High: blind SQLi |
+| Command Injection | WAF | Low: `; ls`, High: ตัวอักษรถูกกรอง |
+| File Inclusion | WAF | Low: path traversal โดยตรง, High: ถูก sanitize |
+| XSS (Reflected) | WAF, CSD | Low: `<script>` พื้นฐาน, High: bypass แบบ encoded |
+| XSS (Stored) | WAF, CSD | Low: สคริปต์ persistent ใน guestbook |
+| File Upload | WAF | Low: อัปโหลด PHP shell, High: กรองนามสกุลไฟล์ |
+| Brute Force | Bot Defense | การพยายามเข้าสู่ระบบอัตโนมัติ |
+
+### ระดับความปลอดภัย
+
+ตั้งค่าระดับความปลอดภัยที่ `/dvwa/security.php` หลังจากเข้าสู่ระบบ:
+
+- **Low** -- ไม่มี input validation ทุกการโจมตีทำงานได้ เหมาะสำหรับการสาธิต WAF signature
+- **Medium** -- การกรองพื้นฐาน การโจมตีบางอย่างต้องใช้เทคนิค encoding หรือ bypass
+- **High** -- การกรองที่เข้มงวด เฉพาะเทคนิคขั้นสูงเท่านั้นที่สำเร็จ เหมาะสำหรับแสดงข้อจำกัดของ WAF
+- **Impossible** -- การพัฒนาที่ปลอดภัยอย่างสมบูรณ์ แสดงการเขียนโค้ดเชิงป้องกันที่เหมาะสม
+
+### การตั้งค่าเริ่มต้น
+
+DVWA ต้องมีการตั้งค่าฐานข้อมูลครั้งเดียวหลังจากการ deploy ครั้งแรก:
+
+1. ไปที่ `http://<PUBLIC_IP>/dvwa/setup.php`
+2. คลิก **Create / Reset Database**
+3. เข้าสู่ระบบด้วย `admin` / `password`
+
+## VAmPI (Vulnerable API)
+
+| | |
+|---|---|
+| **เส้นทาง** | `/vampi/` |
+| **Image** | `erev0s/vampi:latest` พร้อม gunicorn entrypoint (4 workers) |
+| **จำนวนอินสแตนซ์** | 4 (ports 5101-5104), sticky ผ่าน `ip_hash` (SQLite ต่ออินสแตนซ์) |
+| **ทรัพยากร** | 0.5 CPU / 512 MiB RAM ต่ออินสแตนซ์ |
+| **เฟรมเวิร์ก** | Python / Flask / gunicorn |
+| **โปรเจกต์** | [github.com/erev0s/VAmPI](https://github.com/erev0s/VAmPI) |
+
+VAmPI ถูกสร้างขึ้นมาเพื่อทดสอบ OWASP API Security Top 10 โดยเฉพาะ โดยให้ REST API ที่สมจริงพร้อมช่องโหว่โดยตั้งใจ แต่ละอินสแตนซ์รัน gunicorn ด้วย 4 workers และฐานข้อมูล SQLite ของตัวเอง `ip_hash` sticky session ทำให้การลงทะเบียนและเข้าสู่ระบบจาก client IP เดียวกันจะถูก route ไปยังอินสแตนซ์เดิมเสมอ
+
+### สถานการณ์สาธิต
+
+| สถานการณ์ | OWASP API Top 10 | วิธีการ |
+|---|---|---|
+| Broken Object Level Authorization (BOLA) | API1 | เข้าถึงข้อมูลผู้ใช้อื่นโดยการจัดการ ID |
+| Broken Authentication | API2 | การจัดการ token ที่อ่อนแอ, ไม่มีการจำกัดอัตรา |
+| Excessive Data Exposure | API3 | API ส่งคืนข้อมูลมากกว่าที่ client ต้องการ |
+| Mass Assignment | API6 | แก้ไขฟิลด์ admin ผ่านพารามิเตอร์ที่ไม่คาดคิด |
+| SQL Injection | API8 | การฉีดผ่านพารามิเตอร์ API |
+| Improper Assets Management | API9 | API endpoints ที่ไม่มีเอกสาร |
+
+### API Endpoints
+
+```bash
+# Register a new user
+curl -X POST "http://<PUBLIC_IP>/vampi/users/v1/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test123","email":"test@test.com"}'
+
+# Login
+curl -X POST "http://<PUBLIC_IP>/vampi/users/v1/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test123"}'
+
+# List users (excessive data exposure)
+curl "http://<PUBLIC_IP>/vampi/users/v1"
+```
+
+## httpbin
+
+| | |
+|---|---|
+| **เส้นทาง** | `/httpbin/` |
+| **Image** | `kennethreitz/httpbin:latest` พร้อม gunicorn CMD override (`-w 4 -k gevent --timeout 30`) |
+| **จำนวนอินสแตนซ์** | 4 (ports 8201-8204), round-robin (stateless) |
+| **ทรัพยากร** | 0.5 CPU / 256 MiB RAM ต่ออินสแตนซ์ |
+| **เฟรมเวิร์ก** | Python / Flask / gunicorn + gevent |
+| **โปรเจกต์** | [httpbin.org](https://httpbin.org) |
+
+httpbin เป็นบริการ HTTP request/response ที่เรียบง่าย มีประโยชน์สำหรับการสาธิต API พื้นฐาน การทดสอบ request headers และการตรวจสอบพฤติกรรมของ proxy
+
+### Endpoints ที่มีประโยชน์
+
+| Endpoint | วัตถุประสงค์ |
+|---|---|
+| `/httpbin/get` | ส่งคืนข้อมูลคำขอ GET (headers, args, origin) |
+| `/httpbin/post` | ส่งคืนข้อมูลคำขอ POST (body, form, JSON) |
+| `/httpbin/headers` | ส่งคืน request headers |
+| `/httpbin/ip` | ส่งคืน origin IP |
+| `/httpbin/user-agent` | ส่งคืน User-Agent header |
+| `/httpbin/status/:code` | ส่งคืน HTTP status code ที่ระบุ |
+| `/httpbin/delay/:seconds` | หน่วงเวลาการตอบสนอง N วินาที |
+| `/httpbin/anything` | ส่งคืนทุกอย่างที่ส่งมาในคำขอ |
+
+### ตัวอย่าง
+
+```bash
+# Check what headers the origin sees (useful for verifying F5 XC header injection)
+curl -s "http://<PUBLIC_IP>/httpbin/headers" | jq .
+
+# Test a specific HTTP status code
+curl -s -o /dev/null -w "%{http_code}" "http://<PUBLIC_IP>/httpbin/status/403"
+```
+
+## whoami (การวินิจฉัยคำขอ)
+
+| | |
+|---|---|
+| **เส้นทาง** | `/whoami/` |
+| **Image** | `traefik/whoami:latest` |
+| **จำนวนอินสแตนซ์** | 4 (ports 8082-8085), round-robin (stateless) |
+| **ทรัพยากร** | 0.25 CPU / 64 MiB RAM ต่ออินสแตนซ์ |
+| **เฟรมเวิร์ก** | Go |
+| **โปรเจกต์** | [github.com/traefik/whoami](https://github.com/traefik/whoami) |
+
+whoami เป็นเซิร์ฟเวอร์ request echo น้ำหนักเบาของ Traefik จะแสดงรายละเอียดทั้งหมดของ HTTP request ที่เข้ามาตามที่ origin เห็น -- hostname, IP addresses, headers ทั้งหมด, method และ URL นี่เป็นเครื่องมือวินิจฉัยที่สำคัญที่สุดเมื่อต้องตรวจสอบว่า F5 XC กำลังฉีด headers ที่ถูกต้อง
+
+### กรณีการใช้งานหลัก
+
+| กรณีการใช้งาน | สิ่งที่ต้องสังเกต |
+|---|---|
+| ตรวจสอบการฉีด header ของ F5 XC | `X-Forwarded-For`, `True-Client-IP`, `X-Volterra-*` headers |
+| ยืนยันการมองเห็น client IP | `X-Real-IP` เทียบกับ `RemoteAddr` |
+| แก้ปัญหา WAF false positives | เปรียบเทียบ request headers ก่อนและหลัง F5 XC |
+| ตรวจสอบการแท็ก bot defense | `X-Volterra-Bot-Type`, `X-Volterra-Bot-Verified` headers |
+| ตรวจสอบ TLS termination | `X-Forwarded-Proto` แสดง `https` เมื่อ TLS terminate ที่ F5 XC |
+
+### ตัวอย่าง
+
+```bash
+# Basic request -- see what the origin receives
+curl "http://<PUBLIC_IP>/whoami/"
+
+# Simulate request through F5 XC (with injected headers)
+curl "http://<PUBLIC_IP>/whoami/" \
+  -H "X-Forwarded-For: 203.0.113.50" \
+  -H "True-Client-IP: 203.0.113.50" \
+  -H "X-Forwarded-Proto: https"
+```
+
+ตัวอย่างผลลัพธ์:
+
+```
+Hostname: 534c5084e169
+IP: 127.0.0.1
+RemoteAddr: 172.17.0.1:55118
+GET / HTTP/1.1
+Host: 20.12.78.159
+User-Agent: curl/8.5.0
+Accept: */*
+True-Client-Ip: 203.0.113.50
+X-Forwarded-For: 203.0.113.50, 10.0.0.1
+X-Forwarded-Proto: https
+X-Real-Ip: 104.219.105.84
+```
+
+## DVGA (Damn Vulnerable GraphQL Application)
+
+| | |
+|---|---|
+| **เส้นทาง** | `/dvga/` |
+| **Image** | `dolevf/dvga:latest` |
+| **จำนวนอินสแตนซ์** | 4 (ports 5201-5204), sticky ผ่าน `ip_hash` (SQLite ต่ออินสแตนซ์) |
+| **ทรัพยากร** | 0.5 CPU / 256 MiB RAM ต่ออินสแตนซ์ |
+| **เฟรมเวิร์ก** | Python / Flask / GraphQL |
+| **โปรเจกต์** | [github.com/dolevf/Damn-Vulnerable-GraphQL-Application](https://github.com/dolevf/Damn-Vulnerable-GraphQL-Application) |
+
+DVGA ถูกสร้างขึ้นมาเพื่อทดสอบช่องโหว่เฉพาะของ GraphQL โดยเฉพาะ โดยให้ GraphiQL IDE ที่ `/dvga/` สำหรับการสำรวจ query แบบโต้ตอบ และ GraphQL API endpoint ที่ `/dvga/graphql` แต่ละอินสแตนซ์ใช้ฐานข้อมูล SQLite ของตัวเอง ดังนั้น `ip_hash` sticky sessions จึงรับประกัน state ที่สม่ำเสมอ
+
+### สถานการณ์สาธิต
+
+| สถานการณ์ | หมวดหมู่ | เวกเตอร์โจมตี |
+|---|---|---|
+| GraphQL Injection | API Security | Query ที่เป็นอันตรายผ่าน string interpolation |
+| Denial of Service | API Security | Query ที่ซ้อนกันลึก, batch queries, การใช้ทรัพยากรจนหมด |
+| Authorization Bypass | API Security | การเข้าถึงข้อมูลที่ไม่ได้รับอนุญาตผ่าน GraphQL |
+| Information Disclosure | API Security | Introspection queries ที่เปิดเผยรายละเอียด schema |
+| Batching Attack | API Security | หลายปฏิบัติการในคำขอเดียว |
+
+### Endpoints หลัก
+
+```bash
+# GraphiQL UI (interactive IDE)
+curl -sf "http://<PUBLIC_IP>/dvga/" -o /dev/null -w "%{http_code}"
+
+# Introspection query -- enumerate the full schema
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ __schema { types { name fields { name } } } }"}'
+
+# List pastes (example query)
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"{ pastes { title content } }"}'
+
+# Create a paste (mutation)
+curl -s "http://<PUBLIC_IP>/dvga/graphql" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"mutation { createPaste(title:\"test\", content:\"hello\", public:true) { paste { title } } }"}'
+```
+
+## RESTaurant (Damn Vulnerable RESTaurant API Game)
+
+| | |
+|---|---|
+| **เส้นทาง** | `/restaurant/` |
+| **Image** | Custom build จาก `theowni/Damn-Vulnerable-RESTaurant-API-Game` |
+| **จำนวนอินสแตนซ์** | 4 (ports 8301-8304), round-robin (shared PostgreSQL) |
+| **ทรัพยากร** | 0.5 CPU / 256 MiB RAM ต่ออินสแตนซ์ |
+| **ฐานข้อมูล** | Shared PostgreSQL 15.4 (`restaurant-db` container, 0.5 CPU / 512 MiB) |
+| **เฟรมเวิร์ก** | Python / FastAPI / PostgreSQL |
+| **ข้อมูลประจำตัว** | `admin` / `password` (PostgreSQL) |
+| **โปรเจกต์** | [github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game](https://github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game) |
+
+RESTaurant เป็น REST API ที่มีช่องโหว่แบบ gamified ครอบคลุม OWASP API Security Top 10 2023 ใช้ FastAPI พร้อม Swagger UI documentation อัตโนมัติที่ `/restaurant/docs` อินสแตนซ์ทั้ง 4 ใช้ฐานข้อมูล PostgreSQL ร่วมกัน ดังนั้น round-robin load balancing จึงทำงานได้โดยไม่ต้องใช้ sticky sessions
+
+### สถานการณ์สาธิต
+
+| สถานการณ์ | OWASP API Top 10 2023 | วิธีการ |
+|---|---|---|
+| Broken Object Level Authorization (BOLA) | API1 | เข้าถึงคำสั่งซื้อของผู้ใช้อื่นโดยการจัดการ ID |
+| Broken Authentication | API2 | การจัดการ token ที่อ่อนแอ, credential stuffing |
+| Broken Object Property Level Authorization | API3 | Mass assignment บนฟิลด์โปรไฟล์ผู้ใช้ |
+| Unrestricted Resource Consumption | API4 | ไม่มีการจำกัดอัตราบน endpoints |
+| Broken Function Level Authorization (BFLA) | API5 | เข้าถึง admin endpoints ในฐานะผู้ใช้ทั่วไป |
+| Server Side Request Forgery (SSRF) | API7 | จัดการคำขอ URL ฝั่งเซิร์ฟเวอร์ |
+| Security Misconfiguration | API8 | ข้อความข้อผิดพลาดที่ละเอียดเกินไป, ข้อมูลประจำตัวเริ่มต้น |
+
+### Endpoints หลัก
+
+```bash
+# Swagger UI
+curl -sf "http://<PUBLIC_IP>/restaurant/docs" -o /dev/null -w "%{http_code}"
+
+# OpenAPI spec
+curl -s "http://<PUBLIC_IP>/restaurant/openapi.json" | jq .info
+
+# BOLA -- access another user's order (after authentication)
+curl -s "http://<PUBLIC_IP>/restaurant/orders/1" \
+  -H "Authorization: Bearer <token>"
+
+# BFLA -- attempt admin action as regular user
+curl -s -X POST "http://<PUBLIC_IP>/restaurant/admin/users" \
+  -H "Authorization: Bearer <user_token>" \
+  -H "Content-Type: application/json"
+```
+
+## crAPI (OWASP Completely Ridiculous API)
+
+| | |
+|---|---|
+| **พอร์ต** | `8888` (เฉพาะ -- ไม่ใช้ path-prefix) |
+| **Images** | `crapi/crapi-web`, `crapi/crapi-identity`, `crapi/crapi-community`, `crapi/crapi-workshop`, PostgreSQL, MongoDB, MailHog |
+| **จำนวนอินสแตนซ์** | 7 microservices (อินสแตนซ์เดียวต่อตัว) |
+| **ทรัพยากร** | ~3.0 CPU / ~2.0 GiB RAM รวม |
+| **เฟรมเวิร์ก** | React SPA + Java/Go/Python microservices |
+| **โปรเจกต์** | [github.com/OWASP/crAPI](https://github.com/OWASP/crAPI) |
+
+crAPI เป็นโปรเจกต์หลักของ OWASP สำหรับการทดสอบความปลอดภัย API ทำงานเป็น 7 microservices บนพอร์ตเฉพาะ (8888) เนื่องจาก React SPA กำหนดเส้นทาง API ตายตัวและไม่สามารถให้บริการเบื้องหลัง path prefix ได้ NSG อนุญาตการรับส่งข้อมูลขาเข้าบนพอร์ต 8888
+
+MailHog จับอีเมลทั้งหมดที่ crAPI ส่ง (การยืนยันบัญชี, การรีเซ็ตรหัสผ่าน) เข้าถึง MailHog ผ่าน SSH tunnel บนพอร์ต 18025
+
+### หมวดหมู่ Challenge
+
+| หมวดหมู่ | ช่องโหว่ |
+|---|---|
+| BOLA (Broken Object Level Authorization) | เข้าถึงยานพาหนะ คำสั่งซื้อ และรายงานของผู้ใช้อื่น |
+| BFLA (Broken Function Level Authorization) | ยกระดับเป็น admin, เข้าถึง endpoints ที่ถูกจำกัด |
+| Mass Assignment | แก้ไขฟิลด์ที่ได้รับการป้องกัน (role, balance) ผ่าน API |
+| SSRF (Server Side Request Forgery) | จัดการการดึง URL ฝั่งเซิร์ฟเวอร์ |
+| JWT Manipulation | ปลอมแปลงหรือแก้ไข JWT tokens เพื่อยกระดับสิทธิ์ |
+| NoSQL Injection | ฉีด queries เข้า endpoints ที่ใช้ MongoDB |
+| Excessive Data Exposure | API ส่งคืนข้อมูลผู้ใช้ที่สำคัญ |
+
+### เริ่มต้นใช้งาน
+
+```bash
+# Verify crAPI is running
+curl -sf "http://<PUBLIC_IP>:8888" -o /dev/null -w "%{http_code}"
+
+# Sign up a new user
+curl -s -X POST "http://<PUBLIC_IP>:8888/identity/api/auth/signup" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test User","email":"test@example.com","number":"1234567890","password":"Test1234!"}'
+
+# Log in
+curl -s -X POST "http://<PUBLIC_IP>:8888/identity/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"Test1234!"}'
+
+# Access MailHog (via SSH tunnel for email verification)
+# ssh -L 18025:localhost:18025 azureuser@<PUBLIC_IP>
+# Then open http://localhost:18025 in your browser
+```
+
+### สถาปัตยกรรม crAPI
+
+```
+Port 8888 -> crapi-web (React SPA + nginx)
+             -> crapi-identity (Java, user auth, JWT)
+             -> crapi-community (Go, forums, posts)
+             -> crapi-workshop (Python, vehicle service)
+             -> crapi-postgres (PostgreSQL)
+             -> crapi-mongo (MongoDB)
+             -> crapi-mailhog (email capture, port 18025)
+```
+
+## ตารางครอบคลุมแอปพลิเคชัน
+
+| กรณีการใช้งานสาธิต | แอปหลัก | แอปรอง |
+|---|---|---|
+| WAF -- SQL Injection | DVWA | Juice Shop |
+| WAF -- XSS | DVWA | Juice Shop |
+| WAF -- Command Injection | DVWA | -- |
+| API Security -- BOLA | VAmPI | -- |
+| API Security -- Auth bypass | VAmPI | Juice Shop |
+| API Security -- Data exposure | VAmPI | httpbin |
+| Bot Defense -- Brute force | DVWA | Juice Shop |
+| Bot Defense -- Scraping | Juice Shop | -- |
+| Client-Side Defense -- DOM XSS | Juice Shop | -- |
+| Client-Side Defense -- Stored XSS | DVWA | Juice Shop |
+| Client-Side Defense -- Card Skimmer | CSD Demo | -- |
+| Client-Side Defense -- Formjacker | CSD Demo | -- |
+| Client-Side Defense -- Keylogger | CSD Demo | -- |
+| Client-Side Defense -- Cryptominer | CSD Demo | -- |
+| Client-Side Defense -- DOM Hijack | CSD Demo | -- |
+| API Security -- GraphQL injection | DVGA | -- |
+| API Security -- GraphQL DoS | DVGA | -- |
+| API Security -- OWASP API Top 10 2023 | RESTaurant | crAPI |
+| API Security -- BFLA | RESTaurant | crAPI |
+| API Security -- Mass assignment | crAPI | RESTaurant |
+| API Security -- SSRF | crAPI | RESTaurant |
+| API Security -- JWT manipulation | crAPI | -- |
+| API Security -- NoSQL injection | crAPI | -- |
+| การทดสอบการเชื่อมต่อพื้นฐาน | httpbin | -- |
+| การวินิจฉัยคำขอ | whoami | httpbin |
+| การตรวจสอบการฉีด header | whoami | -- |
