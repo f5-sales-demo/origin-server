@@ -1,0 +1,60 @@
+---
+title: 源服务器
+description: >-
+  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
+  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
+  WAF, API security, bot defense, and client-side defense testing with F5
+  Distributed Cloud
+template: splash
+sidebar:
+  hidden: true
+hero:
+  tagline: 在 Azure 中部署多应用源服务器，用于 F5 Distributed Cloud 的 WAF、API 安全、Bot 防御和客户端防御测试。
+  image:
+    html: '<div style="font-size:4rem;">&#128421;</div>'
+  actions:
+    - text: 开始使用
+      link: 01-architecture/
+      icon: right-arrow
+      variant: primary
+    - text: 立即部署
+      link: 03-deploy/
+      icon: rocket
+      variant: minimal
+i18n:
+  sourceHash: 659c78136774
+  translator: machine
+---
+
+import { CardGrid } from '@astrojs/starlight/components';
+import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
+
+## 提供的内容
+
+<CardGrid>
+  <LinkCard
+    title="多应用源服务器"
+    description="一台 Ubuntu 24.04 虚拟机（16 vCPU，64 GiB），运行 nginx 作为反向代理，代理 41 个 Docker 容器：Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant 和 crAPI。"
+    href="01-architecture/"
+  />
+  <LinkCard
+    title="Terraform 部署"
+    description="完整的 Azure 基础设施即代码：VNet、PIP、NSG 和 Standard_D16s_v3 虚拟机，配合 Docker + nginx cloud-init 配置。包含 60 GiB 磁盘、logrotate 和 journald 上限设置。"
+    href="03-deploy/"
+  />
+  <LinkCard
+    title="漏洞应用"
+    description="Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant 和 crAPI，涵盖 WAF、API 安全、Bot 防御、客户端防御、GraphQL 安全和请求诊断。"
+    href="04-applications/"
+  />
+  <LinkCard
+    title="F5 XC 集成"
+    description="作为 F5 XC HTTP 负载均衡器后端的源池成员使用，配合 WAF、Bot 防御和 API 安全功能。"
+    href="06-integrate/"
+  />
+  <LinkCard
+    title="API 测试指南"
+    description="全面的端点目录、漏洞映射和攻击载荷，涵盖 DVGA（GraphQL）、RESTaurant（OWASP 2023）和 crAPI（微服务）— 用于流量生成和 API 防护策略开发。"
+    href="08-api-testing-guide/"
+  />
+</CardGrid>

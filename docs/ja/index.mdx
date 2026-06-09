@@ -1,0 +1,62 @@
+---
+title: オリジンサーバー
+description: >-
+  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
+  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
+  WAF, API security, bot defense, and client-side defense testing with F5
+  Distributed Cloud
+template: splash
+sidebar:
+  hidden: true
+hero:
+  tagline: >-
+    F5 Distributed
+    Cloudを使用したWAF、APIセキュリティ、ボット防御、クライアントサイド防御テスト向けに、Azureでマルチアプリオリジンサーバーをデプロイします。
+  image:
+    html: '<div style="font-size:4rem;">&#128421;</div>'
+  actions:
+    - text: はじめに
+      link: 01-architecture/
+      icon: right-arrow
+      variant: primary
+    - text: 今すぐデプロイ
+      link: 03-deploy/
+      icon: rocket
+      variant: minimal
+i18n:
+  sourceHash: 659c78136774
+  translator: machine
+---
+
+import { CardGrid } from '@astrojs/starlight/components';
+import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
+
+## 提供される内容
+
+<CardGrid>
+  <LinkCard
+    title="マルチアプリオリジン"
+    description="1台のUbuntu 24.04 VM（16 vCPU、64 GiB）上でnginxをリバースプロキシとして実行し、41個のDockerコンテナ（Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant、crAPI）に接続します。"
+    href="01-architecture/"
+  />
+  <LinkCard
+    title="Terraformデプロイメント"
+    description="完全なAzureインフラストラクチャのコード化：VNet、PIP、NSG、およびDocker + nginx cloud-initプロビジョニングを備えたStandard_D16s_v3 VM。60 GiBディスク、logrotate、journaldの制限設定が含まれます。"
+    href="03-deploy/"
+  />
+  <LinkCard
+    title="脆弱なアプリケーション"
+    description="Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant、crAPIにより、WAF、APIセキュリティ、ボット防御、クライアントサイド防御、GraphQLセキュリティ、リクエスト診断をカバーします。"
+    href="04-applications/"
+  />
+  <LinkCard
+    title="F5 XC統合"
+    description="WAF、Bot Defense、API Securityを備えたF5 XC HTTPロードバランサー配下のオリジンプールメンバーとして使用します。"
+    href="06-integrate/"
+  />
+  <LinkCard
+    title="APIテストガイド"
+    description="DVGA（GraphQL）、RESTaurant（OWASP 2023）、crAPI（マイクロサービス）の包括的なエンドポイントカタログ、脆弱性マッピング、攻撃ペイロード — トラフィック生成およびAPI保護プロファイル開発向け。"
+    href="08-api-testing-guide/"
+  />
+</CardGrid>

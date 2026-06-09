@@ -1,0 +1,63 @@
+---
+title: เซิร์ฟเวอร์ต้นทาง
+description: >-
+  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
+  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
+  WAF, API security, bot defense, and client-side defense testing with F5
+  Distributed Cloud
+template: splash
+sidebar:
+  hidden: true
+hero:
+  tagline: >-
+    ปรับใช้เซิร์ฟเวอร์ต้นทางแบบหลายแอปพลิเคชันบน Azure สำหรับการทดสอบ WAF,
+    ความปลอดภัย API, การป้องกันบอท และการป้องกันฝั่งไคลเอ็นต์กับ F5 Distributed
+    Cloud
+  image:
+    html: '<div style="font-size:4rem;">&#128421;</div>'
+  actions:
+    - text: เริ่มต้นใช้งาน
+      link: 01-architecture/
+      icon: right-arrow
+      variant: primary
+    - text: ปรับใช้ทันที
+      link: 03-deploy/
+      icon: rocket
+      variant: minimal
+i18n:
+  sourceHash: 659c78136774
+  translator: machine
+---
+
+import { CardGrid } from '@astrojs/starlight/components';
+import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
+
+## สิ่งที่ระบบนี้มอบให้
+
+<CardGrid>
+  <LinkCard
+    title="ต้นทางแบบหลายแอปพลิเคชัน"
+    description="VM Ubuntu 24.04 หนึ่งเครื่อง (16 vCPU, 64 GiB) ที่รัน nginx เป็น reverse proxy ไปยัง Docker containers 41 ตัว: Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant และ crAPI"
+    href="01-architecture/"
+  />
+  <LinkCard
+    title="การปรับใช้ด้วย Terraform"
+    description="โครงสร้างพื้นฐาน Azure แบบ infrastructure as code ครบชุด: VNet, PIP, NSG และ VM ขนาด Standard_D16s_v3 พร้อมการจัดเตรียม Docker + nginx ผ่าน cloud-init รวม disk 60 GiB, logrotate และการจำกัด journald"
+    href="03-deploy/"
+  />
+  <LinkCard
+    title="แอปพลิเคชันที่มีช่องโหว่"
+    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant และ crAPI ครอบคลุม WAF, ความปลอดภัย API, การป้องกันบอท, การป้องกันฝั่งไคลเอ็นต์, ความปลอดภัย GraphQL และการวินิจฉัยคำขอ"
+    href="04-applications/"
+  />
+  <LinkCard
+    title="การเชื่อมต่อกับ F5 XC"
+    description="ใช้เป็นสมาชิก origin pool ที่อยู่เบื้องหลัง F5 XC HTTP load balancer พร้อม WAF, Bot Defense และ API Security"
+    href="06-integrate/"
+  />
+  <LinkCard
+    title="คู่มือการทดสอบ API"
+    description="แค็ตตาล็อก endpoint ที่ครอบคลุม, การแมปช่องโหว่ และ payload การโจมตีสำหรับ DVGA (GraphQL), RESTaurant (OWASP 2023) และ crAPI (microservices) — สำหรับการสร้างทราฟฟิกและการพัฒนาโปรไฟล์การป้องกัน API"
+    href="08-api-testing-guide/"
+  />
+</CardGrid>
