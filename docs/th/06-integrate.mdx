@@ -1,9 +1,9 @@
 ---
-title: Integrate
+title: บูรณาการ
 description: >-
-  Configure the VM as an F5 XC origin pool member with WAF, Bot Defense, API
-  Discovery, and Client-Side Defense policies; path-based routing through HTTP
-  load balancer; header injection verification via /whoami
+  กำหนดค่า VM เป็นสมาชิก origin pool ของ F5 XC พร้อมนโยบาย WAF, Bot Defense, API
+  Discovery และ Client-Side Defense; การกำหนดเส้นทางตามพาธผ่าน HTTP load
+  balancer; การตรวจสอบการแทรก header ผ่าน /whoami
 sidebar:
   order: 6
 i18n:
@@ -11,9 +11,9 @@ i18n:
   translator: machine
 ---
 
-## การผสานรวม F5 XC Origin Pool
+## การบูรณาการ F5 XC Origin Pool
 
-เซิร์ฟเวอร์ต้นทางนี้ถูกออกแบบมาเพื่อใช้เป็น **สมาชิก origin pool** ที่อยู่เบื้องหลัง F5 Distributed Cloud HTTP load balancer แพลตฟอร์ม F5 XC มีความสามารถด้าน WAF, Bot Defense, API Security และ Client-Side Defense อยู่ด้านหน้าของ origin นี้
+origin server นี้ได้รับการออกแบบมาเพื่อใช้เป็น**สมาชิก origin pool** ที่อยู่หลัง F5 Distributed Cloud HTTP load balancer แพลตฟอร์ม F5 XC ให้บริการ WAF, Bot Defense, API Security และ Client-Side Defense อยู่ด้านหน้าของ origin นี้
 
 ### สถาปัตยกรรม
 
@@ -23,14 +23,14 @@ End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker
 
 ### การกำหนดค่า Origin Pool
 
-สร้าง F5 XC origin pool โดยชี้ไปยัง public IP ของ VM นี้:
+สร้าง F5 XC origin pool ที่ชี้ไปยัง public IP ของ VM นี้:
 
 | การตั้งค่า | ค่า |
 |---|---|
-| **Origin Server Type** | Public IP of Origin Server |
+| **ประเภท Origin Server** | Public IP of Origin Server |
 | **IP Address** | `<terraform output public_ip>` |
-| **Port** | `80` |
-| **Health Check** | HTTP, path `/health` |
+| **พอร์ต** | `80` |
+| **Health Check** | HTTP, พาธ `/health` |
 
 ### การกำหนดค่า HTTP Load Balancer
 
@@ -38,31 +38,31 @@ End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker
 
 | การตั้งค่า | ค่า |
 |---|---|
-| **Domains** | โดเมนสาธิตของคุณ (เช่น `demo.example.com`) |
+| **โดเมน** | โดเมนสาธิตของคุณ (เช่น `demo.example.com`) |
 | **Origin Pool** | pool ที่สร้างไว้ข้างต้น |
 | **WAF** | แนบนโยบาย WAF ของคุณ |
 | **Bot Defense** | เปิดใช้งานตามต้องการ |
-| **API Discovery** | เปิดใช้งานสำหรับ VAmPI endpoints |
+| **API Discovery** | เปิดใช้งานสำหรับ endpoint ของ VAmPI |
 
-### การกำหนดเส้นทางตาม Path
+### การกำหนดเส้นทางตามพาธ
 
-แต่ละแอปพลิเคชันสามารถเข้าถึงได้ผ่าน path prefix ผ่าน load balancer:
+แต่ละแอปพลิเคชันสามารถเข้าถึงได้ผ่าน prefix ของพาธผ่าน load balancer:
 
-| F5 XC LB URL | Origin Path | แอปพลิเคชัน |
+| URL ของ F5 XC LB | พาธ Origin | แอปพลิเคชัน |
 |---|---|---|
-| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop (4 instances, cookie sticky) |
-| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA (4 instances + MariaDB, cookie sticky) |
-| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 instances, ip_hash sticky) |
-| `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin (4 instances, round-robin) |
-| `https://demo.example.com/whoami/` | `/whoami/` | Request diagnostics (4 instances) |
-| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo (4 instances, ip_hash sticky) |
-| `https://demo.example.com/dvga/` | `/dvga/` | DVGA (4 instances, ip_hash sticky) |
-| `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant (4 instances, round-robin) |
-| `https://demo.example.com/health` | `/health` | Health check (nginx direct) |
+| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop (4 อินสแตนซ์, cookie sticky) |
+| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA (4 อินสแตนซ์ + MariaDB, cookie sticky) |
+| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 อินสแตนซ์, ip_hash sticky) |
+| `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin (4 อินสแตนซ์, round-robin) |
+| `https://demo.example.com/whoami/` | `/whoami/` | การวินิจฉัยคำขอ (4 อินสแตนซ์) |
+| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo (4 อินสแตนซ์, ip_hash sticky) |
+| `https://demo.example.com/dvga/` | `/dvga/` | DVGA (4 อินสแตนซ์, ip_hash sticky) |
+| `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant (4 อินสแตนซ์, round-robin) |
+| `https://demo.example.com/health` | `/health` | Health check (nginx โดยตรง) |
 
 ### ตรวจสอบการแทรก Header ของ F5 XC
 
-ใช้ whoami endpoint เพื่อตรวจสอบว่า F5 XC แทรก header ใดบ้างในคำร้องขอที่ส่งไปยัง origin:
+ใช้ endpoint whoami เพื่อตรวจสอบว่า F5 XC แทรก header ใดบ้างในคำขอที่เข้าถึง origin:
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -70,43 +70,43 @@ LB_DOMAIN="demo.example.com"
 curl -sk "https://${LB_DOMAIN}/whoami/"
 ```
 
-มองหา header ที่ F5 XC แทรกเข้ามาในการตอบกลับเหล่านี้:
+มองหา header ที่ F5 XC แทรกเหล่านี้ในการตอบกลับ:
 
 | Header | ความหมาย |
 |---|---|
-| `X-Forwarded-For` | ห่วงโซ่ Client IP ผ่าน F5 XC |
-| `True-Client-IP` | Client IP ดั้งเดิม |
+| `X-Forwarded-For` | ห่วงโซ่ IP ของไคลเอนต์ผ่าน F5 XC |
+| `True-Client-IP` | IP ดั้งเดิมของไคลเอนต์ |
 | `X-Forwarded-Proto` | `https` หาก TLS สิ้นสุดที่ F5 XC |
-| `X-Volterra-Bot-Type` | การจำแนกประเภท Bot (เมื่อเปิดใช้งาน Bot Defense) |
-| `X-Request-ID` | ID การติดตามคำร้องขอของ F5 XC |
+| `X-Volterra-Bot-Type` | การจำแนกประเภทบอท (เมื่อเปิดใช้งาน Bot Defense) |
+| `X-Request-ID` | ID การติดตามคำขอของ F5 XC |
 
 ### การทดสอบ WAF ผ่าน F5 XC
 
-เมื่อแนบนโยบาย WAF กับ HTTP load balancer แล้ว ทดสอบด้วย payload การโจมตี:
+เมื่อแนบนโยบาย WAF กับ HTTP load balancer แล้ว ให้ทดสอบ payload การโจมตี:
 
 ```bash
 LB_DOMAIN="demo.example.com"
 
-# SQL Injection (should be blocked by WAF)
+# SQL Injection (ควรถูกบล็อกโดย WAF)
 curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/sqli/?id=%27+OR+1%3D1--&Submit=Submit"
 
-# XSS (should be blocked by WAF)
+# XSS (ควรถูกบล็อกโดย WAF)
 curl -sk "https://${LB_DOMAIN}/juice-shop/rest/products/search?q=<script>alert(1)</script>"
 
-# Command Injection (should be blocked by WAF)
+# Command Injection (ควรถูกบล็อกโดย WAF)
 curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/exec/" \
   -d "ip=127.0.0.1;cat+/etc/passwd&Submit=Submit"
 
-# Normal request (should pass through)
+# คำขอปกติ (ควรผ่านได้)
 curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
 ```
 
 ### การทดสอบ API Security
 
-เปิดใช้งาน API Discovery บน HTTP load balancer เพื่อทำแผนที่ API endpoints ของ VAmPI:
+เปิดใช้งาน API Discovery บน HTTP load balancer เพื่อจัดทำแผนที่ endpoint ของ VAmPI:
 
 ```bash
-# These requests build the API inventory in F5 XC
+# คำขอเหล่านี้จะสร้าง API inventory ใน F5 XC
 curl -sk "https://${LB_DOMAIN}/vampi/users/v1"
 curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/register" \
   -H "Content-Type: application/json" \
@@ -116,56 +116,56 @@ curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
   -d '{"username":"apitest","password":"test123"}'
 ```
 
-### การผสานรวม crAPI (พอร์ต 8888)
+### การบูรณาการ crAPI (พอร์ต 8888)
 
-crAPI ทำงานบนพอร์ตเฉพาะ (8888) เนื่องจากเป็น single-page application ที่กำหนด API paths แบบ hardcode ไว้และไม่สามารถให้บริการภายใต้ path prefix ได้ ในการผสานรวม crAPI กับ F5 XC:
+crAPI ทำงานบนพอร์ตเฉพาะ (8888) เนื่องจากเป็นแอปพลิเคชันแบบ single-page ที่ฝัง API path ไว้แบบตายตัวและไม่สามารถให้บริการหลัง path prefix ได้ สำหรับการบูรณาการ crAPI กับ F5 XC:
 
 | การตั้งค่า | ค่า |
 |---|---|
-| **Origin Server Type** | Public IP of Origin Server |
+| **ประเภท Origin Server** | Public IP of Origin Server |
 | **IP Address** | `<terraform output public_ip>` |
-| **Port** | `8888` |
-| **Health Check** | HTTP, path `/` |
+| **พอร์ต** | `8888` |
+| **Health Check** | HTTP, พาธ `/` |
 
-สร้าง **origin pool แยกต่างหาก** สำหรับ crAPI บนพอร์ต 8888 หรือเพิ่มสมาชิก origin pool ที่สองในพูลที่มีอยู่พร้อมพอร์ต 8888 และใช้ route rules เพื่อกำหนดทิศทางของทราฟฟิก:
+สร้าง **origin pool แยกต่างหาก** สำหรับ crAPI บนพอร์ต 8888 หรือเพิ่มสมาชิก origin pool ตัวที่สองในpool ที่มีอยู่ด้วยพอร์ต 8888 และใช้ route rule เพื่อนำทาง traffic:
 
 ```bash
-# Test crAPI through F5 XC (if configured)
+# ทดสอบ crAPI ผ่าน F5 XC (ถ้ากำหนดค่าแล้ว)
 curl -sk "https://${LB_DOMAIN}:8888/"
 
-# Or if using route rules on the same LB domain:
-# Configure an F5 XC route rule matching Host header or path prefix
-# to forward to the crAPI origin pool (port 8888)
+# หรือถ้าใช้ route rule บนโดเมน LB เดียวกัน:
+# กำหนดค่า F5 XC route rule ที่จับคู่ Host header หรือ path prefix
+# เพื่อส่งต่อไปยัง crAPI origin pool (พอร์ต 8888)
 ```
 
 :::note
-NSG บน origin VM อนุญาตทราฟฟิกขาเข้าบนพอร์ต 8888 ไม่จำเป็นต้องเปลี่ยนแปลงเครือข่าย Azure เพิ่มเติม
+NSG บน origin VM อนุญาต inbound traffic บนพอร์ต 8888 ไม่จำเป็นต้องเปลี่ยนแปลงเครือข่าย Azure เพิ่มเติม
 :::
 
 ### การรับรู้ Sticky Session
 
-เซิร์ฟเวอร์ต้นทางใช้ nginx sticky sessions ภายในเพื่อกำหนดเส้นทางแอปพลิเคชันที่มีสถานะไปยัง backend container ที่สอดคล้องกัน เมื่อกำหนดค่า F5 XC HTTP load balancer โปรดทราบ:
+origin server ใช้ nginx sticky session ภายในเพื่อกำหนดเส้นทางแอปพลิเคชันที่มีสถานะไปยัง backend container ที่สอดคล้องกัน เมื่อกำหนดค่า F5 XC HTTP load balancer ให้ทราบว่า:
 
 | แอปพลิเคชัน | วิธี Sticky | เหตุผล |
 |---|---|---|
 | Juice Shop | `hash $cookie_token` | สถานะ session ของ Node.js |
 | DVWA | `hash $cookie_PHPSESSID` | สถานะ session ของ PHP |
-| VAmPI | `ip_hash` | ฐานข้อมูล SQLite ต่อ instance |
-| CSD Demo | `ip_hash` | บันทึก exfil ใน memory ต่อ instance |
-| DVGA | `ip_hash` | ฐานข้อมูล SQLite ต่อ instance |
-| RESTaurant | Round-robin | ใช้ PostgreSQL backend ร่วมกัน |
-| crAPI | -- (พอร์ตเดียว 8888) | 7 microservices, PostgreSQL + MongoDB |
+| VAmPI | `ip_hash` | ฐานข้อมูล SQLite ต่ออินสแตนซ์ |
+| CSD Demo | `ip_hash` | บันทึก exfil ในหน่วยความจำต่ออินสแตนซ์ |
+| DVGA | `ip_hash` | ฐานข้อมูล SQLite ต่ออินสแตนซ์ |
+| RESTaurant | Round-robin | backend PostgreSQL ที่ใช้ร่วมกัน |
+| crAPI | -- (พอร์ตเดียว 8888) | 7 microservice, PostgreSQL + MongoDB |
 | httpbin | Round-robin | ไม่มีสถานะ |
 | whoami | Round-robin | ไม่มีสถานะ |
 
-F5 XC ไม่จำเป็นต้องจำลอง sticky sessions เหล่านี้ -- nginx บน origin VM จัดการการกำหนดเส้นทาง backend เอง F5 XC ควรถือว่า origin เป็น endpoint เดียว (public IP ของ VM บนพอร์ต 80)
+F5 XC ไม่จำเป็นต้องจำลอง sticky session เหล่านี้ -- nginx บน origin VM จัดการการกำหนดเส้นทาง backend F5 XC ควรปฏิบัติต่อ origin เป็น endpoint เดียว (public IP ของ VM บนพอร์ต 80)
 
-### สถาปัตยกรรมหลายองค์ประกอบ
+### สถาปัตยกรรมแบบหลายองค์ประกอบ
 
-เมื่อรวมกับ CDN Simulator สถาปัตยกรรมแล็บเต็มรูปแบบจะเป็น:
+เมื่อรวมกับ CDN Simulator สถาปัตยกรรมห้องปฏิบัติการเต็มรูปแบบจะเป็น:
 
 ```
 End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this component)
 ```
 
-CDN Simulator ใช้ F5 XC HTTP load balancer VIP เป็น origin ของมัน และ F5 XC load balancer ใช้เซิร์ฟเวอร์ต้นทางนี้เป็น backend สิ่งนี้สร้างสถาปัตยกรรมหลายชั้นที่สมจริงสำหรับการทดสอบอย่างครอบคลุม
+CDN Simulator ใช้ VIP ของ F5 XC HTTP load balancer เป็น origin และ F5 XC load balancer ใช้ origin server นี้เป็น backend สิ่งนี้สร้างสถาปัตยกรรมแบบหลายชั้นที่สมจริงสำหรับการทดสอบอย่างครอบคลุม

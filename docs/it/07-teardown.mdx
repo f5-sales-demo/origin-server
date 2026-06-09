@@ -1,9 +1,9 @@
 ---
-title: Teardown
+title: Smantellamento
 description: >-
-  terraform destroy to remove all Azure resources, verify cleanup with az CLI,
-  clean local state files, and remove associated F5 XC origin pool and HTTP load
-  balancer
+  terraform destroy per rimuovere tutte le risorse Azure, verificare la pulizia
+  con az CLI, eliminare i file di stato locali e rimuovere l'origin pool e
+  l'HTTP load balancer F5 XC associati
 sidebar:
   order: 7
 i18n:
@@ -23,7 +23,7 @@ terraform plan -destroy
 terraform destroy
 ```
 
-Terraform chiederà una conferma. Digitare `yes` per procedere.
+Terraform richiederà una conferma. Digitare `yes` per procedere.
 
 ## Verifica della pulizia
 
@@ -38,7 +38,7 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
 
 ## Pulizia dello stato locale
 
-Rimuovere lo stato di Terraform e i file memorizzati nella cache:
+Rimuovere lo stato Terraform e i file memorizzati nella cache:
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup

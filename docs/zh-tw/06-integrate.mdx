@@ -1,9 +1,8 @@
 ---
 title: 整合
 description: >-
-  Configure the VM as an F5 XC origin pool member with WAF, Bot Defense, API
-  Discovery, and Client-Side Defense policies; path-based routing through HTTP
-  load balancer; header injection verification via /whoami
+  將 VM 設定為 F5 XC 原始伺服器池成員，搭配 WAF、Bot Defense、API Discovery 及 Client-Side Defense
+  策略；透過 HTTP 負載平衡器進行基於路徑的路由；透過 /whoami 驗證標頭注入
 sidebar:
   order: 6
 i18n:
@@ -11,58 +10,58 @@ i18n:
   translator: machine
 ---
 
-## F5 XC Origin Pool 整合
+## F5 XC 原始伺服器池整合
 
-此 origin 伺服器設計為 F5 Distributed Cloud HTTP 負載均衡器後方的 **origin pool 成員**。F5 XC 平台在此 origin 前方提供 WAF、Bot Defense、API Security 和 Client-Side Defense。
+此原始伺服器設計為 F5 Distributed Cloud HTTP 負載平衡器後方的**原始伺服器池成員**。F5 XC 平台在此原始伺服器前方提供 WAF、Bot Defense、API Security 和 Client-Side Defense。
 
 ### 架構
 
 ```
-End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker apps)
+終端使用者 -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> 原始伺服器 VM (nginx -> Docker 應用程式)
 ```
 
-### Origin Pool 設定
+### 原始伺服器池設定
 
-建立一個 F5 XC origin pool，指向此 VM 的公有 IP：
+建立一個指向此 VM 公開 IP 的 F5 XC 原始伺服器池：
 
 | 設定 | 值 |
 |---|---|
-| **Origin Server 類型** | Origin Server 的公有 IP |
+| **原始伺服器類型** | 原始伺服器的公開 IP |
 | **IP 位址** | `<terraform output public_ip>` |
 | **連接埠** | `80` |
 | **健康檢查** | HTTP，路徑 `/health` |
 
-### HTTP 負載均衡器設定
+### HTTP 負載平衡器設定
 
-使用 origin pool 建立 HTTP 負載均衡器：
+使用原始伺服器池建立 HTTP 負載平衡器：
 
 | 設定 | 值 |
 |---|---|
-| **網域** | 您的示範網域（例如 `demo.example.com`） |
-| **Origin Pool** | 上方建立的 pool |
-| **WAF** | 附加您的 WAF 政策 |
-| **Bot Defense** | 依需要啟用 |
+| **網域** | 您的展示網域（例如 `demo.example.com`） |
+| **原始伺服器池** | 上方建立的伺服器池 |
+| **WAF** | 附加您的 WAF 策略 |
+| **Bot Defense** | 依需求啟用 |
 | **API Discovery** | 為 VAmPI 端點啟用 |
 
 ### 基於路徑的路由
 
-每個應用程式可透過負載均衡器的路徑前綴存取：
+每個應用程式可透過負載平衡器的路徑前綴存取：
 
-| F5 XC LB URL | Origin 路徑 | 應用程式 |
+| F5 XC LB URL | 原始路徑 | 應用程式 |
 |---|---|---|
-| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop（4 個實例，cookie sticky） |
-| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA（4 個實例 + MariaDB，cookie sticky） |
-| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI（4 個實例，ip_hash sticky） |
-| `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin（4 個實例，round-robin） |
+| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop（4 個實例，cookie 黏性） |
+| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA（4 個實例 + MariaDB，cookie 黏性） |
+| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI（4 個實例，ip_hash 黏性） |
+| `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin（4 個實例，輪詢） |
 | `https://demo.example.com/whoami/` | `/whoami/` | 請求診斷（4 個實例） |
-| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo（4 個實例，ip_hash sticky） |
-| `https://demo.example.com/dvga/` | `/dvga/` | DVGA（4 個實例，ip_hash sticky） |
-| `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant（4 個實例，round-robin） |
+| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo（4 個實例，ip_hash 黏性） |
+| `https://demo.example.com/dvga/` | `/dvga/` | DVGA（4 個實例，ip_hash 黏性） |
+| `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant（4 個實例，輪詢） |
 | `https://demo.example.com/health` | `/health` | 健康檢查（nginx 直接回應） |
 
 ### 驗證 F5 XC 標頭注入
 
-使用 whoami 端點來驗證 F5 XC 在到達 origin 的請求中注入了哪些標頭：
+使用 whoami 端點驗證 F5 XC 注入到達原始伺服器的請求中的標頭：
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -70,19 +69,19 @@ LB_DOMAIN="demo.example.com"
 curl -sk "https://${LB_DOMAIN}/whoami/"
 ```
 
-在回應中查找以下 F5 XC 注入的標頭：
+在回應中查找這些 F5 XC 注入的標頭：
 
 | 標頭 | 含義 |
 |---|---|
-| `X-Forwarded-For` | 通過 F5 XC 的用戶端 IP 鏈 |
+| `X-Forwarded-For` | 透過 F5 XC 的用戶端 IP 鏈 |
 | `True-Client-IP` | 原始用戶端 IP |
-| `X-Forwarded-Proto` | 如果 TLS 在 F5 XC 終止則為 `https` |
-| `X-Volterra-Bot-Type` | Bot 分類（啟用 Bot Defense 時） |
+| `X-Forwarded-Proto` | 若 TLS 在 F5 XC 終止則為 `https` |
+| `X-Volterra-Bot-Type` | 機器人分類（啟用 Bot Defense 時） |
 | `X-Request-ID` | F5 XC 請求追蹤 ID |
 
-### 透過 F5 XC 進行 WAF 測試
+### 透過 F5 XC 測試 WAF
 
-在 HTTP 負載均衡器附加 WAF 政策後，測試攻擊負載：
+在 HTTP 負載平衡器上附加 WAF 策略後，測試攻擊負載：
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -103,7 +102,7 @@ curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
 
 ### API 安全測試
 
-在 HTTP 負載均衡器上啟用 API Discovery，以映射 VAmPI 的 API 端點：
+在 HTTP 負載平衡器上啟用 API Discovery 以映射 VAmPI 的 API 端點：
 
 ```bash
 # These requests build the API inventory in F5 XC
@@ -118,16 +117,16 @@ curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
 
 ### crAPI 整合（連接埠 8888）
 
-crAPI 在專用連接埠（8888）上運行，因為它是一個單頁應用程式，其 API 路徑為硬編碼，無法在路徑前綴後方提供服務。要將 crAPI 與 F5 XC 整合：
+crAPI 運行在專用連接埠（8888）上，因為它是一個單頁應用程式，硬編碼了其 API 路徑，無法在路徑前綴後方提供服務。若要將 crAPI 與 F5 XC 整合：
 
 | 設定 | 值 |
 |---|---|
-| **Origin Server 類型** | Origin Server 的公有 IP |
+| **原始伺服器類型** | 原始伺服器的公開 IP |
 | **IP 位址** | `<terraform output public_ip>` |
 | **連接埠** | `8888` |
 | **健康檢查** | HTTP，路徑 `/` |
 
-為 crAPI 在連接埠 8888 上建立一個**獨立的 origin pool**，或將第二個 origin pool 成員以連接埠 8888 加入現有 pool，並使用路由規則導向流量：
+為 crAPI 在連接埠 8888 上建立**獨立的原始伺服器池**，或在現有伺服器池中新增連接埠 8888 的第二個原始伺服器池成員，並使用路由規則導向流量：
 
 ```bash
 # Test crAPI through F5 XC (if configured)
@@ -139,33 +138,33 @@ curl -sk "https://${LB_DOMAIN}:8888/"
 ```
 
 :::note
-Origin VM 上的 NSG 允許連接埠 8888 的入站流量。無需額外的 Azure 網路變更。
+原始 VM 上的 NSG 允許連接埠 8888 的入站流量。無需額外的 Azure 網路變更。
 :::
 
-### Sticky Session 注意事項
+### 黏性工作階段注意事項
 
-Origin 伺服器在內部使用 nginx sticky session，將有狀態的應用程式路由到一致的後端容器。設定 F5 XC HTTP 負載均衡器時，請注意：
+原始伺服器內部使用 nginx 黏性工作階段，將具狀態的應用程式路由到一致的後端容器。設定 F5 XC HTTP 負載平衡器時，請注意以下事項：
 
-| 應用程式 | Sticky 方法 | 原因 |
+| 應用程式 | 黏性方法 | 原因 |
 |---|---|---|
-| Juice Shop | `hash $cookie_token` | Node.js session 狀態 |
-| DVWA | `hash $cookie_PHPSESSID` | PHP session 狀態 |
+| Juice Shop | `hash $cookie_token` | Node.js 工作階段狀態 |
+| DVWA | `hash $cookie_PHPSESSID` | PHP 工作階段狀態 |
 | VAmPI | `ip_hash` | 每個實例的 SQLite 資料庫 |
-| CSD Demo | `ip_hash` | 每個實例的記憶體內 exfil 日誌 |
+| CSD Demo | `ip_hash` | 每個實例的記憶體內滲出日誌 |
 | DVGA | `ip_hash` | 每個實例的 SQLite 資料庫 |
-| RESTaurant | Round-robin | 共用 PostgreSQL 後端 |
+| RESTaurant | 輪詢 | 共享 PostgreSQL 後端 |
 | crAPI | --（單一連接埠 8888） | 7 個微服務，PostgreSQL + MongoDB |
-| httpbin | Round-robin | 無狀態 |
-| whoami | Round-robin | 無狀態 |
+| httpbin | 輪詢 | 無狀態 |
+| whoami | 輪詢 | 無狀態 |
 
-F5 XC 不需要複製這些 sticky session — origin VM 上的 nginx 會處理後端路由。F5 XC 應將 origin 視為單一端點（VM 的公有 IP，連接埠 80）。
+F5 XC 不需要複製這些黏性工作階段——原始 VM 上的 nginx 會處理後端路由。F5 XC 應將原始伺服器視為單一端點（VM 的公開 IP，連接埠 80）。
 
 ### 多元件架構
 
-與 CDN Simulator 結合後，完整的實驗環境架構為：
+與 CDN 模擬器結合時，完整的實驗室架構為：
 
 ```
-End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this component)
+終端使用者 -> CDN 模擬器（nginx 快取）-> F5 XC HTTP LB -> 原始伺服器（本元件）
 ```
 
-CDN Simulator 使用 F5 XC HTTP 負載均衡器 VIP 作為其 origin，而 F5 XC 負載均衡器使用此 origin 伺服器作為其後端。這建立了一個真實的多層架構，用於全面性的測試。
+CDN 模擬器使用 F5 XC HTTP 負載平衡器 VIP 作為其原始伺服器，而 F5 XC 負載平衡器使用此原始伺服器作為其後端。這建立了一個真實的多層架構，用於全面測試。

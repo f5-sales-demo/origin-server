@@ -14,7 +14,7 @@ i18n:
 
 ### Suscripción de Azure
 
-Una suscripción activa de Azure con permisos para crear:
+Una suscripción de Azure activa con permisos para crear:
 
 - Grupos de recursos
 - Redes virtuales y subredes
@@ -52,7 +52,7 @@ sudo apt update && sudo apt install terraform
 
 ### Permisos de Azure AD
 
-Su cuenta de Azure AD debe tener permisos `User.Read`. El identificador del desplegador (utilizado en la nomenclatura de recursos) se deriva automáticamente de su perfil de Azure AD. Para autenticación con entidad de servicio o identidad administrada, establezca la variable de Terraform `deployer` explícitamente.
+Su cuenta de Azure AD debe tener permisos `User.Read`. El identificador del desplegador (utilizado en la nomenclatura de recursos) se deriva automáticamente de su perfil de Azure AD. Para autenticación mediante entidad de servicio o identidad administrada, establezca la variable de Terraform `deployer` de forma explícita.
 
 ### Par de claves SSH
 
@@ -71,12 +71,12 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 | Disco del SO | 60 GiB Premium SSD |
 | VNet + NSG | Predeterminado |
 
-Consulte la [calculadora de precios de Azure](https://azure.microsoft.com/en-us/pricing/calculator/) para conocer los costos actuales. Use `terraform destroy` cuando el laboratorio no esté en uso para detener los cargos. Consulte [Desmontaje](../07-teardown/) para el procedimiento.
+Consulte la [calculadora de precios de Azure](https://azure.microsoft.com/en-us/pricing/calculator/) para conocer los costos actuales. Use `terraform destroy` cuando el laboratorio no esté en uso para detener los cargos. Consulte [Desmantelamiento](../07-teardown/) para el procedimiento.
 
 :::note
-Standard_D16s_v3 (64 GiB RAM) es requerido para el despliegue de 41 contenedores. Asignación de memoria de contenedores: 4 instancias de Juice Shop a 1 GiB cada una (4 GiB), 4 VAmPI a 512 MiB cada una (2 GiB), 4 DVWA-FPM + MariaDB (1.8 GiB), 4 httpbin a 256 MiB (1 GiB), 4 CSD Demo a 256 MiB (1 GiB), 4 whoami a 64 MiB (256 MiB), 4 DVGA a 256 MiB cada una (1 GiB), 4 RESTaurant + PostgreSQL (1.5 GiB), crAPI 7 microservicios (2 GiB), más nginx, SO y caché de búfer. La asignación total de contenedores es aproximadamente 14.5 GiB (22.7% de 64 GiB).
+Standard_D16s_v3 (64 GiB RAM) es necesario para el despliegue de 41 contenedores. Asignación de memoria de contenedores: 4 instancias de Juice Shop a 1 GiB cada una (4 GiB), 4 VAmPI a 512 MiB cada una (2 GiB), 4 DVWA-FPM + MariaDB (1.8 GiB), 4 httpbin a 256 MiB (1 GiB), 4 CSD Demo a 256 MiB (1 GiB), 4 whoami a 64 MiB (256 MiB), 4 DVGA a 256 MiB cada una (1 GiB), 4 RESTaurant + PostgreSQL (1.5 GiB), crAPI 7 microservicios (2 GiB), más nginx, SO y caché de búfer. La asignación total de contenedores es aproximadamente 14.5 GiB (22.7% de 64 GiB).
 :::
 
 :::note
-El NSG permite tráfico entrante en los puertos 80 (HTTP) y 8888 (crAPI). El puerto 8888 es necesario porque crAPI es una aplicación de página única que tiene codificadas sus rutas de API y no puede servirse detrás de un prefijo de ruta.
+El NSG permite tráfico entrante en los puertos 80 (HTTP) y 8888 (crAPI). El puerto 8888 es necesario porque crAPI es una aplicación de página única que tiene rutas de API codificadas de forma fija y no puede servirse detrás de un prefijo de ruta.
 :::
