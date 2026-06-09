@@ -1,8 +1,8 @@
 ---
 title: 검증
 description: >-
-  9개 애플리케이션 엔드포인트 전체에 대한 curl 스모크 테스트, Docker 컨테이너 상태 확인, nginx 상태 검증,
-  cloud-init 로그 점검, 일반적인 문제 해결 단계
+  9개 애플리케이션 엔드포인트에 대한 curl 스모크 테스트, Docker 컨테이너 헬스 체크, nginx 상태 확인, cloud-init
+  로그 검사, 일반적인 문제 해결 단계
 sidebar:
   order: 5
 i18n:
@@ -12,7 +12,7 @@ i18n:
 
 ## 스모크 테스트
 
-cloud-init이 완료될 때까지 5~10분을 기다린 후 다음 확인을 수행하십시오.
+cloud-init이 완료될 때까지 5~10분을 기다린 후 이 검사를 실행하십시오.
 
 ### 헬스 엔드포인트
 
@@ -63,17 +63,17 @@ curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{ht
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-모두 `200`을 반환해야 합니다(DVWA는 로그인 페이지로의 `302` 리다이렉트를 반환합니다).
+모두 `200`을 반환해야 합니다(DVWA는 로그인 페이지로 `302` 리디렉션을 반환합니다).
 
-### 자동화된 스모크 테스트
+### 자동 스모크 테스트
 
-리포지토리에 39개 항목의 스모크 테스트 스위트가 포함되어 있습니다:
+리포지토리에는 39개 항목의 스모크 테스트 스위트가 포함되어 있습니다:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-이 테스트는 9개 애플리케이션 전체, 헬스 엔드포인트, VAmPI 등록/로그인, CSD Demo exfil 왕복 테스트, DVGA GraphQL, RESTaurant Swagger, 포트 8888의 crAPI, nginx gzip, 버전 숨김을 검증합니다.
+이 테스트는 9개 애플리케이션 전체, 헬스 엔드포인트, VAmPI 등록/로그인, CSD Demo 데이터 유출 왕복 테스트, DVGA GraphQL, RESTaurant Swagger, 포트 8888의 crAPI, nginx gzip, 버전 숨김 기능을 검증합니다.
 
 ### Docker 컨테이너 상태
 
@@ -138,7 +138,7 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ## 문제 해결
 
-### Cloud-init이 아직 실행 중인 경우
+### cloud-init이 아직 실행 중인 경우
 
 엔드포인트가 502 또는 연결 거부를 반환하는 경우 cloud-init이 아직 프로비저닝 중일 수 있습니다:
 
@@ -150,7 +150,7 @@ ssh azureuser@${ORIGIN_IP} "cloud-init status"
 - `status: done` -- 프로비저닝 완료, Docker 컨테이너를 확인하십시오
 - `status: error` -- 아래의 로그를 확인하십시오
 
-### Cloud-init 로그
+### cloud-init 로그
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
@@ -172,7 +172,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 
 ### nginx가 502를 반환하는 경우
 
-업스트림 컨테이너가 준비되지 않았거나 크래시된 상태입니다:
+업스트림 컨테이너가 준비되지 않았거나 충돌한 상태입니다:
 
 ```bash
 # Check nginx error log
@@ -187,7 +187,7 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### 디스크 공간
 
-Docker 이미지는 약 4.7 GiB를 사용합니다. CDN 부하 테스트 중 디스크 고갈을 방지하기 위해 접근 로깅은 비활성화되어 있습니다. Logrotate는 심층 방어 차원에서 설정되어 있습니다(500 MiB 제한). 디스크 사용량을 확인하십시오:
+Docker 이미지는 약 4.7 GiB를 사용합니다. CDN 부하 테스트 시 디스크 고갈을 방지하기 위해 액세스 로깅이 비활성화되어 있습니다. 심층 방어 차원에서 logrotate가 구성되어 있습니다(500 MiB 상한). 디스크 사용량을 확인하십시오:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -195,7 +195,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### 컨테이너 메모리
 
-메모리 제한에 근접한 컨테이너가 있는지 확인합니다(OOM 위험):
+메모리 제한에 근접한 컨테이너(OOM 위험)가 있는지 확인합니다:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
@@ -203,7 +203,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Nam
 
 ### 전체 재시작
 
-필요한 경우 모든 서비스를 재빌드하고 재시작합니다:
+필요한 경우 모든 서비스를 다시 빌드하고 재시작합니다:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"

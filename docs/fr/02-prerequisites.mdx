@@ -17,14 +17,14 @@ i18n:
 Un abonnement Azure actif avec les permissions pour créer :
 
 - Des groupes de ressources
-- Des réseaux virtuels et sous-réseaux
+- Des réseaux virtuels et des sous-réseaux
 - Des groupes de sécurité réseau
 - Des adresses IP publiques
-- Des machines virtuelles (Standard_D16s_v3 -- 16 vCPU, 64 Gio RAM pour des charges de travail de 41 conteneurs)
+- Des machines virtuelles (Standard_D16s_v3 -- 16 vCPU, 64 Gio RAM pour les charges de travail de 41 conteneurs)
 
 ### Azure CLI
 
-Installez et authentifiez l'Azure CLI :
+Installez et authentifiez Azure CLI :
 
 ```bash
 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
@@ -71,7 +71,7 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 | Disque OS | 60 Gio SSD Premium |
 | VNet + NSG | Par défaut |
 
-Consultez le [calculateur de prix Azure](https://azure.microsoft.com/en-us/pricing/calculator/) pour les coûts actuels. Utilisez `terraform destroy` lorsque le laboratoire n'est pas utilisé pour arrêter les frais. Consultez [Démontage](../07-teardown/) pour la procédure.
+Consultez le [calculateur de tarification Azure](https://azure.microsoft.com/en-us/pricing/calculator/) pour les coûts actuels. Utilisez `terraform destroy` lorsque le lab n'est pas utilisé pour arrêter les frais. Voir [Démontage](../07-teardown/) pour la procédure.
 
 :::note
 Standard_D16s_v3 (64 Gio RAM) est requis pour le déploiement de 41 conteneurs. Allocation mémoire des conteneurs : 4 instances Juice Shop à 1 Gio chacune (4 Gio), 4 VAmPI à 512 Mio chacune (2 Gio), 4 DVWA-FPM + MariaDB (1,8 Gio), 4 httpbin à 256 Mio (1 Gio), 4 CSD Demo à 256 Mio (1 Gio), 4 whoami à 64 Mio (256 Mio), 4 DVGA à 256 Mio chacune (1 Gio), 4 RESTaurant + PostgreSQL (1,5 Gio), crAPI 7 microservices (2 Gio), plus nginx, OS et cache tampon. L'allocation totale des conteneurs est d'environ 14,5 Gio (22,7 % de 64 Gio).

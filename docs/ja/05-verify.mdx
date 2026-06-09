@@ -1,7 +1,7 @@
 ---
 title: 検証
 description: >-
-  9つのアプリケーションエンドポイントすべてに対するcurlスモークテスト、Dockerコンテナのヘルスチェック、nginxステータスの確認、cloud-initログの調査、および一般的なトラブルシューティング手順
+  9つのアプリケーションエンドポイントすべてに対するcurlスモークテスト、Dockerコンテナのヘルスチェック、nginxステータスの検証、cloud-initログの確認、および一般的なトラブルシューティング手順
 sidebar:
   order: 5
 i18n:
@@ -11,7 +11,7 @@ i18n:
 
 ## スモークテスト
 
-cloud-initが完了するまで5〜10分待ってから、これらのチェックを実行してください。
+cloud-initの完了まで5〜10分待ってから、以下のチェックを実行してください。
 
 ### ヘルスエンドポイント
 
@@ -72,11 +72,11 @@ curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-これにより、9つのアプリケーションすべて、ヘルスエンドポイント、VAmPIの登録/ログイン、CSD Demoのデータ持ち出しラウンドトリップ、DVGA GraphQL、RESTaurant Swagger、ポート8888のcrAPI、nginx gzip、およびバージョン非表示が検証されます。
+これにより、9つのアプリケーションすべて、ヘルスエンドポイント、VAmPIの登録/ログイン、CSD Demoのデータ流出ラウンドトリップ、DVGA GraphQL、RESTaurant Swagger、ポート8888のcrAPI、nginx gzip、およびバージョン非表示が検証されます。
 
 ### Dockerコンテナのステータス
 
-VMにSSHで接続し、41個のコンテナすべてが実行中であることを確認します:
+VMにSSH接続し、41個すべてのコンテナが実行中であることを確認します:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
@@ -129,7 +129,7 @@ whoami-3           Up X minutes   127.0.0.1:8084->80/tcp
 whoami-4           Up X minutes   127.0.0.1:8085->80/tcp
 ```
 
-### nginxステータス
+### nginxのステータス
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pager"
@@ -149,7 +149,7 @@ ssh azureuser@${ORIGIN_IP} "cloud-init status"
 - `status: done` -- プロビジョニング完了です。Dockerコンテナを確認してください
 - `status: error` -- 以下のログを確認してください
 
-### cloud-initログ
+### cloud-initのログ
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
@@ -171,7 +171,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 
 ### nginxが502を返す
 
-アップストリームコンテナが準備できていないか、クラッシュしています:
+アップストリームのコンテナが準備できていないか、クラッシュしています:
 
 ```bash
 # Check nginx error log
@@ -186,15 +186,15 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### ディスク容量
 
-Dockerイメージは約4.7 GiBを消費します。CDN負荷テスト時のディスク枯渇を防ぐため、アクセスログは無効化されています。多層防御としてlogrotateが設定されています（500 MiB上限）。ディスク使用量を確認してください:
+Dockerイメージは約4.7 GiBを消費します。CDN負荷テスト時のディスク枯渇を防ぐため、アクセスログは無効になっています。多層防御としてlogrotateが設定されています（500 MiB上限）。ディスク使用量を確認してください:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 ```
 
-### コンテナメモリ
+### コンテナのメモリ
 
-メモリ制限に近づいているコンテナを確認します（OOMリスク）:
+メモリ上限に近づいているコンテナがないか確認します（OOMリスク）:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"

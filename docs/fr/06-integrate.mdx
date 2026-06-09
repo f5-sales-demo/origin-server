@@ -1,7 +1,7 @@
 ---
-title: Intégration
+title: Intégrer
 description: >-
-  Configurer la VM en tant que membre du pool d'origines F5 XC avec les
+  Configurer la VM en tant que membre du pool d'origine F5 XC avec des
   politiques WAF, Bot Defense, API Discovery et Client-Side Defense ; routage
   basé sur les chemins via un équilibreur de charge HTTP ; vérification de
   l'injection d'en-têtes via /whoami
@@ -12,19 +12,19 @@ i18n:
   translator: machine
 ---
 
-## Intégration du pool d'origines F5 XC
+## Intégration du pool d'origine F5 XC
 
-Ce serveur d'origine est conçu pour être utilisé comme **membre d'un pool d'origines** derrière un équilibreur de charge HTTP F5 Distributed Cloud. La plateforme F5 XC fournit le WAF, Bot Defense, API Security et Client-Side Defense en amont de cette origine.
+Ce serveur d'origine est conçu pour être utilisé comme **membre d'un pool d'origine** derrière un équilibreur de charge HTTP F5 Distributed Cloud. La plateforme F5 XC fournit le WAF, la défense contre les bots, la sécurité des API et la défense côté client en amont de cette origine.
 
 ### Architecture
 
 ```
-Utilisateur final -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> VM serveur d'origine (nginx -> applications Docker)
+Utilisateur final -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> VM Serveur d'origine (nginx -> Applications Docker)
 ```
 
-### Configuration du pool d'origines
+### Configuration du pool d'origine
 
-Créez un pool d'origines F5 XC pointant vers l'IP publique de cette VM :
+Créez un pool d'origine F5 XC pointant vers l'IP publique de cette VM :
 
 | Paramètre | Valeur |
 |---|---|
@@ -35,15 +35,15 @@ Créez un pool d'origines F5 XC pointant vers l'IP publique de cette VM :
 
 ### Configuration de l'équilibreur de charge HTTP
 
-Créez un équilibreur de charge HTTP avec le pool d'origines :
+Créez un équilibreur de charge HTTP avec le pool d'origine :
 
 | Paramètre | Valeur |
 |---|---|
-| **Domaines** | Votre domaine de démonstration (par ex., `demo.example.com`) |
-| **Pool d'origines** | Le pool créé ci-dessus |
+| **Domaines** | Votre domaine de démonstration (ex. : `demo.example.com`) |
+| **Pool d'origine** | Le pool créé ci-dessus |
 | **WAF** | Attachez votre politique WAF |
-| **Bot Defense** | Activez selon les besoins |
-| **API Discovery** | Activez pour les endpoints VAmPI |
+| **Défense contre les bots** | Activez selon les besoins |
+| **Découverte d'API** | Activez pour les points de terminaison VAmPI |
 
 ### Routage basé sur les chemins
 
@@ -51,19 +51,19 @@ Chaque application est accessible via son préfixe de chemin à travers l'équil
 
 | URL du LB F5 XC | Chemin d'origine | Application |
 |---|---|---|
-| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop (4 instances, affinité par cookie) |
-| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA (4 instances + MariaDB, affinité par cookie) |
-| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 instances, affinité ip_hash) |
+| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop (4 instances, persistance par cookie) |
+| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA (4 instances + MariaDB, persistance par cookie) |
+| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 instances, persistance ip_hash) |
 | `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin (4 instances, round-robin) |
 | `https://demo.example.com/whoami/` | `/whoami/` | Diagnostics de requêtes (4 instances) |
-| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo (4 instances, affinité ip_hash) |
-| `https://demo.example.com/dvga/` | `/dvga/` | DVGA (4 instances, affinité ip_hash) |
+| `https://demo.example.com/csd-demo/` | `/csd-demo/` | Démo CSD (4 instances, persistance ip_hash) |
+| `https://demo.example.com/dvga/` | `/dvga/` | DVGA (4 instances, persistance ip_hash) |
 | `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant (4 instances, round-robin) |
 | `https://demo.example.com/health` | `/health` | Vérification de santé (nginx direct) |
 
 ### Vérifier l'injection d'en-têtes F5 XC
 
-Utilisez l'endpoint whoami pour vérifier quels en-têtes F5 XC injecte dans les requêtes atteignant l'origine :
+Utilisez le point de terminaison whoami pour vérifier quels en-têtes F5 XC injecte dans les requêtes atteignant l'origine :
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -76,14 +76,14 @@ Recherchez ces en-têtes injectés par F5 XC dans la réponse :
 | En-tête | Signification |
 |---|---|
 | `X-Forwarded-For` | Chaîne d'IP client à travers F5 XC |
-| `True-Client-IP` | IP client d'origine |
-| `X-Forwarded-Proto` | `https` si la terminaison TLS se fait au niveau de F5 XC |
-| `X-Volterra-Bot-Type` | Classification du bot (lorsque Bot Defense est activé) |
-| `X-Request-ID` | ID de suivi de requête F5 XC |
+| `True-Client-IP` | IP originale du client |
+| `X-Forwarded-Proto` | `https` si le TLS se termine au niveau de F5 XC |
+| `X-Volterra-Bot-Type` | Classification du bot (lorsque la défense contre les bots est activée) |
+| `X-Request-ID` | Identifiant de suivi de requête F5 XC |
 
-### Test du WAF via F5 XC
+### Test du WAF à travers F5 XC
 
-Avec une politique WAF attachée à l'équilibreur de charge HTTP, testez les charges utiles d'attaque :
+Avec une politique WAF attachée à l'équilibreur de charge HTTP, testez les charges d'attaque :
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -104,7 +104,7 @@ curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
 
 ### Test de la sécurité des API
 
-Activez API Discovery sur l'équilibreur de charge HTTP pour cartographier les endpoints de l'API VAmPI :
+Activez la découverte d'API sur l'équilibreur de charge HTTP pour cartographier les points de terminaison de l'API VAmPI :
 
 ```bash
 # These requests build the API inventory in F5 XC
@@ -119,7 +119,7 @@ curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
 
 ### Intégration de crAPI (port 8888)
 
-crAPI fonctionne sur un port dédié (8888) car c'est une application monopage qui code en dur ses chemins d'API et ne peut pas être servie derrière un préfixe de chemin. Pour intégrer crAPI avec F5 XC :
+crAPI s'exécute sur un port dédié (8888) car il s'agit d'une application monopage qui code en dur ses chemins d'API et ne peut pas être servie derrière un préfixe de chemin. Pour intégrer crAPI avec F5 XC :
 
 | Paramètre | Valeur |
 |---|---|
@@ -128,7 +128,7 @@ crAPI fonctionne sur un port dédié (8888) car c'est une application monopage q
 | **Port** | `8888` |
 | **Vérification de santé** | HTTP, chemin `/` |
 
-Créez un **pool d'origines séparé** pour crAPI sur le port 8888, ou ajoutez un second membre au pool d'origines existant avec le port 8888 et utilisez des règles de routage pour diriger le trafic :
+Créez un **pool d'origine séparé** pour crAPI sur le port 8888, ou ajoutez un second membre au pool d'origine existant avec le port 8888 et utilisez des règles de routage pour diriger le trafic :
 
 ```bash
 # Test crAPI through F5 XC (if configured)
@@ -143,16 +143,16 @@ curl -sk "https://${LB_DOMAIN}:8888/"
 Le NSG sur la VM d'origine autorise le trafic entrant sur le port 8888. Aucune modification réseau Azure supplémentaire n'est nécessaire.
 :::
 
-### Prise en compte des sessions persistantes
+### Conscience des sessions persistantes
 
-Le serveur d'origine utilise des sessions persistantes nginx en interne pour router les applications à état vers des conteneurs backend cohérents. Lors de la configuration de l'équilibreur de charge HTTP F5 XC, tenez compte de ce qui suit :
+Le serveur d'origine utilise des sessions persistantes nginx en interne pour router les applications avec état vers des conteneurs backend cohérents. Lors de la configuration de l'équilibreur de charge HTTP F5 XC, soyez conscient de ce qui suit :
 
 | Application | Méthode de persistance | Raison |
 |---|---|---|
 | Juice Shop | `hash $cookie_token` | État de session Node.js |
 | DVWA | `hash $cookie_PHPSESSID` | État de session PHP |
 | VAmPI | `ip_hash` | Base de données SQLite par instance |
-| CSD Demo | `ip_hash` | Journal d'exfiltration en mémoire par instance |
+| Démo CSD | `ip_hash` | Journal d'exfiltration en mémoire par instance |
 | DVGA | `ip_hash` | Base de données SQLite par instance |
 | RESTaurant | Round-robin | Backend PostgreSQL partagé |
 | crAPI | -- (port unique 8888) | 7 microservices, PostgreSQL + MongoDB |

@@ -1,8 +1,8 @@
 ---
 title: 架构
 description: >-
-  在 Standard_D16s_v3 (16 vCPU, 64 GiB) 上部署 41 个容器：nginx 反向代理配置
-  reuseport、粘性会话和代理缓存，将流量路由到 Juice Shop、DVWA-FPM、VAmPI、httpbin、whoami、CSD
+  在 Standard_D16s_v3（16 vCPU，64 GiB）上部署 41 个容器：nginx 反向代理配置
+  reuseport、粘性会话和代理缓存，路由到 Juice Shop、DVWA-FPM、VAmPI、httpbin、whoami、CSD
   Demo、DVGA、RESTaurant 和 crAPI 的负载均衡实例，运行于 Ubuntu 24.04
 sidebar:
   order: 1
@@ -13,7 +13,7 @@ i18n:
 
 ## 用途
 
-此组件提供一个托管多个存在漏洞的 Web 应用程序的单一源服务器，用于安全测试演示。它代表典型负载均衡器架构中的"源站"——即 F5 XC HTTP 负载均衡器所保护的后端内容服务器。
+此组件提供一个托管多个漏洞 Web 应用程序的单一源服务器，用于安全测试演示。它代表典型负载均衡器架构中的"源站"——即 F5 XC HTTP 负载均衡器所保护的后端内容服务器。
 
 在生产架构中：
 
@@ -21,7 +21,7 @@ i18n:
 终端用户 -> F5 XC HTTP LB (WAF/Bot/API 安全) -> 源服务器 -> 应用程序
 ```
 
-此组件用一台专门构建的虚拟机替代真实的生产应用服务器，该虚拟机运行知名的漏洞应用程序，能够触发 WAF 规则、API 安全策略和 Bot 检测。
+此组件使用一个专门构建的虚拟机替代真实的生产应用服务器，运行众所周知的漏洞应用程序来触发 WAF 规则、API 安全策略和 Bot 检测。
 
 ## 架构
 
@@ -43,29 +43,29 @@ graph LR
     REST --> RESTDB[(PostgreSQL 15.4<br/>restaurant-db)]
 ```
 
-在 Standard_D16s_v3 虚拟机（16 vCPU、64 GiB RAM、60 GiB 磁盘）上运行 **41 个容器**。
+在 Standard_D16s_v3 虚拟机（16 vCPU，64 GiB RAM，60 GiB 磁盘）上运行 **41 个容器**。
 
 nginx 反向代理：
 
-- **监听 80 端口**，配置 `reuseport` 和 `backlog=4096`，以支持高并发 CDN 流量
+- **监听 80 端口**，配置 `reuseport` 和 `backlog=4096` 以支持高并发 CDN 流量
 - **按路径前缀路由**到负载均衡的上游池（每个应用 4 个实例）
 - **粘性会话**防止状态丢失：Juice Shop 使用 `hash $cookie_token`，DVWA 使用 `hash $cookie_PHPSESSID`，VAmPI 和 CSD Demo 使用 `ip_hash`（每个实例的 SQLite/内存状态）
-- **代理缓存**用于 Juice Shop 静态资源（10 MB 区域，100 MB 最大容量，60 秒 TTL）
-- **禁用访问日志**以防止 CDN 负载测试时磁盘耗尽（logrotate 作为纵深防御措施）
-- **传递客户端头信息**（`X-Real-IP`、`X-Forwarded-For`、`X-Forwarded-Proto`）以实现源站可见性
+- **代理缓存**用于 Juice Shop 静态资源（10 MB 缓存区，100 MB 最大容量，60 秒 TTL）
+- **禁用访问日志**以防止 CDN 负载测试下磁盘耗尽（logrotate 作为纵深防御措施）
+- **传递客户端头**（`X-Real-IP`、`X-Forwarded-For`、`X-Forwarded-Proto`）以确保源站可见性
 - **内核调优**通过 sysctl 实现：`somaxconn=65535`、`tcp_tw_reuse=1`、`ip_local_port_range=1024-65535`
 
 ## 应用映射
 
 | 路径 | 上游 | 实例数 | 端口 | 粘性会话 | 用途 |
 |---|---|---|---|---|---|
-| `/` | nginx | -- | -- | -- | 包含所有应用链接的着陆页 |
+| `/` | nginx | -- | -- | -- | 包含所有应用链接的落地页 |
 | `/health` | nginx | -- | -- | -- | JSON 健康检查端点（列出 9 个应用） |
 | `/juice-shop/` | juice_shop | 4 | 3001-3004 | `hash $cookie_token` | 现代 Web 应用安全（XSS、注入、CSRF） |
-| `/dvwa/` | dvwa | 4 + MariaDB | 8101-8104 | `hash $cookie_PHPSESSID` | 经典 WAF 测试，支持可调难度级别 |
+| `/dvwa/` | dvwa | 4 + MariaDB | 8101-8104 | `hash $cookie_PHPSESSID` | 经典 WAF 测试，可调节难度级别 |
 | `/vampi/` | vampi | 4 | 5101-5104 | `ip_hash` | REST API 安全测试（OWASP API Top 10） |
-| `/httpbin/` | httpbin_up | 4 | 8201-8204 | -- | HTTP 请求/响应服务，用于 API 演示 |
-| `/whoami/` | whoami_up | 4 | 8082-8085 | -- | 请求诊断——显示所有头信息和客户端 IP |
+| `/httpbin/` | httpbin_up | 4 | 8201-8204 | -- | 用于 API 演示的 HTTP 请求/响应服务 |
+| `/whoami/` | whoami_up | 4 | 8082-8085 | -- | 请求诊断——显示所有请求头和客户端 IP |
 | `/csd-demo/` | csd_demo | 4 | 5001-5004 | `ip_hash` | 客户端防御测试（Magecart 攻击） |
 | `/dvga/` | dvga | 4 | 5201-5204 | `ip_hash` | GraphQL API 安全测试（注入、DoS、认证绕过） |
 | `/restaurant/` | restaurant | 4 + PostgreSQL | 8301-8304 | -- | REST API 安全（OWASP API Top 10 2023） |
@@ -75,22 +75,22 @@ nginx 反向代理：
 
 这是更大实验环境中的一个组成部分。每个组件都是自包含的，可独立部署：
 
-- **此组件**提供源服务器（Azure VM 上的 nginx + Docker 容器）
-- **CDN 模拟器**提供 CDN 边缘层（Azure VM 上的 nginx 缓存）
+- **本组件**提供源服务器（Azure 虚拟机上的 nginx + Docker 容器）
+- **CDN 模拟器**提供 CDN 边缘层（Azure 虚拟机上的 nginx 缓存）
 - **其他组件**提供 F5 XC 配置、DNS、WAF 策略、API 安全等
 
-操作人员逐个添加组件。每个组件的文档编写方式确保 AI 助手可以阅读并自主部署基础设施。
+操作人员逐个添加组件。每个组件的文档编写方式使 AI 助手能够读取并自主部署基础设施。
 
 ## 选择这些应用的原因
 
 | 应用 | 选择原因 |
 |---|---|
-| **Juice Shop** | OWASP 旗舰项目；现代 Node.js SPA，包含 100+ 个涵盖 OWASP Top 10 的挑战；积极维护；4 个实例配置代理缓存 |
-| **DVWA** | WAF 测试的行业标准；可调安全级别（低/中/高/不可能）；自定义 php-fpm + nginx 构建以提升性能；共享 MariaDB 10.11 后端 |
-| **VAmPI** | 专为 OWASP API Security Top 10 构建；包含已知漏洞的 REST API；每个实例运行 gunicorn 配置 4 个 worker；ip_hash 粘性保证 SQLite 一致性 |
+| **Juice Shop** | OWASP 旗舰项目；现代 Node.js SPA，包含 100+ 个覆盖 OWASP Top 10 的挑战；持续维护；4 个实例配合代理缓存 |
+| **DVWA** | WAF 测试的行业标准；可调节安全级别（低/中/高/不可能）；自定义 php-fpm + nginx 构建以提升性能；共享 MariaDB 10.11 后端 |
+| **VAmPI** | 专为 OWASP API 安全 Top 10 构建；包含已知漏洞的 REST API；每个实例配置 gunicorn 4 个 worker；ip_hash 粘性确保 SQLite 一致性 |
 | **httpbin** | Kenneth Reitz 的经典 HTTP 测试服务；gunicorn 配置 4 个 gevent worker；适用于 API 演示和请求检查 |
-| **whoami** | Traefik 的请求回显服务器；显示源站所见的完整请求详情——对于验证 F5 XC 头信息注入至关重要 |
-| **CSD Demo** | 自定义结账页面，包含 5 种可切换的 Magecart 风格攻击（信用卡窃取器、表单劫持器、键盘记录器、加密挖矿器、DOM 劫持）；数据外泄端点 + 攻击者仪表板；gunicorn 单 worker 以保持内存状态持久性 |
-| **DVGA** | Damn Vulnerable GraphQL Application；GraphQL 特定漏洞，包括注入、DoS、批量攻击和授权绕过；GraphiQL UI 支持交互式探索；ip_hash 粘性确保每个实例的 SQLite 独立 |
-| **RESTaurant** | Damn Vulnerable RESTaurant API Game；专为 OWASP API Security Top 10 2023 构建；FastAPI 配合 Swagger UI；共享 PostgreSQL 15.4 后端；涵盖 BOLA、BFLA、批量赋值、SSRF 和注入 |
+| **whoami** | Traefik 的请求回显服务器；显示源站看到的完整请求详情——对于验证 F5 XC 头注入至关重要 |
+| **CSD Demo** | 自定义结账页面，包含 5 种可切换的 Magecart 风格攻击（银行卡窃取器、表单劫持、键盘记录器、加密挖矿、DOM 劫持）；数据窃取端点 + 攻击者仪表板；gunicorn 单 worker 以保持内存状态持久化 |
+| **DVGA** | Damn Vulnerable GraphQL Application；GraphQL 特定漏洞，包括注入、DoS、批量攻击和授权绕过；GraphiQL UI 支持交互式探索；ip_hash 粘性确保每实例 SQLite 一致性 |
+| **RESTaurant** | Damn Vulnerable RESTaurant API Game；专为 OWASP API 安全 Top 10 2023 构建；FastAPI 配合 Swagger UI；共享 PostgreSQL 15.4 后端；涵盖 BOLA、BFLA、批量赋值、SSRF 和注入 |
 | **crAPI** | OWASP Completely Ridiculous API；7 个微服务架构，涵盖 BOLA、BFLA、批量赋值、SSRF、JWT 操纵和 NoSQL 注入；专用端口 8888（SPA 使用硬编码 API 路径）；MailHog 用于邮件捕获 |

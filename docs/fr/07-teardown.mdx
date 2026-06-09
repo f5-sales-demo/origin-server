@@ -2,7 +2,7 @@
 title: Démontage
 description: >-
   terraform destroy pour supprimer toutes les ressources Azure, vérifier le
-  nettoyage avec az CLI, nettoyer les fichiers d'état locaux, et supprimer le
+  nettoyage avec az CLI, nettoyer les fichiers d'état locaux et supprimer le
   pool d'origine et le répartiteur de charge HTTP F5 XC associés
 sidebar:
   order: 7
@@ -11,7 +11,7 @@ i18n:
   translator: machine
 ---
 
-Lorsque la session de lab est terminée, détruisez toutes les ressources Azure pour arrêter la facturation.
+Lorsque la session de laboratoire est terminée, détruisez toutes les ressources Azure pour arrêter la facturation.
 
 ## Destruction Terraform
 
@@ -25,7 +25,7 @@ terraform destroy
 
 Terraform demandera une confirmation. Tapez `yes` pour continuer.
 
-## Vérification du nettoyage
+## Vérifier le nettoyage
 
 Confirmez que toutes les ressources ont été supprimées :
 
@@ -36,7 +36,7 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
   || echo "Resource group still exists"
 ```
 
-## Nettoyage de l'état local
+## Nettoyer l'état local
 
 Supprimez l'état Terraform et les fichiers mis en cache :
 

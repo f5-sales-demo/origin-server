@@ -17,7 +17,7 @@ i18n:
 以下を作成する権限を持つアクティブなAzureサブスクリプション：
 
 - リソースグループ
-- 仮想ネットワークとサブネット
+- 仮想ネットワークおよびサブネット
 - ネットワークセキュリティグループ
 - パブリックIPアドレス
 - 仮想マシン（Standard_D16s_v3 -- 41コンテナワークロード用に16 vCPU、64 GiB RAM）
@@ -36,13 +36,13 @@ az account show --query '{name:name, id:id}' -o table
 
 ### Terraform
 
-Terraform >= 1.5が必要です：
+Terraform >= 1.5 が必要です：
 
 ```bash
 terraform version
 ```
 
-インストールされていない場合は、HashiCorp APTリポジトリを使用してください：
+インストールされていない場合は、HashiCorp APTリポジトリを使用します：
 
 ```bash
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -52,7 +52,7 @@ sudo apt update && sudo apt install terraform
 
 ### Azure AD権限
 
-Azure ADアカウントには`User.Read`権限が必要です。デプロイヤー識別子（リソース命名に使用）は、Azure ADプロファイルから自動的に導出されます。サービスプリンシパルまたはマネージドID認証の場合は、`deployer` Terraform変数を明示的に設定してください。
+Azure ADアカウントには `User.Read` 権限が必要です。デプロイヤー識別子（リソース命名に使用）は、Azure ADプロファイルから自動的に取得されます。サービスプリンシパルまたはマネージドID認証の場合は、`deployer` Terraform変数を明示的に設定してください。
 
 ### SSHキーペア
 
@@ -66,17 +66,17 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 
 | リソース | SKU |
 |---|---|
-| Ubuntu 24.04 VM | Standard_D16s_v3（16 vCPU、64 GiB） |
+| Ubuntu 24.04 VM | Standard_D16s_v3 (16 vCPU, 64 GiB) |
 | パブリックIP | Standard、静的 |
 | OSディスク | 60 GiB Premium SSD |
 | VNet + NSG | デフォルト |
 
-現在のコストについては[Azure料金計算ツール](https://azure.microsoft.com/en-us/pricing/calculator/)を参照してください。ラボを使用していない場合は`terraform destroy`を使用して課金を停止してください。手順については[環境の破棄](../07-teardown/)を参照してください。
+現在のコストについては[Azure料金計算ツール](https://azure.microsoft.com/en-us/pricing/calculator/)を参照してください。ラボを使用していないときは `terraform destroy` を使用して課金を停止してください。手順については[環境の削除](../07-teardown/)を参照してください。
 
 :::note
-Standard_D16s_v3（64 GiB RAM）は41コンテナデプロイメントに必要です。コンテナメモリ割り当て：Juice Shop 4インスタンス（各1 GiB、計4 GiB）、VAmPI 4インスタンス（各512 MiB、計2 GiB）、DVWA-FPM + MariaDB 4セット（1.8 GiB）、httpbin 4インスタンス（各256 MiB、計1 GiB）、CSD Demo 4インスタンス（各256 MiB、計1 GiB）、whoami 4インスタンス（各64 MiB、計256 MiB）、DVGA 4インスタンス（各256 MiB、計1 GiB）、RESTaurant + PostgreSQL 4セット（1.5 GiB）、crAPI 7マイクロサービス（2 GiB）、さらにnginx、OS、バッファキャッシュ。コンテナの合計割り当ては約14.5 GiB（64 GiBの22.7%）です。
+Standard_D16s_v3（64 GiB RAM）は41コンテナデプロイメントに必要です。コンテナメモリ割り当て：Juice Shop 4インスタンス（各1 GiB、計4 GiB）、VAmPI 4インスタンス（各512 MiB、計2 GiB）、DVWA-FPM + MariaDB 4セット（1.8 GiB）、httpbin 4インスタンス（各256 MiB、計1 GiB）、CSD Demo 4インスタンス（各256 MiB、計1 GiB）、whoami 4インスタンス（各64 MiB、計256 MiB）、DVGA 4インスタンス（各256 MiB、計1 GiB）、RESTaurant + PostgreSQL 4セット（1.5 GiB）、crAPI 7マイクロサービス（2 GiB）、加えてnginx、OS、バッファキャッシュ。コンテナの合計割り当ては約14.5 GiB（64 GiBの22.7%）です。
 :::
 
 :::note
-NSGはポート80（HTTP）および8888（crAPI）へのインバウンドトラフィックを許可します。ポート8888が必要なのは、crAPIがAPIパスをハードコードしたシングルページアプリケーションであり、パスプレフィックス経由での配信ができないためです。
+NSGはポート80（HTTP）および8888（crAPI）のインバウンドトラフィックを許可します。ポート8888が必要な理由は、crAPIがAPIパスをハードコードしたシングルページアプリケーションであり、パスプレフィックスの背後で提供できないためです。
 :::

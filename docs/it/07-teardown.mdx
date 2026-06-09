@@ -38,7 +38,7 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
 
 ## Pulizia dello stato locale
 
-Rimuovere lo stato Terraform e i file memorizzati nella cache:
+Rimuovere lo stato di Terraform e i file memorizzati nella cache:
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup

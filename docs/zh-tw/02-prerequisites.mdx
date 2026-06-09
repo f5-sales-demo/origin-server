@@ -14,13 +14,13 @@ i18n:
 
 ### Azure 訂閱
 
-一個有效的 Azure 訂閱，且具備建立以下資源的權限：
+一個有效的 Azure 訂閱，具有建立以下資源的權限：
 
 - 資源群組
 - 虛擬網路和子網路
-- 網路安全群組
+- 網路安全性群組
 - 公用 IP 位址
-- 虛擬機器（Standard_D16s_v3 -- 16 vCPU、64 GiB RAM，適用於 41 個容器的工作負載）
+- 虛擬機器（Standard_D16s_v3 -- 16 vCPU、64 GiB RAM，用於 41 個容器的工作負載）
 
 ### Azure CLI
 
@@ -42,7 +42,7 @@ az account show --query '{name:name, id:id}' -o table
 terraform version
 ```
 
-如果尚未安裝，請使用 HashiCorp APT 儲存庫：
+如尚未安裝，請使用 HashiCorp APT 儲存庫：
 
 ```bash
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -52,7 +52,7 @@ sudo apt update && sudo apt install terraform
 
 ### Azure AD 權限
 
-您的 Azure AD 帳戶必須具備 `User.Read` 權限。部署者識別碼（用於資源命名）會自動從您的 Azure AD 設定檔衍生。若使用服務主體或受控識別進行驗證，請明確設定 `deployer` Terraform 變數。
+您的 Azure AD 帳戶必須具有 `User.Read` 權限。部署者識別碼（用於資源命名）會自動從您的 Azure AD 設定檔中取得。若使用服務主體或受控識別身分驗證，請明確設定 `deployer` Terraform 變數。
 
 ### SSH 金鑰對
 
@@ -71,12 +71,12 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 | OS 磁碟 | 60 GiB Premium SSD |
 | VNet + NSG | 預設 |
 
-請參閱 [Azure 定價計算機](https://azure.microsoft.com/en-us/pricing/calculator/) 以了解目前費用。實驗室未使用時，請執行 `terraform destroy` 以停止計費。請參閱[環境清除](../07-teardown/)以了解操作程序。
+請參閱 [Azure 定價計算機](https://azure.microsoft.com/en-us/pricing/calculator/) 了解目前費用。實驗室未使用時，請執行 `terraform destroy` 以停止計費。相關程序請參閱[環境拆除](../07-teardown/)。
 
 :::note
-Standard_D16s_v3（64 GiB RAM）是 41 個容器部署所必需的。容器記憶體分配：4 個 Juice Shop 實例各 1 GiB（4 GiB）、4 個 VAmPI 各 512 MiB（2 GiB）、4 個 DVWA-FPM + MariaDB（1.8 GiB）、4 個 httpbin 各 256 MiB（1 GiB）、4 個 CSD Demo 各 256 MiB（1 GiB）、4 個 whoami 各 64 MiB（256 MiB）、4 個 DVGA 各 256 MiB（1 GiB）、4 個 RESTaurant + PostgreSQL（1.5 GiB）、crAPI 7 個微服務（2 GiB），加上 nginx、作業系統和緩衝快取。容器總配置約為 14.5 GiB（64 GiB 的 22.7%）。
+Standard_D16s_v3（64 GiB RAM）為 41 個容器部署的必要規格。容器記憶體配置：4 個 Juice Shop 實例各 1 GiB（共 4 GiB）、4 個 VAmPI 各 512 MiB（共 2 GiB）、4 個 DVWA-FPM + MariaDB（共 1.8 GiB）、4 個 httpbin 各 256 MiB（共 1 GiB）、4 個 CSD Demo 各 256 MiB（共 1 GiB）、4 個 whoami 各 64 MiB（共 256 MiB）、4 個 DVGA 各 256 MiB（共 1 GiB）、4 個 RESTaurant + PostgreSQL（共 1.5 GiB）、crAPI 7 個微服務（共 2 GiB），加上 nginx、作業系統和緩衝快取。容器總配置約為 14.5 GiB（佔 64 GiB 的 22.7%）。
 :::
 
 :::note
-NSG 允許連接埠 80（HTTP）和 8888（crAPI）的輸入流量。需要連接埠 8888 是因為 crAPI 是一個單頁應用程式，其 API 路徑為硬編碼，無法透過路徑前綴進行代理。
+NSG 允許連接埠 80（HTTP）和 8888（crAPI）的入站流量。需要連接埠 8888 是因為 crAPI 是一個單頁應用程式，其 API 路徑為硬編碼，無法透過路徑前綴進行代理。
 :::

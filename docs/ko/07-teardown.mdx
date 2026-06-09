@@ -1,8 +1,8 @@
 ---
-title: 정리 및 삭제
+title: 정리(Teardown)
 description: >-
-  terraform destroy로 모든 Azure 리소스를 제거하고, az CLI로 정리 상태를 확인하며, 로컬 상태 파일을 삭제하고, 관련
-  F5 XC 오리진 풀 및 HTTP 로드 밸런서를 제거합니다
+  terraform destroy로 모든 Azure 리소스를 제거하고, az CLI로 정리 상태를 확인하며, 로컬 상태 파일을 삭제하고,
+  연관된 F5 XC 오리진 풀 및 HTTP 로드 밸런서를 제거합니다
 sidebar:
   order: 7
 i18n:
@@ -10,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-실습 세션이 완료되면 요금 발생을 중지하기 위해 모든 Azure 리소스를 삭제하십시오.
+실습 세션이 완료되면 과금을 중지하기 위해 모든 Azure 리소스를 삭제합니다.
 
-## Terraform 삭제
+## Terraform Destroy
 
-Terraform 구성이 포함된 디렉토리에서 다음을 실행합니다:
+Terraform 구성 파일이 있는 디렉터리에서 실행합니다:
 
 ```bash
 terraform plan -destroy
@@ -22,7 +22,7 @@ terraform plan -destroy
 terraform destroy
 ```
 
-Terraform이 확인을 요청합니다. 진행하려면 `yes`를 입력하십시오.
+Terraform이 확인을 요청합니다. 계속 진행하려면 `yes`를 입력하세요.
 
 ## 정리 확인
 
@@ -37,7 +37,7 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
 
 ## 로컬 상태 정리
 
-Terraform 상태 파일과 캐시 파일을 제거합니다:
+Terraform 상태 및 캐시 파일을 제거합니다:
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
@@ -45,7 +45,7 @@ rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 
 ## F5 XC 정리
 
-이 오리진 서버를 가리키는 F5 XC 리소스를 생성한 경우 해당 리소스를 제거하십시오:
+이 오리진 서버를 가리키는 F5 XC 리소스를 생성한 경우, 해당 리소스를 제거합니다:
 
 1. HTTP 로드 밸런서 삭제
 2. 오리진 풀 삭제

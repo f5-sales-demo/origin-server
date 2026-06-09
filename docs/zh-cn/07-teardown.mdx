@@ -1,7 +1,7 @@
 ---
 title: 资源清理
 description: >-
-  使用 terraform destroy 移除所有 Azure 资源，通过 az CLI 验证清理结果，清除本地状态文件，并删除关联的 F5 XC 源站池和
+  使用 terraform destroy 删除所有 Azure 资源，通过 az CLI 验证清理结果，清除本地状态文件，并移除关联的 F5 XC 源站池和
   HTTP 负载均衡器
 sidebar:
   order: 7
@@ -22,7 +22,7 @@ terraform plan -destroy
 terraform destroy
 ```
 
-Terraform 会提示确认。输入 `yes` 继续。
+Terraform 将提示确认。输入 `yes` 以继续。
 
 ## 验证清理结果
 
@@ -37,7 +37,7 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
 
 ## 清除本地状态
 
-移除 Terraform 状态和缓存文件：
+删除 Terraform 状态和缓存文件：
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
@@ -45,7 +45,7 @@ rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 
 ## F5 XC 清理
 
-如果您创建了指向此源站服务器的 F5 XC 资源，请将其移除：
+如果您创建了指向此源服务器的 F5 XC 资源，请将其删除：
 
 1. 删除 HTTP 负载均衡器
 2. 删除源站池

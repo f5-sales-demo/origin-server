@@ -1,8 +1,8 @@
 ---
-title: ตรวจสอบ
+title: การตรวจสอบ
 description: >-
-  การทดสอบ curl smoke test สำหรับ endpoint ของแอปพลิเคชันทั้งเก้า,
-  การตรวจสอบสุขภาพ Docker container, การตรวจสอบสถานะ nginx, การตรวจสอบ log ของ
+  การทดสอบ curl smoke test สำหรับ endpoint ของแอปพลิเคชันทั้งเก้าจุด,
+  การตรวจสอบสุขภาพคอนเทนเนอร์ Docker, การตรวจสอบสถานะ nginx, การตรวจสอบล็อก
   cloud-init และขั้นตอนการแก้ไขปัญหาทั่วไป
 sidebar:
   order: 5
@@ -13,7 +13,7 @@ i18n:
 
 ## การทดสอบ Smoke Test
 
-ดำเนินการตรวจสอบเหล่านี้หลังจากรอ 5--10 นาทีเพื่อให้ cloud-init ทำงานเสร็จสมบูรณ์
+ดำเนินการตรวจสอบเหล่านี้หลังจากรอให้ cloud-init ทำงานเสร็จสิ้นประมาณ 5--10 นาที
 
 ### Health Endpoint
 
@@ -64,27 +64,27 @@ curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{ht
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-ทั้งหมดควรส่งคืน `200` (DVWA ส่งคืน `302` redirect ไปยังหน้า login)
+ทุกรายการควรส่งคืน `200` (DVWA จะส่งคืน `302` redirect ไปยังหน้า login)
 
 ### Smoke Test อัตโนมัติ
 
-repository ประกอบด้วยชุดทดสอบ smoke test 39 จุด:
+ที่เก็บข้อมูลมีชุดทดสอบ smoke test จำนวน 39 จุด:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-การทดสอบนี้ตรวจสอบแอปพลิเคชันทั้ง 9 ตัว, health endpoint, การลงทะเบียน/เข้าสู่ระบบ VAmPI, การทดสอบ CSD Demo exfil round-trip, DVGA GraphQL, RESTaurant Swagger, crAPI บนพอร์ต 8888, nginx gzip และการซ่อนเวอร์ชัน
+ชุดทดสอบนี้จะตรวจสอบแอปพลิเคชันทั้ง 9 ตัว, health endpoint, การลงทะเบียน/เข้าสู่ระบบ VAmPI, การทดสอบ round-trip ของ CSD Demo exfil, DVGA GraphQL, RESTaurant Swagger, crAPI บนพอร์ต 8888, nginx gzip และการซ่อนเวอร์ชัน
 
-### สถานะ Docker Container
+### สถานะคอนเทนเนอร์ Docker
 
-SSH เข้าสู่ VM และตรวจสอบว่า container ทั้ง 41 ตัวกำลังทำงาน:
+SSH เข้าสู่ VM และตรวจสอบว่าคอนเทนเนอร์ทั้ง 41 ตัวกำลังทำงาน:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
 ```
 
-ผลลัพธ์ที่คาดหวัง (41 container):
+ผลลัพธ์ที่คาดหวัง (คอนเทนเนอร์ 41 ตัว):
 
 ```
 NAMES              STATUS         PORTS
@@ -141,23 +141,23 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ### Cloud-init ยังคงทำงานอยู่
 
-หาก endpoint ส่งคืน 502 หรือ connection refused แสดงว่า cloud-init อาจยังคงกำลังจัดเตรียมระบบอยู่:
+หาก endpoint ส่งคืน 502 หรือปฏิเสธการเชื่อมต่อ cloud-init อาจยังคงอยู่ระหว่างการจัดเตรียม:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` -- ยังคงกำลังจัดเตรียมระบบ รอสักครู่
-- `status: done` -- การจัดเตรียมระบบเสร็จสมบูรณ์ ตรวจสอบ Docker container
-- `status: error` -- ตรวจสอบ log ด้านล่าง
+- `status: running` -- ยังคงจัดเตรียมอยู่ โปรดรอสักครู่
+- `status: done` -- การจัดเตรียมเสร็จสมบูรณ์ ตรวจสอบคอนเทนเนอร์ Docker
+- `status: error` -- ตรวจสอบล็อกด้านล่าง
 
-### Log ของ Cloud-init
+### ล็อก Cloud-init
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ```
 
-### Container ไม่เริ่มทำงาน
+### คอนเทนเนอร์ไม่สามารถเริ่มต้นได้
 
 ```bash
 # Check container logs (each app has 4 instances: -1 through -4)
@@ -173,7 +173,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 
 ### nginx ส่งคืน 502
 
-upstream container ยังไม่พร้อมหรือเกิดข้อผิดพลาด:
+คอนเทนเนอร์ upstream ยังไม่พร้อมหรือเกิดข้อผิดพลาด:
 
 ```bash
 # Check nginx error log
@@ -188,15 +188,15 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### พื้นที่ดิสก์
 
-Docker image ใช้พื้นที่ประมาณ 4.7 GiB การบันทึก access log ถูกปิดใช้งานเพื่อป้องกันพื้นที่ดิสก์เต็มภายใต้การทดสอบโหลด CDN Logrotate ได้รับการกำหนดค่าเป็นการป้องกันแบบหลายชั้น (จำกัดที่ 500 MiB) ตรวจสอบการใช้งานดิสก์:
+อิมเมจ Docker ใช้พื้นที่ประมาณ 4.7 GiB การบันทึกล็อกการเข้าถึงถูกปิดใช้งานเพื่อป้องกันพื้นที่ดิสก์หมดในระหว่างการทดสอบโหลด CDN Logrotate ถูกกำหนดค่าเป็นการป้องกันเชิงลึก (จำกัดที่ 500 MiB) ตรวจสอบการใช้พื้นที่ดิสก์:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 ```
 
-### หน่วยความจำ Container
+### หน่วยความจำคอนเทนเนอร์
 
-ตรวจสอบ container ที่ใกล้ถึงขีดจำกัดหน่วยความจำ (เสี่ยง OOM):
+ตรวจสอบคอนเทนเนอร์ที่เข้าใกล้ขีดจำกัดหน่วยความจำ (เสี่ยงต่อ OOM):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
@@ -204,7 +204,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Nam
 
 ### รีสตาร์ททุกอย่าง
 
-หากจำเป็น สร้างใหม่และรีสตาร์ทบริการทั้งหมด:
+หากจำเป็น ให้ build ใหม่และรีสตาร์ทบริการทั้งหมด:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"

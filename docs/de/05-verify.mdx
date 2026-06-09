@@ -1,9 +1,9 @@
 ---
-title: Verifizieren
+title: Überprüfen
 description: >-
   curl-Smoke-Tests für alle neun Anwendungsendpunkte,
   Docker-Container-Gesundheitsprüfungen, nginx-Statusüberprüfung,
-  cloud-init-Loginspektion und gängige Fehlerbehebungsschritte
+  cloud-init-Loginspektion und häufige Fehlerbehebungsschritte
 sidebar:
   order: 5
 i18n:
@@ -13,7 +13,7 @@ i18n:
 
 ## Smoke-Tests
 
-Führen Sie diese Prüfungen durch, nachdem Sie 5–10 Minuten gewartet haben, bis cloud-init abgeschlossen ist.
+Führen Sie diese Überprüfungen durch, nachdem Sie 5–10 Minuten für den Abschluss von cloud-init gewartet haben.
 
 ### Health-Endpunkt
 
@@ -23,7 +23,7 @@ ORIGIN_IP=$(terraform output -raw public_ip)
 curl -sf "http://${ORIGIN_IP}/health" | jq .
 ```
 
-Erwartet:
+Erwartete Ausgabe:
 
 ```json
 {
@@ -36,7 +36,7 @@ Erwartet:
 ### Anwendungsendpunkte
 
 ```bash
-# Standard-Landingpage
+# Standard-Startseite
 curl -sf "http://${ORIGIN_IP}/" -o /dev/null -w "Landing: %{http_code}\n"
 
 # Juice Shop
@@ -68,13 +68,13 @@ Alle sollten `200` zurückgeben (DVWA gibt eine `302`-Weiterleitung zur Anmeldes
 
 ### Automatisierter Smoke-Test
 
-Das Repository enthält eine 39-Punkte-Smoke-Test-Suite:
+Das Repository enthält eine Smoke-Test-Suite mit 39 Prüfpunkten:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-Diese validiert alle 9 Anwendungen, Health-Endpunkte, VAmPI-Registrierung/Anmeldung, CSD-Demo-Exfil-Roundtrip, DVGA GraphQL, RESTaurant Swagger, crAPI auf Port 8888, nginx gzip und Version-Hiding.
+Diese validiert alle 9 Anwendungen, Health-Endpunkte, VAmPI-Registrierung/-Anmeldung, CSD-Demo-Exfiltrations-Roundtrip, DVGA GraphQL, RESTaurant Swagger, crAPI auf Port 8888, nginx gzip und Versionsverschleierung.
 
 ### Docker-Container-Status
 
@@ -141,7 +141,7 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ### Cloud-init läuft noch
 
-Wenn Endpunkte 502 oder "Verbindung abgelehnt" zurückgeben, ist cloud-init möglicherweise noch bei der Bereitstellung:
+Wenn Endpunkte 502 oder "Verbindung abgelehnt" zurückgeben, könnte cloud-init noch mit der Bereitstellung beschäftigt sein:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
@@ -188,7 +188,7 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### Speicherplatz
 
-Docker-Images belegen ungefähr 4,7 GiB. Access-Logging ist deaktiviert, um eine Festplattenerschöpfung bei CDN-Lasttests zu verhindern. Logrotate ist als Defense-in-Depth konfiguriert (500 MiB Obergrenze). Überprüfen Sie die Speicherplatzbelegung:
+Docker-Images verbrauchen ungefähr 4,7 GiB. Das Zugriffs-Logging ist deaktiviert, um eine Festplattenerschöpfung bei CDN-Lasttests zu vermeiden. Logrotate ist als Tiefenverteidigung konfiguriert (500 MiB Obergrenze). Überprüfen Sie die Festplattennutzung:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -204,7 +204,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Nam
 
 ### Alles neu starten
 
-Falls erforderlich, alle Dienste neu bauen und neu starten:
+Falls erforderlich, bauen Sie alle Dienste neu und starten Sie sie neu:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"

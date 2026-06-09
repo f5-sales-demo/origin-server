@@ -3,7 +3,7 @@ title: Verifica
 description: >-
   Test di verifica curl per tutti e nove gli endpoint applicativi, controlli di
   integrità dei container Docker, verifica dello stato di nginx, ispezione dei
-  log di cloud-init e procedure comuni di risoluzione dei problemi
+  log di cloud-init e procedure di risoluzione dei problemi comuni
 sidebar:
   order: 5
 i18n:
@@ -23,7 +23,7 @@ ORIGIN_IP=$(terraform output -raw public_ip)
 curl -sf "http://${ORIGIN_IP}/health" | jq .
 ```
 
-Risultato atteso:
+Output atteso:
 
 ```json
 {
@@ -36,7 +36,7 @@ Risultato atteso:
 ### Endpoint applicativi
 
 ```bash
-# Default landing page
+# Pagina di destinazione predefinita
 curl -sf "http://${ORIGIN_IP}/" -o /dev/null -w "Landing: %{http_code}\n"
 
 # Juice Shop
@@ -60,7 +60,7 @@ curl -sf "http://${ORIGIN_IP}/dvga/" -o /dev/null -w "DVGA: %{http_code}\n"
 # RESTaurant
 curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{http_code}\n"
 
-# crAPI (port 8888)
+# crAPI (porta 8888)
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
@@ -74,11 +74,11 @@ Il repository include una suite di test di verifica con 39 controlli:
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-Questo valida tutte e 9 le applicazioni, gli endpoint di integrità, la registrazione/login di VAmPI, il ciclo completo di esfiltrazione di CSD Demo, GraphQL di DVGA, Swagger di RESTaurant, crAPI sulla porta 8888, la compressione gzip di nginx e l'occultamento della versione.
+Questo valida tutte le 9 applicazioni, gli endpoint di integrità, la registrazione/login di VAmPI, il ciclo completo di esfiltrazione di CSD Demo, GraphQL di DVGA, Swagger di RESTaurant, crAPI sulla porta 8888, la compressione gzip di nginx e l'occultamento della versione.
 
 ### Stato dei container Docker
 
-Accedere tramite SSH alla VM e verificare che tutti i 41 container siano in esecuzione:
+Accedere alla VM tramite SSH e verificare che tutti i 41 container siano in esecuzione:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
@@ -147,9 +147,9 @@ Se gli endpoint restituiscono 502 o connessione rifiutata, cloud-init potrebbe e
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` -- provisioning ancora in corso, attendere qualche minuto
+- `status: running` -- ancora in fase di provisioning, attendere qualche minuto
 - `status: done` -- provisioning completato, verificare i container Docker
-- `status: error` -- controllare i log di seguito
+- `status: error` -- consultare i log di seguito
 
 ### Log di cloud-init
 
@@ -160,7 +160,7 @@ ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ### Container che non si avvia
 
 ```bash
-# Check container logs (each app has 4 instances: -1 through -4)
+# Controllare i log del container (ogni app ha 4 istanze: da -1 a -4)
 ssh azureuser@${ORIGIN_IP} "sudo docker logs juice-shop-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs dvwa-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs vampi-1 2>&1 | tail -20"
@@ -173,22 +173,22 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 
 ### nginx restituisce 502
 
-Il container upstream non è pronto o è andato in crash:
+Il container upstream non è pronto o si è arrestato in modo anomalo:
 
 ```bash
-# Check nginx error log
+# Controllare il log degli errori di nginx
 ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
 
-# Restart all instances of a specific app
+# Riavviare tutte le istanze di una specifica app
 ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
 
-# Rebuild and restart all containers
+# Ricostruire e riavviare tutti i container
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
 ```
 
 ### Spazio su disco
 
-Le immagini Docker occupano circa 4,7 GiB. La registrazione dei log di accesso è disabilitata per evitare l'esaurimento dello spazio su disco durante i test di carico CDN. Logrotate è configurato come difesa in profondità (limite di 500 MiB). Verificare l'utilizzo del disco:
+Le immagini Docker occupano circa 4,7 GiB. La registrazione degli accessi è disabilitata per prevenire l'esaurimento del disco durante i test di carico CDN. Logrotate è configurato come difesa in profondità (limite di 500 MiB). Verificare l'utilizzo del disco:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -196,7 +196,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### Memoria dei container
 
-Verificare la presenza di container che si avvicinano ai limiti di memoria (rischio OOM):
+Verificare la presenza di container che si avvicinano ai propri limiti di memoria (rischio OOM):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
