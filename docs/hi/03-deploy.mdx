@@ -1,9 +1,9 @@
 ---
-title: Deploy
+title: डिप्लॉय
 description: >-
-  Terraform IaC deployment following the Demo Resource Standard — 9 terraform
-  files with Azure AD deployer auto-resolution, 25 outputs, and hardened
-  cloud-init provisioning 41 Docker containers across 9 applications.
+  डेमो रिसोर्स स्टैंडर्ड के अनुसार Terraform IaC डिप्लॉयमेंट — Azure AD डिप्लॉयर
+  ऑटो-रिज़ॉल्यूशन के साथ 9 terraform फाइलें, 25 आउटपुट, और 9 एप्लिकेशन में 41
+  Docker कंटेनर प्रोविज़न करने वाली हार्डेंड cloud-init प्रोविज़निंग।
 sidebar:
   order: 3
 i18n:
@@ -11,37 +11,37 @@ i18n:
   translator: machine
 ---
 
-सभी Terraform फाइलें [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform) डायरेक्टरी में हैं। रिपॉजिटरी क्लोन करें और सीधे डिप्लॉय करें:
+सभी Terraform फाइलें [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform) डायरेक्टरी में हैं। रिपॉज़िटरी क्लोन करें और सीधे डिप्लॉय करें:
 
 ```bash
 git clone https://github.com/f5xc-salesdemos/origin-server.git
 cd origin-server/terraform
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+# terraform.tfvars को अपने Azure subscription ID और SSH key path के साथ संपादित करें
 ```
 
 ## Terraform कॉन्फ़िगरेशन
 
 ### Terraform फाइल संरचना
 
-terraform डायरेक्टरी में Demo Resource Standard का पालन करते हुए 9 फाइलें हैं:
+terraform डायरेक्टरी में डेमो रिसोर्स स्टैंडर्ड के अनुसार 9 फाइलें हैं:
 
-- `versions.tf` — Terraform और प्रोवाइडर संस्करण बाधाएँ (azurerm ~> 4.0, azuread ~> 3.0)
+- `versions.tf` — Terraform और प्रोवाइडर वर्शन कंस्ट्रेंट्स (azurerm ~> 4.0, azuread ~> 3.0)
 - `providers.tf` — Azure RM और Azure AD प्रोवाइडर कॉन्फ़िगरेशन
-- `data.tf` — डिप्लॉयर ऑटो-रिज़ॉल्यूशन के लिए Azure AD डेटा स्रोत
-- `locals.tf` — डिप्लॉयर रिज़ॉल्यूशन, Azure Cloud Adoption Framework रिसोर्स नेमिंग, मानक टैग
+- `data.tf` — डिप्लॉयर ऑटो-रिज़ॉल्यूशन के लिए Azure AD डेटा सोर्स
+- `locals.tf` — डिप्लॉयर रिज़ॉल्यूशन, Azure Cloud Adoption Framework रिसोर्स नेमिंग, स्टैंडर्ड टैग
 - `main.tf` — रिसोर्स ग्रुप (नाम `rg-origin-server-{environment}-{deployer}`)
 - `variables.tf` — सभी इनपुट वेरिएबल (1 आवश्यक, 8 वैकल्पिक)
 - `network.tf` — VNet (10.200.0.0/16), सबनेट, पब्लिक IP, NSG (पोर्ट 22/80/443/8888), NIC
 - `vm.tf` — templatefile() के माध्यम से cloud-init के साथ Ubuntu 24.04 VM
-- `outputs.tf` — 25 आउटपुट (15 मानक + 10 कंपोनेंट-विशिष्ट एप्लिकेशन URL)
+- `outputs.tf` — 25 आउटपुट (15 स्टैंडर्ड + 10 कंपोनेंट-विशिष्ट एप्लिकेशन URL)
 
-`main.tf` में केवल रिसोर्स ग्रुप होता है:
+`main.tf` में केवल रिसोर्स ग्रुप है:
 
 ```hcl file=./_data/main.tf
 ```
 
-`variables.tf` सभी कॉन्फ़िगर करने योग्य पैरामीटर परिभाषित करता है। `deployer` आइडेंटिफायर आपके Azure AD खाते से स्वचालित रूप से रिज़ॉल्व होता है — आपको केवल `subscription_id` सेट करना होगा। `vm_size` का डिफ़ॉल्ट `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) है जो 41 Docker कंटेनरों के लिए उपयुक्त आकार का है:
+`variables.tf` सभी कॉन्फ़िगर करने योग्य पैरामीटर परिभाषित करता है। `deployer` आइडेंटिफायर आपके Azure AD अकाउंट से स्वचालित रूप से रिज़ॉल्व होता है — आपको केवल `subscription_id` सेट करना होगा। `vm_size` का डिफ़ॉल्ट `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) है जो 41 Docker कंटेनरों के लिए उपयुक्त है:
 
 ```hcl file=./_data/variables.tf
 ```
@@ -62,27 +62,27 @@ terraform डायरेक्टरी में Demo Resource Standard का
 
 ### Cloud-Init प्रोविज़निंग
 
-`cloud-init.yaml` VM को एक सुदृढ़ कॉन्फ़िगरेशन के साथ प्रोविज़न करता है। एक साझा हेल्पर लाइब्रेरी (`/usr/local/lib/cloud-init-helpers.sh`) सभी नेटवर्क ऑपरेशनों पर रिट्राई लॉजिक और `/var/log/cloud-init-progress.log` में प्रगति लॉगिंग प्रदान करती है। कंटेनर रेडीनेस के लिए सक्रिय हेल्थ-चेक पोलिंग निश्चित-अवधि स्लीप की जगह लेती है। यह प्रोविज़न करता है:
+`cloud-init.yaml` VM को हार्डेंड कॉन्फ़िगरेशन के साथ प्रोविज़न करता है। एक शेयर्ड हेल्पर लाइब्रेरी (`/usr/local/lib/cloud-init-helpers.sh`) सभी नेटवर्क ऑपरेशनों पर रिट्राई लॉजिक और `/var/log/cloud-init-progress.log` में प्रगति लॉगिंग प्रदान करती है। कंटेनर रेडीनेस के लिए फिक्स्ड-ड्यूरेशन स्लीप की जगह एक्टिव हेल्थ-चेक पोलिंग का उपयोग होता है। यह प्रोविज़न करता है:
 
-- **कर्नल ट्यूनिंग**: TCP keepalive, TIME_WAIT पुन:उपयोग, 2M tw_buckets, 64K somaxconn
-- **nginx**: स्टिकी सेशन (ip_hash, cookie hash), keepalive पूल (64--128), Juice Shop के लिए प्रॉक्सी कैश, error_log crit स्तर के साथ 8 अपस्ट्रीम ब्लॉक
-- **Docker Compose**: प्रति-कंटेनर CPU/मेमोरी सीमाओं के साथ 9 एप्लिकेशनों में 41 कंटेनर
+- **कर्नेल ट्यूनिंग**: TCP keepalive, TIME_WAIT reuse, 2M tw_buckets, 64K somaxconn
+- **nginx**: स्टिकी सेशन (ip_hash, cookie hash) के साथ 8 अपस्ट्रीम ब्लॉक, keepalive पूल (64--128), Juice Shop के लिए प्रॉक्सी कैश, error_log crit लेवल
+- **Docker Compose**: प्रति-कंटेनर CPU/मेमोरी लिमिट के साथ 9 एप्लिकेशन में 41 कंटेनर
 - **कस्टम बिल्ड**: DVWA-FPM (pm.max_requests=200 के साथ php-fpm), CSD Demo (Flask + gunicorn), RESTaurant (GitHub से क्लोन)
-- **वर्कर रीसाइक्लिंग**: निरंतर लोड के तहत मेमोरी लीक को रोकने के लिए uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM)
+- **वर्कर रीसाइक्लिंग**: सतत लोड के तहत मेमोरी लीक रोकने के लिए uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM)
 
 ```yaml file=./_data/cloud-init.yaml
 ```
 
 ### आउटपुट
 
-`outputs.tf` Demo Resource Standard का पालन करते हुए 25 आउटपुट प्रदर्शित करता है — 15 मानक आउटपुट जो सभी डेमो रिसोर्सों द्वारा साझा किए जाते हैं (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) और 10 कंपोनेंट-विशिष्ट एप्लिकेशन URL (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
+`outputs.tf` डेमो रिसोर्स स्टैंडर्ड के अनुसार 25 आउटपुट एक्सपोज़ करता है — सभी डेमो रिसोर्स द्वारा साझा किए गए 15 स्टैंडर्ड आउटपुट (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) और 10 कंपोनेंट-विशिष्ट एप्लिकेशन URL (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
 
 ```hcl file=./_data/outputs.tf
 ```
 
 ### उदाहरण वेरिएबल फाइल
 
-`terraform.tfvars.example` को `terraform.tfvars` में कॉपी करें और अपने मान भरें। `.gitignore` क्रेडेंशियल कमिट करने से रोकने के लिए `terraform.tfvars` को बाहर रखता है:
+`terraform.tfvars.example` को `terraform.tfvars` में कॉपी करें और अपने मान भरें। `.gitignore` क्रेडेंशियल कमिट होने से रोकने के लिए `terraform.tfvars` को बाहर रखता है:
 
 ```hcl file=./_data/terraform.tfvars.example
 ```
@@ -91,7 +91,7 @@ terraform डायरेक्टरी में Demo Resource Standard का
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+# terraform.tfvars को अपने Azure subscription ID और SSH key path के साथ संपादित करें
 
 terraform init
 
@@ -104,7 +104,7 @@ terraform apply
 
 ## डिप्लॉय के बाद
 
-`terraform apply` पूरा होने के बाद, Docker इंस्टॉल करने, कंटेनर इमेज पुल करने, और nginx कॉन्फ़िगर करने के लिए cloud-init को समाप्त होने में 5--10 मिनट का समय दें। Docker इमेज पुल बाधक हैं -- अकेले Juice Shop ~400 MiB का है।
+`terraform apply` पूरा होने के बाद, cloud-init को Docker इंस्टॉल करने, कंटेनर इमेज पुल करने, और nginx कॉन्फ़िगर करने के लिए 5--10 मिनट का समय दें। Docker इमेज पुल बाधक हैं -- अकेले Juice Shop ~400 MiB का है।
 
 हेल्थ एंडपॉइंट सत्यापित करें:
 
@@ -127,15 +127,15 @@ curl -s "http://$(terraform output -raw public_ip)/health" | jq .
 DVWA को एक बार डेटाबेस इनिशियलाइज़ेशन की आवश्यकता होती है। ब्राउज़र में `http://<PUBLIC_IP>/dvwa/setup.php` खोलें और **Create / Reset Database** पर क्लिक करें। डिफ़ॉल्ट क्रेडेंशियल `admin` / `password` हैं।
 
 :::note
-VAmPI का SQLite डेटाबेस इसकी gunicorn एंट्रीपॉइंट स्क्रिप्ट द्वारा स्वचालित रूप से इनिशियलाइज़ होता है। प्रत्येक कंटेनर स्टार्टअप पर `db.create_all()` चलाता है, इसलिए कोई मैनुअल हस्तक्षेप आवश्यक नहीं है।
+VAmPI का SQLite डेटाबेस इसकी gunicorn एंट्रीपॉइंट स्क्रिप्ट द्वारा स्वचालित रूप से इनिशियलाइज़ होता है। प्रत्येक कंटेनर स्टार्टअप पर `db.create_all()` चलाता है, इसलिए किसी मैनुअल हस्तक्षेप की आवश्यकता नहीं है।
 :::
 
-## डाउनस्ट्रीम कंपोनेंट से जोड़ना
+## डाउनस्ट्रीम कंपोनेंट से कनेक्ट करना
 
 डिप्लॉयमेंट के बाद, अन्य कंपोनेंट ऑरिजिन सर्वर के आउटपुट को अपने इनपुट के रूप में उपयोग करते हैं:
 
 ```bash
-# CDN Simulator — pass origin-server's public IP as its upstream
+# CDN Simulator — origin-server का पब्लिक IP इसके अपस्ट्रीम के रूप में पास करें
 cd ../cdn-simulator/terraform
 origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
 cat > terraform.tfvars <<EOF
@@ -144,7 +144,7 @@ origin_server   = "http://${origin_ip}"
 origin_host     = "${origin_ip}:80"
 EOF
 
-# Traffic Generator — pass the F5 XC load balancer FQDN (not the origin IP directly)
+# Traffic Generator — F5 XC लोड बैलेंसर FQDN पास करें (सीधे ऑरिजिन IP नहीं)
 cd ../traffic-generator/terraform
 cat > terraform.tfvars <<EOF
 subscription_id = "your-subscription-id"
@@ -154,8 +154,8 @@ EOF
 
 | आउटपुट | डाउनस्ट्रीम कंपोनेंट | इनपुट वेरिएबल |
 |---|---|---|
-| `public_ip` | CDN Simulator | `origin_server` (`http://` प्रीफ़िक्स के साथ) |
-| `public_ip` | CDN Simulator | `origin_host` (`:80` सफ़िक्स के साथ, बिना स्कीम) |
+| `public_ip` | CDN Simulator | `origin_server` (`http://` प्रीफिक्स के साथ) |
+| `public_ip` | CDN Simulator | `origin_host` (`:80` सफिक्स के साथ, बिना स्कीम) |
 | `public_ip` | F5 XC Origin Pool | ऑरिजिन सर्वर एड्रेस |
 
-उपयोग गाइड के लिए [Applications](../04-applications/) पर जाएँ या स्मोक टेस्ट के लिए [Verify](../05-verify/) पर जाएँ।
+उपयोग गाइड के लिए [एप्लिकेशन](../04-applications/) या स्मोक टेस्ट के लिए [सत्यापन](../05-verify/) पर आगे बढ़ें।

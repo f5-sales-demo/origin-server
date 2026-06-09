@@ -1,8 +1,8 @@
 ---
 title: 사전 요구 사항
 description: >-
-  Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and
-  Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) for 41-container deployment
+  Azure 구독, Terraform >= 1.5, Azure CLI, SSH 키 쌍, 41개 컨테이너 배포를 위한
+  Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM)
 sidebar:
   order: 2
 i18n:
@@ -10,17 +10,17 @@ i18n:
   translator: machine
 ---
 
-## 필수 요구 사항
+## 필수 사항
 
 ### Azure 구독
 
-다음 리소스를 생성할 수 있는 권한이 있는 활성 Azure 구독이 필요합니다:
+다음 리소스를 생성할 수 있는 권한이 있는 활성 Azure 구독:
 
 - 리소스 그룹
 - 가상 네트워크 및 서브넷
 - 네트워크 보안 그룹
 - 공용 IP 주소
-- 가상 머신 (Standard_D16s_v3 -- 41개 컨테이너 워크로드를 위한 16 vCPU, 64 GiB RAM)
+- 가상 머신 (Standard_D16s_v3 -- 41개 컨테이너 워크로드용 16 vCPU, 64 GiB RAM)
 
 ### Azure CLI
 
@@ -42,7 +42,7 @@ Terraform >= 1.5가 필요합니다:
 terraform version
 ```
 
-설치되어 있지 않은 경우 HashiCorp APT 저장소를 사용하세요:
+설치되어 있지 않은 경우 HashiCorp APT 저장소를 사용합니다:
 
 ```bash
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -52,11 +52,11 @@ sudo apt update && sudo apt install terraform
 
 ### Azure AD 권한
 
-Azure AD 계정에 `User.Read` 권한이 있어야 합니다. 배포자 식별자(리소스 명명에 사용됨)는 Azure AD 프로필에서 자동으로 파생됩니다. 서비스 주체 또는 관리 ID 인증의 경우 `deployer` Terraform 변수를 명시적으로 설정하세요.
+Azure AD 계정에 `User.Read` 권한이 있어야 합니다. 배포자 식별자(리소스 명명에 사용)는 Azure AD 프로필에서 자동으로 파생됩니다. 서비스 주체 또는 관리 ID 인증의 경우 `deployer` Terraform 변수를 명시적으로 설정하십시오.
 
 ### SSH 키 쌍
 
-VM 접근을 위한 SSH 키 쌍이 필요합니다:
+VM 접근을 위한 SSH 키 쌍:
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
@@ -71,12 +71,12 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 | OS 디스크 | 60 GiB Premium SSD |
 | VNet + NSG | 기본값 |
 
-현재 비용은 [Azure 가격 계산기](https://azure.microsoft.com/en-us/pricing/calculator/)를 참조하세요. 랩을 사용하지 않을 때는 `terraform destroy`를 사용하여 과금을 중지하세요. 절차는 [정리](../07-teardown/)를 참조하세요.
+현재 비용은 [Azure 가격 계산기](https://azure.microsoft.com/en-us/pricing/calculator/)를 참조하십시오. 랩을 사용하지 않을 때는 `terraform destroy`를 사용하여 요금 발생을 중지하십시오. 절차는 [정리](../07-teardown/)를 참조하십시오.
 
 :::note
-Standard_D16s_v3 (64 GiB RAM)는 41개 컨테이너 배포에 필요합니다. 컨테이너 메모리 할당: Juice Shop 4개 인스턴스 각 1 GiB (4 GiB), VAmPI 4개 각 512 MiB (2 GiB), DVWA-FPM + MariaDB 4개 (1.8 GiB), httpbin 4개 각 256 MiB (1 GiB), CSD Demo 4개 각 256 MiB (1 GiB), whoami 4개 각 64 MiB (256 MiB), DVGA 4개 각 256 MiB (1 GiB), RESTaurant + PostgreSQL 4개 (1.5 GiB), crAPI 마이크로서비스 7개 (2 GiB), 그리고 nginx, OS 및 버퍼 캐시. 전체 컨테이너 할당량은 약 14.5 GiB (64 GiB의 22.7%)입니다.
+Standard_D16s_v3 (64 GiB RAM)는 41개 컨테이너 배포에 필요합니다. 컨테이너 메모리 할당: Juice Shop 인스턴스 4개 각 1 GiB (4 GiB), VAmPI 4개 각 512 MiB (2 GiB), DVWA-FPM + MariaDB 4개 (1.8 GiB), httpbin 4개 각 256 MiB (1 GiB), CSD Demo 4개 각 256 MiB (1 GiB), whoami 4개 각 64 MiB (256 MiB), DVGA 4개 각 256 MiB (1 GiB), RESTaurant + PostgreSQL 4개 (1.5 GiB), crAPI 마이크로서비스 7개 (2 GiB), 그리고 nginx, OS, 버퍼 캐시. 총 컨테이너 할당량은 약 14.5 GiB (64 GiB의 22.7%)입니다.
 :::
 
 :::note
-NSG는 포트 80 (HTTP) 및 8888 (crAPI)에서의 인바운드 트래픽을 허용합니다. 포트 8888은 crAPI가 API 경로를 하드코딩하는 단일 페이지 애플리케이션이어서 경로 접두사 뒤에서 서빙할 수 없기 때문에 필요합니다.
+NSG는 포트 80 (HTTP) 및 8888 (crAPI)에서 인바운드 트래픽을 허용합니다. 포트 8888은 crAPI가 API 경로를 하드코딩하는 단일 페이지 애플리케이션이며 경로 접두사 뒤에서 서비스할 수 없기 때문에 필요합니다.
 :::

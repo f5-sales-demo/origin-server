@@ -1,9 +1,8 @@
 ---
 title: 部署
 description: >-
-  Terraform IaC deployment following the Demo Resource Standard — 9 terraform
-  files with Azure AD deployer auto-resolution, 25 outputs, and hardened
-  cloud-init provisioning 41 Docker containers across 9 applications.
+  遵循 Demo Resource Standard 的 Terraform IaC 部署 — 9 個 terraform 檔案，具備 Azure AD
+  部署者自動解析、25 個輸出，以及強化的 cloud-init 佈建，跨 9 個應用程式部署 41 個 Docker 容器。
 sidebar:
   order: 3
 i18n:
@@ -11,13 +10,13 @@ i18n:
   translator: machine
 ---
 
-所有 Terraform 檔案都位於 [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform) 目錄中。克隆儲存庫並直接部署：
+所有 Terraform 檔案位於 [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform) 目錄中。克隆儲存庫即可直接部署：
 
 ```bash
 git clone https://github.com/f5xc-salesdemos/origin-server.git
 cd origin-server/terraform
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+# 編輯 terraform.tfvars，填入您的 Azure 訂閱 ID 和 SSH 金鑰路徑
 ```
 
 ## Terraform 配置
@@ -26,63 +25,63 @@ cp terraform.tfvars.example terraform.tfvars
 
 terraform 目錄包含 9 個遵循 Demo Resource Standard 的檔案：
 
-- `versions.tf` — Terraform 和提供者版本約束（azurerm ~> 4.0、azuread ~> 3.0）
-- `providers.tf` — Azure RM 和 Azure AD 提供者配置
+- `versions.tf` — Terraform 和 provider 版本約束（azurerm ~> 4.0、azuread ~> 3.0）
+- `providers.tf` — Azure RM 和 Azure AD provider 配置
 - `data.tf` — 用於部署者自動解析的 Azure AD 資料來源
 - `locals.tf` — 部署者解析、Azure Cloud Adoption Framework 資源命名、標準標籤
 - `main.tf` — 資源群組（命名為 `rg-origin-server-{environment}-{deployer}`）
-- `variables.tf` — 所有輸入變數（1 個必要、8 個選用）
-- `network.tf` — VNet（10.200.0.0/16）、子網路、公開 IP、NSG（連接埠 22/80/443/8888）、NIC
-- `vm.tf` — 透過 templatefile() 使用 cloud-init 的 Ubuntu 24.04 VM
-- `outputs.tf` — 25 個輸出（15 個標準 + 10 個元件特定的應用程式 URL）
+- `variables.tf` — 所有輸入變數（1 個必填、8 個選填）
+- `network.tf` — VNet（10.200.0.0/16）、子網路、公用 IP、NSG（連接埠 22/80/443/8888）、NIC
+- `vm.tf` — 透過 templatefile() 搭配 cloud-init 的 Ubuntu 24.04 VM
+- `outputs.tf` — 25 個輸出（15 個標準輸出 + 10 個元件特定的應用程式 URL）
 
 `main.tf` 僅包含資源群組：
 
 ```hcl file=./_data/main.tf
 ```
 
-`variables.tf` 定義所有可配置的參數。`deployer` 識別碼會從您的 Azure AD 帳戶自動解析——您只需要設定 `subscription_id`。`vm_size` 預設值為 `Standard_D16s_v3`（16 vCPU、64 GiB RAM），專為 41 個 Docker 容器調整大小：
+`variables.tf` 定義所有可配置參數。`deployer` 識別碼會從您的 Azure AD 帳戶自動解析 — 您只需設定 `subscription_id`。`vm_size` 預設為 `Standard_D16s_v3`（16 vCPU、64 GiB RAM），為 41 個 Docker 容器量身規劃：
 
 ```hcl file=./_data/variables.tf
 ```
 
 ### 網路基礎架構
 
-`network.tf` 建立 VNet、子網路、公開 IP、NSG（連接埠 22/80/443/8888）和 NIC。連接埠 8888 是 crAPI 所需的，因為它運行在專用連接埠上：
+`network.tf` 建立 VNet、子網路、公用 IP、NSG（連接埠 22/80/443/8888）和 NIC。連接埠 8888 是 crAPI 所需，因其在專用連接埠上運行：
 
 ```hcl file=./_data/network.tf
 ```
 
-### 使用 Cloud-Init 的虛擬機器
+### 搭配 Cloud-Init 的虛擬機器
 
-`vm.tf` 建立 Ubuntu 24.04 VM 並傳遞 cloud-init 佈建腳本。60 GiB Premium SSD 提供足夠的空間用於 Docker 映像和容器卷：
+`vm.tf` 建立 Ubuntu 24.04 VM 並傳遞 cloud-init 佈建腳本。60 GiB Premium SSD 為 Docker 映像檔和容器磁碟區提供充足空間：
 
 ```hcl file=./_data/vm.tf
 ```
 
 ### Cloud-Init 佈建
 
-`cloud-init.yaml` 使用強化配置佈建 VM。共用輔助程式庫（`/usr/local/lib/cloud-init-helpers.sh`）為所有網路操作提供重試邏輯，並將進度記錄到 `/var/log/cloud-init-progress.log`。主動健康檢查輪詢取代了固定時間的 sleep 來確認容器就緒狀態。佈建內容包括：
+`cloud-init.yaml` 以強化配置佈建 VM。共用輔助程式庫（`/usr/local/lib/cloud-init-helpers.sh`）為所有網路操作提供重試邏輯，並將進度記錄至 `/var/log/cloud-init-progress.log`。主動健康檢查輪詢取代了固定等待時間的 sleep 以確認容器就緒狀態。佈建內容包括：
 
 - **核心調校**：TCP keepalive、TIME_WAIT 重用、2M tw_buckets、64K somaxconn
-- **nginx**：8 個上游區塊，具有黏性會話（ip_hash、cookie hash）、keepalive 連線池（64--128）、Juice Shop 的代理快取、error_log crit 等級
-- **Docker Compose**：41 個容器橫跨 9 個應用程式，具有每容器 CPU/記憶體限制
-- **自訂建置**：DVWA-FPM（php-fpm，pm.max_requests=200）、CSD Demo（Flask + gunicorn）、RESTaurant（從 GitHub 克隆）
-- **Worker 回收**：uvicorn --limit-max-requests 200（RESTaurant）、pm.max_requests 200（DVWA-FPM），以防止持續負載下的記憶體洩漏
+- **nginx**：8 個上游區塊搭配黏性會話（ip_hash、cookie hash）、keepalive 連線池（64--128）、Juice Shop 的 proxy cache、error_log crit 層級
+- **Docker Compose**：跨 9 個應用程式的 41 個容器，每個容器皆有 CPU/記憶體限制
+- **自訂建置**：DVWA-FPM（php-fpm 搭配 pm.max_requests=200）、CSD Demo（Flask + gunicorn）、RESTaurant（從 GitHub 克隆）
+- **Worker 回收**：uvicorn --limit-max-requests 200（RESTaurant）、pm.max_requests 200（DVWA-FPM），防止持續負載下的記憶體洩漏
 
 ```yaml file=./_data/cloud-init.yaml
 ```
 
 ### 輸出
 
-`outputs.tf` 遵循 Demo Resource Standard 公開 25 個輸出——15 個所有示範資源共用的標準輸出（`deployer`、`public_ip`、`private_ip`、`ssh_command`、`resource_group_name`、`vm_name`、`nsg_name`、`vnet_name`、`subnet_id`、`component`、`environment`、`resource_group_id`、`vm_id`、`nsg_id`、`location`）加上 10 個元件特定的應用程式 URL（`origin_url`、`health_check_url`、`juice_shop_url`、`dvwa_url`、`vampi_url`、`httpbin_url`、`whoami_url`、`dvga_url`、`restaurant_url`、`crapi_url`）：
+`outputs.tf` 公開 25 個遵循 Demo Resource Standard 的輸出 — 15 個所有 demo 資源共用的標準輸出（`deployer`、`public_ip`、`private_ip`、`ssh_command`、`resource_group_name`、`vm_name`、`nsg_name`、`vnet_name`、`subnet_id`、`component`、`environment`、`resource_group_id`、`vm_id`、`nsg_id`、`location`）加上 10 個元件特定的應用程式 URL（`origin_url`、`health_check_url`、`juice_shop_url`、`dvwa_url`、`vampi_url`、`httpbin_url`、`whoami_url`、`dvga_url`、`restaurant_url`、`crapi_url`）：
 
 ```hcl file=./_data/outputs.tf
 ```
 
 ### 範例變數檔案
 
-將 `terraform.tfvars.example` 複製為 `terraform.tfvars` 並填入您的值。`.gitignore` 會排除 `terraform.tfvars` 以防止提交憑證：
+將 `terraform.tfvars.example` 複製為 `terraform.tfvars` 並填入您的值。`.gitignore` 已排除 `terraform.tfvars` 以防止提交憑證：
 
 ```hcl file=./_data/terraform.tfvars.example
 ```
@@ -91,7 +90,7 @@ terraform 目錄包含 9 個遵循 Demo Resource Standard 的檔案：
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+# 編輯 terraform.tfvars，填入您的 Azure 訂閱 ID 和 SSH 金鑰路徑
 
 terraform init
 
@@ -100,13 +99,13 @@ terraform plan
 terraform apply
 ```
 
-Terraform 在成功部署後會輸出公開 IP、SSH 命令和應用程式 URL。
+Terraform 在成功部署後會輸出公用 IP、SSH 命令和應用程式 URL。
 
-## 部署後
+## 部署後作業
 
-`terraform apply` 完成後，請等待 5--10 分鐘讓 cloud-init 完成安裝 Docker、拉取容器映像和配置 nginx。Docker 映像拉取是瓶頸——僅 Juice Shop 就約 400 MiB。
+`terraform apply` 完成後，請等待 5--10 分鐘讓 cloud-init 完成安裝 Docker、拉取容器映像檔和配置 nginx。Docker 映像檔拉取是瓶頸 — 僅 Juice Shop 就約 ~400 MiB。
 
-驗證健康端點：
+驗證健康檢查端點：
 
 ```bash
 curl -s "http://$(terraform output -raw public_ip)/health" | jq .
@@ -124,18 +123,18 @@ curl -s "http://$(terraform output -raw public_ip)/health" | jq .
 
 ### DVWA 資料庫設定
 
-DVWA 需要一次性的資料庫初始化。在瀏覽器中開啟 `http://<PUBLIC_IP>/dvwa/setup.php` 並點擊 **Create / Reset Database**。預設憑證為 `admin` / `password`。
+DVWA 需要一次性資料庫初始化。在瀏覽器中開啟 `http://<PUBLIC_IP>/dvwa/setup.php`，然後點擊 **Create / Reset Database**。預設憑證為 `admin` / `password`。
 
 :::note
-VAmPI 的 SQLite 資料庫會由其 gunicorn 進入點腳本自動初始化。每個容器在啟動時執行 `db.create_all()`，因此不需要手動介入。
+VAmPI 的 SQLite 資料庫會由其 gunicorn 進入點腳本自動初始化。每個容器在啟動時會執行 `db.create_all()`，因此無需手動操作。
 :::
 
-## 連接下游元件
+## 連接至下游元件
 
-部署後，其他元件使用源站伺服器的輸出作為其輸入：
+部署完成後，其他元件使用 origin server 的輸出作為其輸入：
 
 ```bash
-# CDN Simulator — pass origin-server's public IP as its upstream
+# CDN Simulator — 將 origin-server 的公用 IP 作為其上游傳入
 cd ../cdn-simulator/terraform
 origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
 cat > terraform.tfvars <<EOF
@@ -144,7 +143,7 @@ origin_server   = "http://${origin_ip}"
 origin_host     = "${origin_ip}:80"
 EOF
 
-# Traffic Generator — pass the F5 XC load balancer FQDN (not the origin IP directly)
+# Traffic Generator — 傳入 F5 XC 負載平衡器的 FQDN（而非直接使用 origin IP）
 cd ../traffic-generator/terraform
 cat > terraform.tfvars <<EOF
 subscription_id = "your-subscription-id"
@@ -155,7 +154,7 @@ EOF
 | 輸出 | 下游元件 | 輸入變數 |
 |---|---|---|
 | `public_ip` | CDN Simulator | `origin_server`（加上 `http://` 前綴） |
-| `public_ip` | CDN Simulator | `origin_host`（加上 `:80` 後綴，不含協定） |
-| `public_ip` | F5 XC Origin Pool | 源站伺服器位址 |
+| `public_ip` | CDN Simulator | `origin_host`（加上 `:80` 後綴，不含 scheme） |
+| `public_ip` | F5 XC Origin Pool | Origin server 位址 |
 
-前往[應用程式](../04-applications/)查看使用指南，或前往[驗證](../05-verify/)進行冒煙測試。
+前往[應用程式](../04-applications/)查看使用指南，或前往[驗證](../05-verify/)進行煙霧測試。

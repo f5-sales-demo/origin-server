@@ -1,9 +1,10 @@
 ---
 title: Intégration
 description: >-
-  Configure the VM as an F5 XC origin pool member with WAF, Bot Defense, API
-  Discovery, and Client-Side Defense policies; path-based routing through HTTP
-  load balancer; header injection verification via /whoami
+  Configurer la VM en tant que membre du pool d'origines F5 XC avec les
+  politiques WAF, Bot Defense, API Discovery et Client-Side Defense ; routage
+  basé sur les chemins via un équilibreur de charge HTTP ; vérification de
+  l'injection d'en-têtes via /whoami
 sidebar:
   order: 6
 i18n:
@@ -13,17 +14,17 @@ i18n:
 
 ## Intégration du pool d'origines F5 XC
 
-Ce serveur d'origine est conçu pour être utilisé comme **membre d'un pool d'origines** derrière un répartiteur de charge HTTP F5 Distributed Cloud. La plateforme F5 XC fournit le WAF, la défense contre les bots, la sécurité API et la défense côté client en amont de cette origine.
+Ce serveur d'origine est conçu pour être utilisé comme **membre d'un pool d'origines** derrière un équilibreur de charge HTTP F5 Distributed Cloud. La plateforme F5 XC fournit le WAF, Bot Defense, API Security et Client-Side Defense en amont de cette origine.
 
 ### Architecture
 
 ```
-End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker apps)
+Utilisateur final -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> VM serveur d'origine (nginx -> applications Docker)
 ```
 
 ### Configuration du pool d'origines
 
-Créez un pool d'origines F5 XC pointant vers l'adresse IP publique de cette VM :
+Créez un pool d'origines F5 XC pointant vers l'IP publique de cette VM :
 
 | Paramètre | Valeur |
 |---|---|
@@ -32,21 +33,21 @@ Créez un pool d'origines F5 XC pointant vers l'adresse IP publique de cette VM 
 | **Port** | `80` |
 | **Vérification de santé** | HTTP, chemin `/health` |
 
-### Configuration du répartiteur de charge HTTP
+### Configuration de l'équilibreur de charge HTTP
 
-Créez un répartiteur de charge HTTP avec le pool d'origines :
+Créez un équilibreur de charge HTTP avec le pool d'origines :
 
 | Paramètre | Valeur |
 |---|---|
-| **Domaines** | Votre domaine de démonstration (ex. : `demo.example.com`) |
+| **Domaines** | Votre domaine de démonstration (par ex., `demo.example.com`) |
 | **Pool d'origines** | Le pool créé ci-dessus |
 | **WAF** | Attachez votre politique WAF |
-| **Défense contre les bots** | Activez selon les besoins |
-| **Découverte d'API** | Activez pour les points de terminaison VAmPI |
+| **Bot Defense** | Activez selon les besoins |
+| **API Discovery** | Activez pour les endpoints VAmPI |
 
-### Routage basé sur le chemin
+### Routage basé sur les chemins
 
-Chaque application est accessible via son préfixe de chemin à travers le répartiteur de charge :
+Chaque application est accessible via son préfixe de chemin à travers l'équilibreur de charge :
 
 | URL du LB F5 XC | Chemin d'origine | Application |
 |---|---|---|
@@ -60,9 +61,9 @@ Chaque application est accessible via son préfixe de chemin à travers le répa
 | `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant (4 instances, round-robin) |
 | `https://demo.example.com/health` | `/health` | Vérification de santé (nginx direct) |
 
-### Vérification de l'injection d'en-têtes F5 XC
+### Vérifier l'injection d'en-têtes F5 XC
 
-Utilisez le point de terminaison whoami pour vérifier quels en-têtes F5 XC injecte dans les requêtes atteignant l'origine :
+Utilisez l'endpoint whoami pour vérifier quels en-têtes F5 XC injecte dans les requêtes atteignant l'origine :
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -74,15 +75,15 @@ Recherchez ces en-têtes injectés par F5 XC dans la réponse :
 
 | En-tête | Signification |
 |---|---|
-| `X-Forwarded-For` | Chaîne d'adresses IP du client à travers F5 XC |
-| `True-Client-IP` | Adresse IP originale du client |
-| `X-Forwarded-Proto` | `https` si le TLS est terminé au niveau de F5 XC |
-| `X-Volterra-Bot-Type` | Classification du bot (lorsque la défense contre les bots est activée) |
-| `X-Request-ID` | Identifiant de suivi de requête F5 XC |
+| `X-Forwarded-For` | Chaîne d'IP client à travers F5 XC |
+| `True-Client-IP` | IP client d'origine |
+| `X-Forwarded-Proto` | `https` si la terminaison TLS se fait au niveau de F5 XC |
+| `X-Volterra-Bot-Type` | Classification du bot (lorsque Bot Defense est activé) |
+| `X-Request-ID` | ID de suivi de requête F5 XC |
 
-### Tests WAF à travers F5 XC
+### Test du WAF via F5 XC
 
-Avec une politique WAF attachée au répartiteur de charge HTTP, testez des charges utiles d'attaque :
+Avec une politique WAF attachée à l'équilibreur de charge HTTP, testez les charges utiles d'attaque :
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -101,9 +102,9 @@ curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/exec/" \
 curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
 ```
 
-### Tests de sécurité API
+### Test de la sécurité des API
 
-Activez la découverte d'API sur le répartiteur de charge HTTP pour cartographier les points de terminaison de l'API VAmPI :
+Activez API Discovery sur l'équilibreur de charge HTTP pour cartographier les endpoints de l'API VAmPI :
 
 ```bash
 # These requests build the API inventory in F5 XC
@@ -116,9 +117,9 @@ curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
   -d '{"username":"apitest","password":"test123"}'
 ```
 
-### Intégration de crAPI (Port 8888)
+### Intégration de crAPI (port 8888)
 
-crAPI s'exécute sur un port dédié (8888) car il s'agit d'une application monopage qui code en dur ses chemins d'API et ne peut pas être servie derrière un préfixe de chemin. Pour intégrer crAPI avec F5 XC :
+crAPI fonctionne sur un port dédié (8888) car c'est une application monopage qui code en dur ses chemins d'API et ne peut pas être servie derrière un préfixe de chemin. Pour intégrer crAPI avec F5 XC :
 
 | Paramètre | Valeur |
 |---|---|
@@ -127,7 +128,7 @@ crAPI s'exécute sur un port dédié (8888) car il s'agit d'une application mono
 | **Port** | `8888` |
 | **Vérification de santé** | HTTP, chemin `/` |
 
-Créez un **pool d'origines séparé** pour crAPI sur le port 8888, ou ajoutez un second membre de pool d'origines à votre pool existant avec le port 8888 et utilisez des règles de routage pour diriger le trafic :
+Créez un **pool d'origines séparé** pour crAPI sur le port 8888, ou ajoutez un second membre au pool d'origines existant avec le port 8888 et utilisez des règles de routage pour diriger le trafic :
 
 ```bash
 # Test crAPI through F5 XC (if configured)
@@ -144,7 +145,7 @@ Le NSG sur la VM d'origine autorise le trafic entrant sur le port 8888. Aucune m
 
 ### Prise en compte des sessions persistantes
 
-Le serveur d'origine utilise les sessions persistantes nginx en interne pour acheminer les applications avec état vers des conteneurs backend cohérents. Lors de la configuration du répartiteur de charge HTTP F5 XC, tenez compte de ce qui suit :
+Le serveur d'origine utilise des sessions persistantes nginx en interne pour router les applications à état vers des conteneurs backend cohérents. Lors de la configuration de l'équilibreur de charge HTTP F5 XC, tenez compte de ce qui suit :
 
 | Application | Méthode de persistance | Raison |
 |---|---|---|
@@ -158,14 +159,14 @@ Le serveur d'origine utilise les sessions persistantes nginx en interne pour ach
 | httpbin | Round-robin | Sans état |
 | whoami | Round-robin | Sans état |
 
-F5 XC n'a pas besoin de répliquer ces sessions persistantes -- nginx sur la VM d'origine gère le routage backend. F5 XC doit traiter l'origine comme un point de terminaison unique (l'adresse IP publique de la VM sur le port 80).
+F5 XC n'a pas besoin de répliquer ces sessions persistantes -- nginx sur la VM d'origine gère le routage backend. F5 XC doit traiter l'origine comme un point de terminaison unique (l'IP publique de la VM sur le port 80).
 
 ### Architecture multi-composants
 
-Combinée avec le simulateur CDN, l'architecture complète du laboratoire est la suivante :
+Combinée avec le simulateur CDN, l'architecture complète du laboratoire est :
 
 ```
-End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this component)
+Utilisateur final -> Simulateur CDN (cache nginx) -> F5 XC HTTP LB -> Serveur d'origine (ce composant)
 ```
 
-Le simulateur CDN utilise le VIP du répartiteur de charge HTTP F5 XC comme son origine, et le répartiteur de charge F5 XC utilise ce serveur d'origine comme son backend. Cela crée une architecture multi-couches réaliste pour des tests complets.
+Le simulateur CDN utilise le VIP de l'équilibreur de charge HTTP F5 XC comme origine, et l'équilibreur de charge F5 XC utilise ce serveur d'origine comme backend. Cela crée une architecture multi-couches réaliste pour des tests complets.

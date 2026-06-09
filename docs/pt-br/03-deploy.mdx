@@ -1,9 +1,10 @@
 ---
-title: Deploy
+title: Implantar
 description: >-
-  Terraform IaC deployment following the Demo Resource Standard — 9 terraform
-  files with Azure AD deployer auto-resolution, 25 outputs, and hardened
-  cloud-init provisioning 41 Docker containers across 9 applications.
+  Implantação Terraform IaC seguindo o Demo Resource Standard — 9 arquivos
+  terraform com auto-resolução de deployer do Azure AD, 25 outputs e
+  provisionamento hardened via cloud-init de 41 contêineres Docker em 9
+  aplicações.
 sidebar:
   order: 3
 i18n:
@@ -11,7 +12,7 @@ i18n:
   translator: machine
 ---
 
-Todos os arquivos Terraform estão no diretório [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform). Clone o repositório e faça o deploy diretamente:
+Todos os arquivos Terraform estão no diretório [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform). Clone o repositório e implante diretamente:
 
 ```bash
 git clone https://github.com/f5xc-salesdemos/origin-server.git
@@ -22,51 +23,51 @@ cp terraform.tfvars.example terraform.tfvars
 
 ## Configuração do Terraform
 
-### Estrutura de Arquivos do Terraform
+### Estrutura de Arquivos Terraform
 
 O diretório terraform contém 9 arquivos seguindo o Demo Resource Standard:
 
-- `versions.tf` — Restrições de versão do Terraform e dos providers (azurerm ~> 4.0, azuread ~> 3.0)
+- `versions.tf` — Restrições de versão do Terraform e providers (azurerm ~> 4.0, azuread ~> 3.0)
 - `providers.tf` — Configuração dos providers Azure RM e Azure AD
 - `data.tf` — Data sources do Azure AD para auto-resolução do deployer
 - `locals.tf` — Resolução do deployer, nomenclatura de recursos do Azure Cloud Adoption Framework, tags padrão
-- `main.tf` — Resource group (nomeado `rg-origin-server-{environment}-{deployer}`)
+- `main.tf` — Grupo de recursos (nomeado `rg-origin-server-{environment}-{deployer}`)
 - `variables.tf` — Todas as variáveis de entrada (1 obrigatória, 8 opcionais)
-- `network.tf` — VNet (10.200.0.0/16), subnet, IP público, NSG (portas 22/80/443/8888), NIC
+- `network.tf` — VNet (10.200.0.0/16), sub-rede, IP público, NSG (portas 22/80/443/8888), NIC
 - `vm.tf` — VM Ubuntu 24.04 com cloud-init via templatefile()
 - `outputs.tf` — 25 outputs (15 padrão + 10 URLs de aplicações específicas do componente)
 
-`main.tf` contém apenas o resource group:
+`main.tf` contém apenas o grupo de recursos:
 
 ```hcl file=./_data/main.tf
 ```
 
-`variables.tf` define todos os parâmetros configuráveis. O identificador `deployer` é auto-resolvido a partir da sua conta Azure AD — você só precisa definir `subscription_id`. O valor padrão de `vm_size` é `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) dimensionado para 41 containers Docker:
+`variables.tf` define todos os parâmetros configuráveis. O identificador `deployer` é auto-resolvido a partir da sua conta Azure AD — você só precisa definir `subscription_id`. O `vm_size` padrão é `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) dimensionado para 41 contêineres Docker:
 
 ```hcl file=./_data/variables.tf
 ```
 
 ### Infraestrutura de Rede
 
-`network.tf` cria a VNet, subnet, IP público, NSG (portas 22/80/443/8888) e NIC. A porta 8888 é necessária para o crAPI, que executa em uma porta dedicada:
+`network.tf` cria a VNet, sub-rede, IP público, NSG (portas 22/80/443/8888) e NIC. A porta 8888 é necessária para o crAPI que executa em uma porta dedicada:
 
 ```hcl file=./_data/network.tf
 ```
 
 ### Máquina Virtual com Cloud-Init
 
-`vm.tf` cria a VM Ubuntu 24.04 e passa o script de provisionamento cloud-init. O SSD Premium de 60 GiB fornece espaço suficiente para imagens Docker e volumes de containers:
+`vm.tf` cria a VM Ubuntu 24.04 e passa o script de provisionamento cloud-init. O SSD Premium de 60 GiB fornece espaço suficiente para imagens Docker e volumes de contêineres:
 
 ```hcl file=./_data/vm.tf
 ```
 
 ### Provisionamento Cloud-Init
 
-`cloud-init.yaml` provisiona a VM com uma configuração hardened. Uma biblioteca auxiliar compartilhada (`/usr/local/lib/cloud-init-helpers.sh`) fornece lógica de retry em todas as operações de rede e logging de progresso em `/var/log/cloud-init-progress.log`. Polling ativo de health-check substitui sleep de duração fixa para verificação de prontidão dos containers. Ele provisiona:
+`cloud-init.yaml` provisiona a VM com uma configuração hardened. Uma biblioteca auxiliar compartilhada (`/usr/local/lib/cloud-init-helpers.sh`) fornece lógica de retry em todas as operações de rede e logging de progresso em `/var/log/cloud-init-progress.log`. Polling ativo de health-check substitui sleep de duração fixa para prontidão dos contêineres. Ele provisiona:
 
-- **Tuning de kernel**: TCP keepalive, reutilização de TIME_WAIT, 2M tw_buckets, 64K somaxconn
-- **nginx**: 8 blocos upstream com sessões sticky (ip_hash, cookie hash), pools keepalive (64--128), proxy cache para Juice Shop, error_log nível crit
-- **Docker Compose**: 41 containers em 9 aplicações com limites de CPU/memória por container
+- **Ajuste de kernel**: TCP keepalive, reutilização de TIME_WAIT, 2M tw_buckets, 64K somaxconn
+- **nginx**: 8 blocos upstream com sessões persistentes (ip_hash, cookie hash), pools keepalive (64--128), proxy cache para Juice Shop, error_log nível crit
+- **Docker Compose**: 41 contêineres em 9 aplicações com limites de CPU/memória por contêiner
 - **Builds customizados**: DVWA-FPM (php-fpm com pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (clonado do GitHub)
 - **Reciclagem de workers**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) para prevenir vazamentos de memória sob carga sustentada
 
@@ -87,7 +88,7 @@ Copie `terraform.tfvars.example` para `terraform.tfvars` e preencha seus valores
 ```hcl file=./_data/terraform.tfvars.example
 ```
 
-## Deploy
+## Implantar
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
@@ -100,11 +101,11 @@ terraform plan
 terraform apply
 ```
 
-O Terraform exibe o IP público, o comando SSH e as URLs das aplicações após um deploy bem-sucedido.
+O Terraform exibe o IP público, comando SSH e URLs das aplicações após a implantação bem-sucedida.
 
-## Pós-Deploy
+## Pós-Implantação
 
-Após a conclusão do `terraform apply`, aguarde de 5 a 10 minutos para que o cloud-init termine de instalar o Docker, baixar as imagens dos containers e configurar o nginx. Os pulls de imagens Docker são o gargalo — o Juice Shop sozinho tem ~400 MiB.
+Após a conclusão do `terraform apply`, aguarde 5--10 minutos para que o cloud-init termine de instalar o Docker, baixar as imagens de contêineres e configurar o nginx. Os pulls de imagens Docker são o gargalo -- somente o Juice Shop tem ~400 MiB.
 
 Verifique o endpoint de health:
 
@@ -127,12 +128,12 @@ Resposta esperada:
 O DVWA requer uma inicialização única do banco de dados. Abra `http://<PUBLIC_IP>/dvwa/setup.php` em um navegador e clique em **Create / Reset Database**. As credenciais padrão são `admin` / `password`.
 
 :::note
-O banco de dados SQLite do VAmPI é inicializado automaticamente pelo script de entrypoint do gunicorn. Cada container executa `db.create_all()` na inicialização, portanto nenhuma intervenção manual é necessária.
+O banco de dados SQLite do VAmPI é automaticamente inicializado pelo script de entrypoint do gunicorn. Cada contêiner executa `db.create_all()` na inicialização, portanto nenhuma intervenção manual é necessária.
 :::
 
 ## Conexão com Componentes Downstream
 
-Após o deploy, outros componentes utilizam os outputs do origin server como suas entradas:
+Após a implantação, outros componentes utilizam os outputs do origin server como suas entradas:
 
 ```bash
 # CDN Simulator — passe o IP público do origin-server como seu upstream
@@ -155,7 +156,7 @@ EOF
 | Output | Componente Downstream | Variável de Entrada |
 |---|---|---|
 | `public_ip` | CDN Simulator | `origin_server` (com prefixo `http://`) |
-| `public_ip` | CDN Simulator | `origin_host` (com sufixo `:80`, sem scheme) |
+| `public_ip` | CDN Simulator | `origin_host` (com sufixo `:80`, sem esquema) |
 | `public_ip` | F5 XC Origin Pool | Endereço do origin server |
 
-Prossiga para [Aplicações](../04-applications/) para guias de uso ou [Verificar](../05-verify/) para testes de fumaça.
+Prossiga para [Aplicações](../04-applications/) para guias de uso ou [Verificar](../05-verify/) para testes de validação.

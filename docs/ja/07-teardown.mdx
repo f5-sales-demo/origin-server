@@ -1,9 +1,8 @@
 ---
-title: Teardown
+title: 環境の削除
 description: >-
-  terraform destroy to remove all Azure resources, verify cleanup with az CLI,
-  clean local state files, and remove associated F5 XC origin pool and HTTP load
-  balancer
+  terraform destroy で全ての Azure リソースを削除し、az CLI
+  でクリーンアップを確認し、ローカルの状態ファイルをクリーンアップし、関連する F5 XC オリジンプールと HTTP ロードバランサーを削除します
 sidebar:
   order: 7
 i18n:
@@ -11,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-ラボセッションが完了したら、課金を停止するためにすべての Azure リソースを削除します。
+ラボセッションが完了したら、課金を停止するために全ての Azure リソースを削除します。
 
-## Terraform Destroy
+## Terraform による削除
 
-Terraform 構成ファイルが含まれるディレクトリから実行します：
+Terraform 設定ファイルが格納されているディレクトリから実行します：
 
 ```bash
 terraform plan -destroy
@@ -23,11 +22,11 @@ terraform plan -destroy
 terraform destroy
 ```
 
-Terraform が確認を求めます。続行するには `yes` と入力してください。
+Terraform が確認を求めます。`yes` と入力して続行します。
 
 ## クリーンアップの確認
 
-すべてのリソースが削除されたことを確認します：
+全てのリソースが削除されたことを確認します：
 
 ```bash
 az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
@@ -46,7 +45,7 @@ rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 
 ## F5 XC のクリーンアップ
 
-このオリジンサーバーを指す F5 XC リソースを作成した場合は、それらを削除してください：
+このオリジンサーバーを指す F5 XC リソースを作成した場合は、それらを削除します：
 
 1. HTTP ロードバランサーを削除する
 2. オリジンプールを削除する

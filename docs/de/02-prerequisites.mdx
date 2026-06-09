@@ -52,11 +52,11 @@ sudo apt update && sudo apt install terraform
 
 ### Azure AD-Berechtigungen
 
-Ihr Azure AD-Konto muss über `User.Read`-Berechtigungen verfügen. Der Deployer-Bezeichner (verwendet in der Ressourcenbenennung) wird automatisch aus Ihrem Azure AD-Profil abgeleitet. Bei Authentifizierung über Dienstprinzipal oder verwaltete Identität setzen Sie die Terraform-Variable `deployer` explizit.
+Ihr Azure AD-Konto muss über `User.Read`-Berechtigungen verfügen. Der Deployer-Bezeichner (verwendet für die Ressourcenbenennung) wird automatisch aus Ihrem Azure AD-Profil abgeleitet. Für die Authentifizierung mit Dienstprinzipal oder verwalteter Identität setzen Sie die Terraform-Variable `deployer` explizit.
 
 ### SSH-Schlüsselpaar
 
-Ein SSH-Schlüsselpaar für den VM-Zugriff:
+Ein SSH-Schlüsselpaar für den VM-Zugang:
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
@@ -74,9 +74,9 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 Aktuelle Kosten finden Sie im [Azure-Preisrechner](https://azure.microsoft.com/en-us/pricing/calculator/). Verwenden Sie `terraform destroy`, wenn das Lab nicht in Benutzung ist, um Kosten zu vermeiden. Das Verfahren finden Sie unter [Abbau](../07-teardown/).
 
 :::note
-Standard_D16s_v3 (64 GiB RAM) ist für die 41-Container-Bereitstellung erforderlich. Arbeitsspeicherzuweisung der Container: 4 Juice Shop-Instanzen mit je 1 GiB (4 GiB), 4 VAmPI mit je 512 MiB (2 GiB), 4 DVWA-FPM + MariaDB (1,8 GiB), 4 httpbin mit je 256 MiB (1 GiB), 4 CSD Demo mit je 256 MiB (1 GiB), 4 whoami mit je 64 MiB (256 MiB), 4 DVGA mit je 256 MiB (1 GiB), 4 RESTaurant + PostgreSQL (1,5 GiB), crAPI 7 Microservices (2 GiB), plus nginx, Betriebssystem und Puffer-Cache. Die gesamte Container-Zuweisung beträgt ungefähr 14,5 GiB (22,7 % von 64 GiB).
+Standard_D16s_v3 (64 GiB RAM) ist für die 41-Container-Bereitstellung erforderlich. Speicherzuweisung der Container: 4 Juice Shop-Instanzen mit je 1 GiB (4 GiB), 4 VAmPI mit je 512 MiB (2 GiB), 4 DVWA-FPM + MariaDB (1,8 GiB), 4 httpbin mit 256 MiB (1 GiB), 4 CSD Demo mit 256 MiB (1 GiB), 4 whoami mit 64 MiB (256 MiB), 4 DVGA mit je 256 MiB (1 GiB), 4 RESTaurant + PostgreSQL (1,5 GiB), crAPI 7 Microservices (2 GiB), plus nginx, Betriebssystem und Puffer-Cache. Die gesamte Container-Zuweisung beträgt ungefähr 14,5 GiB (22,7 % von 64 GiB).
 :::
 
 :::note
-Die NSG erlaubt eingehenden Datenverkehr auf den Ports 80 (HTTP) und 8888 (crAPI). Port 8888 ist erforderlich, da crAPI eine Single-Page-Anwendung ist, die ihre API-Pfade fest kodiert und nicht hinter einem Pfad-Präfix bereitgestellt werden kann.
+Die NSG erlaubt eingehenden Datenverkehr auf den Ports 80 (HTTP) und 8888 (crAPI). Port 8888 ist erforderlich, da crAPI eine Single-Page-Anwendung ist, die ihre API-Pfade fest kodiert und nicht hinter einem Pfadpräfix bereitgestellt werden kann.
 :::

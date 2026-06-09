@@ -1,9 +1,9 @@
 ---
 title: Deploy
 description: >-
-  Terraform IaC deployment following the Demo Resource Standard — 9 terraform
-  files with Azure AD deployer auto-resolution, 25 outputs, and hardened
-  cloud-init provisioning 41 Docker containers across 9 applications.
+  Deployment IaC con Terraform seguendo il Demo Resource Standard — 9 file
+  terraform con auto-risoluzione del deployer tramite Azure AD, 25 output e
+  provisioning cloud-init hardened di 41 container Docker su 9 applicazioni.
 sidebar:
   order: 3
 i18n:
@@ -24,7 +24,7 @@ cp terraform.tfvars.example terraform.tfvars
 
 ### Struttura dei file Terraform
 
-La directory terraform contiene 9 file conformi al Demo Resource Standard:
+La directory terraform contiene 9 file che seguono il Demo Resource Standard:
 
 - `versions.tf` — Vincoli di versione per Terraform e provider (azurerm ~> 4.0, azuread ~> 3.0)
 - `providers.tf` — Configurazione dei provider Azure RM e Azure AD
@@ -34,7 +34,7 @@ La directory terraform contiene 9 file conformi al Demo Resource Standard:
 - `variables.tf` — Tutte le variabili di input (1 obbligatoria, 8 opzionali)
 - `network.tf` — VNet (10.200.0.0/16), subnet, IP pubblico, NSG (porte 22/80/443/8888), NIC
 - `vm.tf` — VM Ubuntu 24.04 con cloud-init tramite templatefile()
-- `outputs.tf` — 25 output (15 standard + 10 URL applicative specifiche del componente)
+- `outputs.tf` — 25 output (15 standard + 10 URL applicativi specifici del componente)
 
 `main.tf` contiene solo il resource group:
 
@@ -62,11 +62,11 @@ La directory terraform contiene 9 file conformi al Demo Resource Standard:
 
 ### Provisioning Cloud-Init
 
-`cloud-init.yaml` effettua il provisioning della VM con una configurazione hardened. Una libreria helper condivisa (`/usr/local/lib/cloud-init-helpers.sh`) fornisce logica di retry su tutte le operazioni di rete e logging dell'avanzamento su `/var/log/cloud-init-progress.log`. Il polling attivo degli health-check sostituisce le attese a durata fissa per la prontezza dei container. Effettua il provisioning di:
+`cloud-init.yaml` esegue il provisioning della VM con una configurazione hardened. Una libreria helper condivisa (`/usr/local/lib/cloud-init-helpers.sh`) fornisce logica di retry su tutte le operazioni di rete e logging di avanzamento su `/var/log/cloud-init-progress.log`. Il polling attivo degli health-check sostituisce lo sleep a durata fissa per la verifica della disponibilità dei container. Il provisioning include:
 
 - **Tuning del kernel**: TCP keepalive, riutilizzo TIME_WAIT, 2M tw_buckets, 64K somaxconn
-- **nginx**: 8 blocchi upstream con sessioni sticky (ip_hash, cookie hash), pool keepalive (64--128), proxy cache per Juice Shop, error_log livello crit
-- **Docker Compose**: 41 container distribuiti su 9 applicazioni con limiti CPU/memoria per container
+- **nginx**: 8 blocchi upstream con sessioni persistenti (ip_hash, cookie hash), pool keepalive (64--128), proxy cache per Juice Shop, error_log a livello crit
+- **Docker Compose**: 41 container su 9 applicazioni con limiti CPU/memoria per container
 - **Build personalizzate**: DVWA-FPM (php-fpm con pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (clonato da GitHub)
 - **Riciclo dei worker**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) per prevenire memory leak sotto carico sostenuto
 
@@ -75,7 +75,7 @@ La directory terraform contiene 9 file conformi al Demo Resource Standard:
 
 ### Output
 
-`outputs.tf` espone 25 output conformi al Demo Resource Standard — 15 output standard condivisi da tutte le demo resource (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) più 10 URL applicative specifiche del componente (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
+`outputs.tf` espone 25 output seguendo il Demo Resource Standard — 15 output standard condivisi da tutte le demo resource (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) più 10 URL applicativi specifici del componente (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
 
 ```hcl file=./_data/outputs.tf
 ```
@@ -100,11 +100,11 @@ terraform plan
 terraform apply
 ```
 
-Terraform restituisce l'IP pubblico, il comando SSH e gli URL delle applicazioni dopo un deployment avvenuto con successo.
+Terraform restituisce in output l'IP pubblico, il comando SSH e gli URL delle applicazioni dopo un deployment riuscito.
 
 ## Post-Deploy
 
-Dopo il completamento di `terraform apply`, attendete 5--10 minuti affinché cloud-init termini l'installazione di Docker, il pull delle immagini dei container e la configurazione di nginx. Il pull delle immagini Docker rappresenta il collo di bottiglia — la sola Juice Shop è circa 400 MiB.
+Dopo il completamento di `terraform apply`, attendete 5--10 minuti affinché cloud-init termini l'installazione di Docker, il pull delle immagini dei container e la configurazione di nginx. Il pull delle immagini Docker è il collo di bottiglia — solo Juice Shop è ~400 MiB.
 
 Verificate l'endpoint di health:
 
@@ -122,12 +122,12 @@ Risposta attesa:
 }
 ```
 
-### Inizializzazione del database DVWA
+### Configurazione del database DVWA
 
-DVWA richiede un'inizializzazione una tantum del database. Aprite `http://<PUBLIC_IP>/dvwa/setup.php` in un browser e cliccate su **Create / Reset Database**. Le credenziali predefinite sono `admin` / `password`.
+DVWA richiede un'inizializzazione del database una tantum. Aprite `http://<PUBLIC_IP>/dvwa/setup.php` in un browser e cliccate su **Create / Reset Database**. Le credenziali predefinite sono `admin` / `password`.
 
 :::note
-Il database SQLite di VAmPI viene inizializzato automaticamente dal suo script di avvio gunicorn. Ogni container esegue `db.create_all()` all'avvio, quindi non è necessario alcun intervento manuale.
+Il database SQLite di VAmPI viene inizializzato automaticamente dal suo script di entrypoint gunicorn. Ogni container esegue `db.create_all()` all'avvio, quindi non è necessario alcun intervento manuale.
 :::
 
 ## Collegamento ai componenti downstream
@@ -158,4 +158,4 @@ EOF
 | `public_ip` | CDN Simulator | `origin_host` (con suffisso `:80`, senza schema) |
 | `public_ip` | F5 XC Origin Pool | Indirizzo dell'origin server |
 
-Procedete con [Applicazioni](../04-applications/) per le guide d'uso o [Verifica](../05-verify/) per gli smoke test.
+Procedete con [Applicazioni](../04-applications/) per le guide d'uso o [Verifica](../05-verify/) per i test di validazione.

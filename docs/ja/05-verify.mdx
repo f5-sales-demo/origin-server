@@ -1,9 +1,7 @@
 ---
-title: Verify
+title: 検証
 description: >-
-  curl smoke tests for all nine application endpoints, Docker container health
-  checks, nginx status verification, cloud-init log inspection, and common
-  troubleshooting steps
+  9つのアプリケーションエンドポイントすべてに対するcurlスモークテスト、Dockerコンテナのヘルスチェック、nginxステータスの確認、cloud-initログの調査、および一般的なトラブルシューティング手順
 sidebar:
   order: 5
 i18n:
@@ -13,7 +11,7 @@ i18n:
 
 ## スモークテスト
 
-cloud-init が完了するまで 5〜10 分待ってから、以下のチェックを実行してください。
+cloud-initが完了するまで5〜10分待ってから、これらのチェックを実行してください。
 
 ### ヘルスエンドポイント
 
@@ -64,27 +62,27 @@ curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{ht
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-すべて `200` を返すはずです（DVWA はログインページへの `302` リダイレクトを返します）。
+すべて `200` を返すはずです（DVWAはログインページへの `302` リダイレクトを返します）。
 
 ### 自動スモークテスト
 
-リポジトリには 39 項目のスモークテストスイートが含まれています:
+リポジトリには39項目のスモークテストスイートが含まれています:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-このテストでは、9 つのアプリケーションすべて、ヘルスエンドポイント、VAmPI の登録/ログイン、CSD Demo のデータ送受信ラウンドトリップ、DVGA GraphQL、RESTaurant Swagger、ポート 8888 上の crAPI、nginx gzip、およびバージョン非表示が検証されます。
+これにより、9つのアプリケーションすべて、ヘルスエンドポイント、VAmPIの登録/ログイン、CSD Demoのデータ持ち出しラウンドトリップ、DVGA GraphQL、RESTaurant Swagger、ポート8888のcrAPI、nginx gzip、およびバージョン非表示が検証されます。
 
-### Docker コンテナのステータス
+### Dockerコンテナのステータス
 
-VM に SSH 接続し、41 個のコンテナすべてが実行中であることを確認します:
+VMにSSHで接続し、41個のコンテナすべてが実行中であることを確認します:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
 ```
 
-期待される出力（41 コンテナ）:
+期待される出力（41コンテナ）:
 
 ```
 NAMES              STATUS         PORTS
@@ -131,7 +129,7 @@ whoami-3           Up X minutes   127.0.0.1:8084->80/tcp
 whoami-4           Up X minutes   127.0.0.1:8085->80/tcp
 ```
 
-### nginx のステータス
+### nginxステータス
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pager"
@@ -139,19 +137,19 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ## トラブルシューティング
 
-### cloud-init がまだ実行中
+### cloud-initがまだ実行中
 
-エンドポイントが 502 または接続拒否を返す場合、cloud-init がまだプロビジョニング中の可能性があります:
+エンドポイントが502または接続拒否を返す場合、cloud-initがまだプロビジョニング中の可能性があります:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` -- まだプロビジョニング中です。数分待ってください
-- `status: done` -- プロビジョニングが完了しています。Docker コンテナを確認してください
+- `status: running` -- まだプロビジョニング中です。数分お待ちください
+- `status: done` -- プロビジョニング完了です。Dockerコンテナを確認してください
 - `status: error` -- 以下のログを確認してください
 
-### cloud-init のログ
+### cloud-initログ
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
@@ -171,9 +169,9 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs restaurant-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 ```
 
-### nginx が 502 を返す
+### nginxが502を返す
 
-上流のコンテナが準備できていないか、クラッシュしています:
+アップストリームコンテナが準備できていないか、クラッシュしています:
 
 ```bash
 # Check nginx error log
@@ -188,15 +186,15 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### ディスク容量
 
-Docker イメージは約 4.7 GiB を消費します。CDN 負荷テスト時のディスク枯渇を防ぐため、アクセスログは無効化されています。多層防御として logrotate が設定されています（500 MiB 上限）。ディスク使用量を確認するには:
+Dockerイメージは約4.7 GiBを消費します。CDN負荷テスト時のディスク枯渇を防ぐため、アクセスログは無効化されています。多層防御としてlogrotateが設定されています（500 MiB上限）。ディスク使用量を確認してください:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 ```
 
-### コンテナのメモリ
+### コンテナメモリ
 
-メモリ制限に近づいているコンテナがないか確認します（OOM リスク）:
+メモリ制限に近づいているコンテナを確認します（OOMリスク）:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"

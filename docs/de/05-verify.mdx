@@ -1,9 +1,9 @@
 ---
-title: Verifizierung
+title: Verifizieren
 description: >-
   curl-Smoke-Tests für alle neun Anwendungsendpunkte,
-  Docker-Container-Health-Checks, nginx-Statusüberprüfung,
-  cloud-init-Log-Inspektion und gängige Fehlerbehebungsschritte
+  Docker-Container-Gesundheitsprüfungen, nginx-Statusüberprüfung,
+  cloud-init-Loginspektion und gängige Fehlerbehebungsschritte
 sidebar:
   order: 5
 i18n:
@@ -13,7 +13,7 @@ i18n:
 
 ## Smoke-Tests
 
-Führen Sie diese Prüfungen durch, nachdem Sie 5–10 Minuten für den Abschluss von cloud-init eingeplant haben.
+Führen Sie diese Prüfungen durch, nachdem Sie 5–10 Minuten gewartet haben, bis cloud-init abgeschlossen ist.
 
 ### Health-Endpunkt
 
@@ -23,7 +23,7 @@ ORIGIN_IP=$(terraform output -raw public_ip)
 curl -sf "http://${ORIGIN_IP}/health" | jq .
 ```
 
-Erwartete Ausgabe:
+Erwartet:
 
 ```json
 {
@@ -64,17 +64,17 @@ curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{ht
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-Alle sollten `200` zurückgeben (DVWA gibt einen `302`-Redirect zum Login zurück).
+Alle sollten `200` zurückgeben (DVWA gibt eine `302`-Weiterleitung zur Anmeldeseite zurück).
 
 ### Automatisierter Smoke-Test
 
-Das Repository enthält eine Smoke-Test-Suite mit 39 Prüfpunkten:
+Das Repository enthält eine 39-Punkte-Smoke-Test-Suite:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-Dieser validiert alle 9 Anwendungen, Health-Endpunkte, VAmPI-Registrierung/-Login, CSD-Demo-Exfil-Roundtrip, DVGA GraphQL, RESTaurant Swagger, crAPI auf Port 8888, nginx gzip und Version-Hiding.
+Diese validiert alle 9 Anwendungen, Health-Endpunkte, VAmPI-Registrierung/Anmeldung, CSD-Demo-Exfil-Roundtrip, DVGA GraphQL, RESTaurant Swagger, crAPI auf Port 8888, nginx gzip und Version-Hiding.
 
 ### Docker-Container-Status
 
@@ -141,15 +141,15 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ### Cloud-init läuft noch
 
-Wenn Endpunkte 502 oder "Connection refused" zurückgeben, ist die Bereitstellung durch cloud-init möglicherweise noch nicht abgeschlossen:
+Wenn Endpunkte 502 oder "Verbindung abgelehnt" zurückgeben, ist cloud-init möglicherweise noch bei der Bereitstellung:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
 - `status: running` – Bereitstellung läuft noch, warten Sie einige Minuten
-- `status: done` – Bereitstellung abgeschlossen, prüfen Sie die Docker-Container
-- `status: error` – prüfen Sie die Logs unten
+- `status: done` – Bereitstellung abgeschlossen, überprüfen Sie die Docker-Container
+- `status: error` – überprüfen Sie die Logs unten
 
 ### Cloud-init-Logs
 
@@ -182,13 +182,13 @@ ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
 # Alle Instanzen einer bestimmten App neu starten
 ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
 
-# Alle Container neu bauen und starten
+# Alle Container neu bauen und neu starten
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
 ```
 
 ### Speicherplatz
 
-Docker-Images benötigen ungefähr 4,7 GiB. Das Access-Logging ist deaktiviert, um eine Erschöpfung des Speicherplatzes bei CDN-Lasttests zu verhindern. Logrotate ist als Defense-in-Depth konfiguriert (500 MiB Obergrenze). Überprüfen Sie die Speicherplatznutzung:
+Docker-Images belegen ungefähr 4,7 GiB. Access-Logging ist deaktiviert, um eine Festplattenerschöpfung bei CDN-Lasttests zu verhindern. Logrotate ist als Defense-in-Depth konfiguriert (500 MiB Obergrenze). Überprüfen Sie die Speicherplatzbelegung:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -196,7 +196,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### Container-Arbeitsspeicher
 
-Prüfen Sie, ob Container sich ihren Speicherlimits nähern (OOM-Risiko):
+Überprüfen Sie, ob Container sich ihren Speicherlimits nähern (OOM-Risiko):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
@@ -204,7 +204,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Nam
 
 ### Alles neu starten
 
-Falls erforderlich, bauen und starten Sie alle Dienste neu:
+Falls erforderlich, alle Dienste neu bauen und neu starten:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"

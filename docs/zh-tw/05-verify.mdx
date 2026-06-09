@@ -10,7 +10,7 @@ i18n:
 
 ## 煙霧測試
 
-在允許 cloud-init 完成的 5--10 分鐘後執行這些檢查。
+在 cloud-init 完成後等待 5--10 分鐘，然後執行以下檢查。
 
 ### 健康端點
 
@@ -61,21 +61,21 @@ curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{ht
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-所有端點應回傳 `200`（DVWA 會回傳 `302` 重新導向至登入頁面）。
+所有端點應返回 `200`（DVWA 會返回 `302` 重新導向至登入頁面）。
 
 ### 自動化煙霧測試
 
-儲存庫包含一個 39 點煙霧測試套件：
+儲存庫包含一個 39 項檢查點的煙霧測試套件：
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-此測試會驗證所有 9 個應用程式、健康端點、VAmPI 註冊/登入、CSD Demo exfil 往返測試、DVGA GraphQL、RESTaurant Swagger、crAPI 的 8888 連接埠、nginx gzip 以及版本隱藏。
+此測試會驗證所有 9 個應用程式、健康端點、VAmPI 註冊/登入、CSD Demo 資料外洩往返測試、DVGA GraphQL、RESTaurant Swagger、crAPI 的 8888 連接埠、nginx gzip 以及版本隱藏。
 
 ### Docker 容器狀態
 
-透過 SSH 連線至 VM 並驗證所有 41 個容器正在執行：
+透過 SSH 連線至虛擬機，驗證所有 41 個容器是否正在執行：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
@@ -138,7 +138,7 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ### Cloud-init 仍在執行中
 
-如果端點回傳 502 或連線被拒絕，cloud-init 可能仍在佈建中：
+如果端點返回 502 或連線被拒絕，cloud-init 可能仍在進行佈建：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
@@ -146,7 +146,7 @@ ssh azureuser@${ORIGIN_IP} "cloud-init status"
 
 - `status: running` -- 仍在佈建中，請等待幾分鐘
 - `status: done` -- 佈建完成，請檢查 Docker 容器
-- `status: error` -- 請檢查下方的日誌
+- `status: error` -- 請檢查以下日誌
 
 ### Cloud-init 日誌
 
@@ -168,9 +168,9 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs restaurant-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 ```
 
-### nginx 回傳 502
+### nginx 返回 502
 
-上游容器尚未就緒或已崩潰：
+上游容器尚未就緒或已當機：
 
 ```bash
 # Check nginx error log
@@ -185,7 +185,7 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### 磁碟空間
 
-Docker 映像檔大約佔用 4.7 GiB。存取日誌已停用以防止在 CDN 負載測試下磁碟耗盡。Logrotate 已設定為縱深防禦措施（500 MiB 上限）。驗證磁碟使用量：
+Docker 映像檔大約佔用 4.7 GiB。存取日誌已停用，以防止在 CDN 負載測試下磁碟空間耗盡。Logrotate 已設定為深度防禦機制（上限 500 MiB）。驗證磁碟使用量：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -193,7 +193,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### 容器記憶體
 
-檢查是否有容器接近其記憶體限制（OOM 風險）：
+檢查容器是否接近其記憶體限制（OOM 風險）：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"

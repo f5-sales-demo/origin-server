@@ -1,6 +1,6 @@
 ---
 title: 验证
-description: curl 冒烟测试覆盖全部九个应用端点、Docker 容器健康检查、nginx 状态验证、cloud-init 日志检查以及常见故障排查步骤
+description: 对所有九个应用端点进行 curl 冒烟测试、Docker 容器健康检查、nginx 状态验证、cloud-init 日志检查以及常见故障排除步骤
 sidebar:
   order: 5
 i18n:
@@ -65,17 +65,17 @@ curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 
 ### 自动化冒烟测试
 
-仓库中包含一个 39 项检查的冒烟测试套件：
+仓库中包含一个 39 项冒烟测试套件：
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-该测试验证全部 9 个应用、健康检查端点、VAmPI 注册/登录、CSD Demo 数据泄露往返测试、DVGA GraphQL、RESTaurant Swagger、crAPI 8888 端口、nginx gzip 以及版本隐藏。
+该测试验证所有 9 个应用、健康检查端点、VAmPI 注册/登录、CSD Demo 数据外泄往返测试、DVGA GraphQL、RESTaurant Swagger、crAPI 8888 端口、nginx gzip 以及版本隐藏。
 
 ### Docker 容器状态
 
-通过 SSH 登录虚拟机，验证全部 41 个容器是否正在运行：
+通过 SSH 连接到虚拟机，验证所有 41 个容器正在运行：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
@@ -134,7 +134,7 @@ whoami-4           Up X minutes   127.0.0.1:8085->80/tcp
 ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pager"
 ```
 
-## 故障排查
+## 故障排除
 
 ### Cloud-init 仍在运行
 
@@ -145,8 +145,8 @@ ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
 - `status: running` -- 仍在配置中，请等待几分钟
-- `status: done` -- 配置已完成，请检查 Docker 容器
-- `status: error` -- 请查看下方日志
+- `status: done` -- 配置已完成，检查 Docker 容器
+- `status: error` -- 检查以下日志
 
 ### Cloud-init 日志
 
@@ -185,7 +185,7 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### 磁盘空间
 
-Docker 镜像大约占用 4.7 GiB。为防止在 CDN 负载测试期间磁盘耗尽，访问日志已被禁用。Logrotate 已配置为纵深防御措施（上限 500 MiB）。验证磁盘使用情况：
+Docker 镜像大约占用 4.7 GiB。访问日志已禁用，以防止在 CDN 负载测试期间磁盘空间耗尽。Logrotate 已配置为纵深防御措施（500 MiB 上限）。验证磁盘使用情况：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -193,7 +193,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### 容器内存
 
-检查是否有容器接近其内存限制（存在 OOM 风险）：
+检查容器是否接近其内存限制（OOM 风险）：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"

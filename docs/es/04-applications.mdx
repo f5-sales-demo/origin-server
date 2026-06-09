@@ -1,10 +1,10 @@
 ---
 title: Aplicaciones
 description: >-
-  URL paths, request/response behavior, default credentials, and attack
-  scenarios for Juice Shop (/juice-shop), DVWA (/dvwa), VAmPI (/vampi), httpbin
-  (/httpbin), whoami (/whoami), CSD Demo (/csd-demo), DVGA (/dvga), RESTaurant
-  (/restaurant), and crAPI (:8888)
+  Rutas URL, comportamiento de solicitud/respuesta, credenciales predeterminadas
+  y escenarios de ataque para Juice Shop (/juice-shop), DVWA (/dvwa), VAmPI
+  (/vampi), httpbin (/httpbin), whoami (/whoami), CSD Demo (/csd-demo), DVGA
+  (/dvga), RESTaurant (/restaurant) y crAPI (:8888)
 sidebar:
   order: 4
 i18n:
@@ -23,33 +23,33 @@ Reemplace `<ORIGIN>` con `http://<PUBLIC_IP>` en todos los ejemplos a continuaci
 | Ruta | Aplicación | Método HTTP | Respuesta esperada |
 |---|---|---|---|
 | `/` | Página de inicio | GET | 200 HTML con enlaces a todas las aplicaciones |
-| `/health` | Verificación de salud | GET | 200 JSON `{"status":"healthy","component":"origin-server",...}` |
-| `/juice-shop/` | Juice Shop | GET | 200 HTML (SPA Angular, ~75 KB) |
-| `/juice-shop/rest/products/search?q=` | API de Juice Shop | GET | 200 JSON `{"status":"success","data":[...]}` (36 productos) |
+| `/health` | Verificación de estado | GET | 200 JSON `{"status":"healthy","component":"origin-server",...}` |
+| `/juice-shop/` | Juice Shop | GET | 200 HTML (Angular SPA, ~75 KB) |
+| `/juice-shop/rest/products/search?q=` | Juice Shop API | GET | 200 JSON `{"status":"success","data":[...]}` (36 productos) |
 | `/dvwa/` | DVWA | GET | 302 redirección a `/dvwa/login.php` |
-| `/dvwa/login.php` | Inicio de sesión DVWA | GET | 200 HTML formulario de inicio de sesión |
-| `/dvwa/setup.php` | Configuración DVWA | GET | 200 HTML (inicialización de base de datos en primer uso) |
+| `/dvwa/login.php` | DVWA login | GET | 200 HTML formulario de inicio de sesión |
+| `/dvwa/setup.php` | DVWA setup | GET | 200 HTML (inicialización de base de datos en primer arranque) |
 | `/vampi/` | VAmPI | GET | 200 HTML (documentación de API) |
-| `/vampi/users/v1` | API de VAmPI | GET | 200 JSON `{"users":[...]}` |
-| `/vampi/users/v1/register` | API de VAmPI | POST | 200 JSON `{"status":"success",...}` |
-| `/vampi/users/v1/login` | API de VAmPI | POST | 200 JSON `{"auth_token":"...","status":"success"}` |
+| `/vampi/users/v1` | VAmPI API | GET | 200 JSON `{"users":[...]}` |
+| `/vampi/users/v1/register` | VAmPI API | POST | 200 JSON `{"status":"success",...}` |
+| `/vampi/users/v1/login` | VAmPI API | POST | 200 JSON `{"auth_token":"...","status":"success"}` |
 | `/httpbin/get` | httpbin | GET | 200 JSON con detalles de la solicitud |
 | `/httpbin/post` | httpbin | POST | 200 JSON con datos enviados |
 | `/httpbin/headers` | httpbin | GET | 200 JSON `{"headers":{...}}` |
-| `/httpbin/status/:code` | httpbin | GET | Retorna el código de estado HTTP especificado |
-| `/whoami/` | whoami | GET | 200 texto plano con hostname, IP, todos los encabezados |
+| `/httpbin/status/:code` | httpbin | GET | Devuelve el código de estado HTTP especificado |
+| `/whoami/` | whoami | GET | 200 texto plano con nombre de host, IP, todos los encabezados |
 | `/csd-demo/` | CSD Demo | GET | 200 HTML formulario de pago con panel de ataque |
 | `/csd-demo/dashboard` | Vista del atacante CSD | GET | 200 HTML mostrando datos exfiltrados |
-| `/csd-demo/health` | Salud CSD | GET | 200 JSON `{"status":"healthy","component":"csd-demo",...}` |
+| `/csd-demo/health` | Estado CSD | GET | 200 JSON `{"status":"healthy","component":"csd-demo",...}` |
 | `/csd-demo/exfil/log` | Registro de exfiltración CSD | GET | 200 JSON array de datos capturados |
 | `/dvga/` | DVGA GraphiQL | GET | 200 HTML (IDE GraphiQL) |
-| `/dvga/graphql` | API GraphQL DVGA | POST | 200 JSON respuesta GraphQL |
-| `/restaurant/` | RESTaurant | GET | 200 (redirecciona a documentación) |
-| `/restaurant/docs` | Swagger RESTaurant | GET | 200 HTML (FastAPI Swagger UI) |
-| `/restaurant/openapi.json` | OpenAPI RESTaurant | GET | 200 JSON especificación OpenAPI |
+| `/dvga/graphql` | DVGA GraphQL API | POST | 200 JSON respuesta GraphQL |
+| `/restaurant/` | RESTaurant | GET | 200 (redirige a docs) |
+| `/restaurant/docs` | RESTaurant Swagger | GET | 200 HTML (FastAPI Swagger UI) |
+| `/restaurant/openapi.json` | RESTaurant OpenAPI | GET | 200 JSON especificación OpenAPI |
 | `http://<PUBLIC_IP>:8888` | crAPI | GET | 200 HTML (SPA) |
-| `http://<PUBLIC_IP>:8888/identity/api/auth/signup` | Registro crAPI | POST | 200 JSON |
-| `http://<PUBLIC_IP>:8888/identity/api/auth/login` | Inicio de sesión crAPI | POST | 200 JSON `{"token":"..."}` |
+| `http://<PUBLIC_IP>:8888/identity/api/auth/signup` | crAPI registro | POST | 200 JSON |
+| `http://<PUBLIC_IP>:8888/identity/api/auth/login` | crAPI inicio de sesión | POST | 200 JSON `{"token":"..."}` |
 
 ## OWASP Juice Shop
 
@@ -57,23 +57,23 @@ Reemplace `<ORIGIN>` con `http://<PUBLIC_IP>` en todos los ejemplos a continuaci
 |---|---|
 | **Ruta** | `/juice-shop/` |
 | **Imagen** | `bkimminich/juice-shop:latest` |
-| **Instancias** | 4 (puertos 3001-3004), persistencia mediante `hash $cookie_token`, caché de proxy (TTL de 60 s) |
+| **Instancias** | 4 (puertos 3001-3004), persistencia vía `hash $cookie_token`, caché del proxy (60 s TTL) |
 | **Recursos** | 2 CPU / 1 GiB RAM por instancia |
 | **Framework** | Node.js / Angular |
 | **Proyecto** | [owasp.org/www-project-juice-shop](https://owasp.org/www-project-juice-shop/) |
 
-OWASP Juice Shop es la aplicación web vulnerable más moderna y mantenida activamente. Cubre todo el OWASP Top 10 con más de 100 desafíos en una aplicación de comercio electrónico realista.
+OWASP Juice Shop es la aplicación web vulnerable más moderna y activamente mantenida. Cubre todo el OWASP Top 10 con más de 100 desafíos en una aplicación de comercio electrónico realista.
 
 ### Escenarios de demostración
 
 | Escenario | Categoría | Vector de ataque |
 |---|---|---|
-| Bypass de inicio de sesión por inyección SQL | WAF | `' OR 1=1--` en el campo de correo electrónico de inicio de sesión |
-| XSS reflejado | WAF, CSD | Inyección de script mediante parámetro de búsqueda |
+| Bypass de login por inyección SQL | WAF | `' OR 1=1--` en el campo de email de inicio de sesión |
+| XSS reflejado | WAF, CSD | Inyección de script vía parámetro de búsqueda |
 | XSS basado en DOM | CSD | Payload en fragmento de URL |
-| Autenticación rota | WAF | Fuerza bruta en inicio de sesión, manipulación de JWT |
-| Abuso de API | Seguridad API | Acceso no autorizado a endpoints `/api/` |
-| Exposición de datos sensibles | Seguridad API | Acceso a datos de usuario sin autorización |
+| Autenticación rota | WAF | Fuerza bruta de login, manipulación de JWT |
+| Abuso de API | Seguridad de API | Acceso no autorizado a endpoints `/api/` |
+| Exposición de datos sensibles | Seguridad de API | Acceso a datos de usuario sin autorización |
 | CSRF | WAF | Falsificación de solicitud entre sitios en cambios de perfil |
 
 ### Acceso
@@ -87,14 +87,14 @@ curl -s "http://<PUBLIC_IP>/juice-shop/" -o /dev/null -w "%{http_code}"
 | | |
 |---|---|
 | **Ruta** | `/dvwa/` |
-| **Imagen** | `dvwa-fpm:latest` personalizada (php-fpm + nginx, construida desde `ghcr.io/digininja/dvwa:latest`) |
-| **Instancias** | 4 (puertos 8101-8104), persistencia mediante `hash $cookie_PHPSESSID` |
+| **Imagen** | Personalizada `dvwa-fpm:latest` (php-fpm + nginx, construida desde `ghcr.io/digininja/dvwa:latest`) |
+| **Instancias** | 4 (puertos 8101-8104), persistencia vía `hash $cookie_PHPSESSID` |
 | **Recursos** | 0.5 CPU / 256 MiB RAM por instancia |
 | **Base de datos** | MariaDB 10.11 compartida (contenedor `dvwa-db`, 1 CPU / 768 MiB) |
 | **Framework** | PHP 8 / php-fpm / MariaDB |
 | **Credenciales** | `admin` / `password` |
 
-DVWA es el estándar de la industria para pruebas de WAF. Tiene niveles de seguridad ajustables (Low, Medium, High, Impossible) que progresivamente añaden validación de entrada y codificación de salida.
+DVWA es el estándar de la industria para pruebas de WAF. Tiene niveles de seguridad ajustables (Low, Medium, High, Impossible) que agregan progresivamente validación de entrada y codificación de salida.
 
 ### Escenarios de demostración
 
@@ -102,11 +102,11 @@ DVWA es el estándar de la industria para pruebas de WAF. Tiene niveles de segur
 |---|---|---|
 | Inyección SQL | WAF | Low: trivial `' OR 1=1#`, High: SQLi ciega |
 | Inyección de comandos | WAF | Low: `; ls`, High: caracteres filtrados |
-| Inclusión de archivos | WAF | Low: traversal de ruta directo, High: sanitizado |
-| XSS (Reflejado) | WAF, CSD | Low: `<script>` básico, High: bypass con codificación |
+| Inclusión de archivos | WAF | Low: recorrido directo de rutas, High: saneado |
+| XSS (Reflejado) | WAF, CSD | Low: básico `<script>`, High: bypass con codificación |
 | XSS (Almacenado) | WAF, CSD | Low: script persistente en libro de visitas |
 | Carga de archivos | WAF | Low: carga de shell PHP, High: filtrado de extensiones |
-| Fuerza bruta | Defensa contra bots | Intentos automatizados de inicio de sesión |
+| Fuerza bruta | Defensa contra bots | Intentos de inicio de sesión automatizados |
 
 ### Niveles de seguridad
 
@@ -119,24 +119,24 @@ Configure el nivel de seguridad en `/dvwa/security.php` después de iniciar sesi
 
 ### Configuración inicial
 
-DVWA requiere una configuración única de base de datos después del primer despliegue:
+DVWA requiere una configuración de base de datos única después del primer despliegue:
 
 1. Navegue a `http://<PUBLIC_IP>/dvwa/setup.php`
 2. Haga clic en **Create / Reset Database**
 3. Inicie sesión con `admin` / `password`
 
-## VAmPI (Vulnerable API)
+## VAmPI (API Vulnerable)
 
 | | |
 |---|---|
 | **Ruta** | `/vampi/` |
 | **Imagen** | `erev0s/vampi:latest` con punto de entrada gunicorn (4 workers) |
-| **Instancias** | 4 (puertos 5101-5104), persistencia mediante `ip_hash` (SQLite por instancia) |
+| **Instancias** | 4 (puertos 5101-5104), persistencia vía `ip_hash` (SQLite por instancia) |
 | **Recursos** | 0.5 CPU / 512 MiB RAM por instancia |
 | **Framework** | Python / Flask / gunicorn |
 | **Proyecto** | [github.com/erev0s/VAmPI](https://github.com/erev0s/VAmPI) |
 
-VAmPI está diseñada específicamente para probar el OWASP API Security Top 10. Proporciona una API REST realista con vulnerabilidades deliberadas. Cada instancia ejecuta gunicorn con 4 workers y su propia base de datos SQLite. La sesión persistente `ip_hash` asegura que el registro y el inicio de sesión desde la misma IP del cliente siempre lleguen a la misma instancia.
+VAmPI está diseñada específicamente para probar el OWASP API Security Top 10. Proporciona una API REST realista con vulnerabilidades deliberadas. Cada instancia ejecuta gunicorn con 4 workers y su propia base de datos SQLite. La sesión persistente `ip_hash` asegura que el registro y el inicio de sesión desde la misma IP de cliente siempre lleguen a la misma instancia.
 
 ### Escenarios de demostración
 
@@ -144,7 +144,7 @@ VAmPI está diseñada específicamente para probar el OWASP API Security Top 10.
 |---|---|---|
 | Autorización a nivel de objeto rota (BOLA) | API1 | Acceder a datos de otros usuarios manipulando IDs |
 | Autenticación rota | API2 | Manejo débil de tokens, sin limitación de tasa |
-| Exposición excesiva de datos | API3 | La API retorna más datos de los que el cliente necesita |
+| Exposición excesiva de datos | API3 | La API devuelve más datos de los que el cliente necesita |
 | Asignación masiva | API6 | Modificar campos de administrador mediante parámetros inesperados |
 | Inyección SQL | API8 | Inyección a través de parámetros de API |
 | Gestión inadecuada de activos | API9 | Endpoints de API no documentados |
@@ -171,7 +171,7 @@ curl "http://<PUBLIC_IP>/vampi/users/v1"
 | | |
 |---|---|
 | **Ruta** | `/httpbin/` |
-| **Imagen** | `kennethreitz/httpbin:latest` con CMD de gunicorn sobrescrito (`-w 4 -k gevent --timeout 30`) |
+| **Imagen** | `kennethreitz/httpbin:latest` con CMD override de gunicorn (`-w 4 -k gevent --timeout 30`) |
 | **Instancias** | 4 (puertos 8201-8204), round-robin (sin estado) |
 | **Recursos** | 0.5 CPU / 256 MiB RAM por instancia |
 | **Framework** | Python / Flask / gunicorn + gevent |
@@ -183,14 +183,14 @@ httpbin es un servicio simple de solicitud/respuesta HTTP útil para demostracio
 
 | Endpoint | Propósito |
 |---|---|
-| `/httpbin/get` | Retorna datos de solicitud GET (encabezados, argumentos, origen) |
-| `/httpbin/post` | Retorna datos de solicitud POST (cuerpo, formulario, JSON) |
-| `/httpbin/headers` | Retorna encabezados de la solicitud |
-| `/httpbin/ip` | Retorna IP de origen |
-| `/httpbin/user-agent` | Retorna encabezado User-Agent |
-| `/httpbin/status/:code` | Retorna el código de estado HTTP especificado |
+| `/httpbin/get` | Devuelve datos de solicitud GET (encabezados, argumentos, origen) |
+| `/httpbin/post` | Devuelve datos de solicitud POST (cuerpo, formulario, JSON) |
+| `/httpbin/headers` | Devuelve encabezados de la solicitud |
+| `/httpbin/ip` | Devuelve IP de origen |
+| `/httpbin/user-agent` | Devuelve encabezado User-Agent |
+| `/httpbin/status/:code` | Devuelve el código de estado HTTP especificado |
 | `/httpbin/delay/:seconds` | Retrasa la respuesta N segundos |
-| `/httpbin/anything` | Retorna cualquier cosa enviada en la solicitud |
+| `/httpbin/anything` | Devuelve cualquier dato pasado en la solicitud |
 
 ### Ejemplo
 
@@ -202,7 +202,7 @@ curl -s "http://<PUBLIC_IP>/httpbin/headers" | jq .
 curl -s -o /dev/null -w "%{http_code}" "http://<PUBLIC_IP>/httpbin/status/403"
 ```
 
-## whoami (Diagnóstico de solicitudes)
+## whoami (Diagnósticos de solicitud)
 
 | | |
 |---|---|
@@ -213,13 +213,13 @@ curl -s -o /dev/null -w "%{http_code}" "http://<PUBLIC_IP>/httpbin/status/403"
 | **Framework** | Go |
 | **Proyecto** | [github.com/traefik/whoami](https://github.com/traefik/whoami) |
 
-whoami es el servidor eco de solicitudes ligero de Traefik. Muestra cada detalle de la solicitud HTTP entrante tal como la ve el origen -- hostname, direcciones IP, todos los encabezados, método y URL. Esta es la herramienta de diagnóstico más importante cuando se verifica que F5 XC está inyectando los encabezados correctos.
+whoami es el servidor ligero de eco de solicitudes de Traefik. Muestra cada detalle de la solicitud HTTP entrante tal como la ve el origen: nombre de host, direcciones IP, todos los encabezados, método y URL. Esta es la herramienta de diagnóstico más importante al verificar que F5 XC está inyectando los encabezados correctos.
 
 ### Casos de uso clave
 
 | Caso de uso | Qué buscar |
 |---|---|
-| Verificar inyección de encabezados F5 XC | Encabezados `X-Forwarded-For`, `True-Client-IP`, `X-Volterra-*` |
+| Verificar inyección de encabezados de F5 XC | Encabezados `X-Forwarded-For`, `True-Client-IP`, `X-Volterra-*` |
 | Confirmar visibilidad de IP del cliente | `X-Real-IP` vs `RemoteAddr` |
 | Depurar falsos positivos del WAF | Comparar encabezados de solicitud antes/después de F5 XC |
 | Validar etiquetado de defensa contra bots | Encabezados `X-Volterra-Bot-Type`, `X-Volterra-Bot-Verified` |
@@ -238,7 +238,7 @@ curl "http://<PUBLIC_IP>/whoami/" \
   -H "X-Forwarded-Proto: https"
 ```
 
-Ejemplo de salida:
+Salida de ejemplo:
 
 ```
 Hostname: 534c5084e169
@@ -260,7 +260,7 @@ X-Real-Ip: 104.219.105.84
 |---|---|
 | **Ruta** | `/dvga/` |
 | **Imagen** | `dolevf/dvga:latest` |
-| **Instancias** | 4 (puertos 5201-5204), persistencia mediante `ip_hash` (SQLite por instancia) |
+| **Instancias** | 4 (puertos 5201-5204), persistencia vía `ip_hash` (SQLite por instancia) |
 | **Recursos** | 0.5 CPU / 256 MiB RAM por instancia |
 | **Framework** | Python / Flask / GraphQL |
 | **Proyecto** | [github.com/dolevf/Damn-Vulnerable-GraphQL-Application](https://github.com/dolevf/Damn-Vulnerable-GraphQL-Application) |
@@ -271,11 +271,11 @@ DVGA está diseñada específicamente para probar vulnerabilidades específicas 
 
 | Escenario | Categoría | Vector de ataque |
 |---|---|---|
-| Inyección GraphQL | Seguridad API | Consultas maliciosas mediante interpolación de cadenas |
-| Denegación de servicio | Seguridad API | Consultas profundamente anidadas, consultas por lotes, agotamiento de recursos |
-| Bypass de autorización | Seguridad API | Acceso a datos no autorizados a través de GraphQL |
-| Divulgación de información | Seguridad API | Consultas de introspección que revelan detalles del esquema |
-| Ataque por lotes | Seguridad API | Múltiples operaciones en una sola solicitud |
+| Inyección GraphQL | Seguridad de API | Consultas maliciosas vía interpolación de cadenas |
+| Denegación de servicio | Seguridad de API | Consultas profundamente anidadas, consultas por lotes, agotamiento de recursos |
+| Bypass de autorización | Seguridad de API | Acceso a datos no autorizados a través de GraphQL |
+| Divulgación de información | Seguridad de API | Consultas de introspección revelando detalles del esquema |
+| Ataque por lotes | Seguridad de API | Múltiples operaciones en una sola solicitud |
 
 ### Endpoints clave
 
@@ -312,7 +312,7 @@ curl -s "http://<PUBLIC_IP>/dvga/graphql" \
 | **Credenciales** | `admin` / `password` (PostgreSQL) |
 | **Proyecto** | [github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game](https://github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game) |
 
-RESTaurant es una API REST vulnerable gamificada que cubre el OWASP API Security Top 10 2023. Usa FastAPI con documentación Swagger UI automática en `/restaurant/docs`. Las 4 instancias comparten una única base de datos PostgreSQL, por lo que el balanceo de carga round-robin funciona sin sesiones persistentes.
+RESTaurant es una API REST vulnerable gamificada que cubre el OWASP API Security Top 10 2023. Usa FastAPI con documentación automática Swagger UI en `/restaurant/docs`. Las 4 instancias comparten una única base de datos PostgreSQL, por lo que el balanceo de carga round-robin funciona sin sesiones persistentes.
 
 ### Escenarios de demostración
 
@@ -321,10 +321,10 @@ RESTaurant es una API REST vulnerable gamificada que cubre el OWASP API Security
 | Autorización a nivel de objeto rota (BOLA) | API1 | Acceder a pedidos de otros usuarios manipulando IDs |
 | Autenticación rota | API2 | Manejo débil de tokens, relleno de credenciales |
 | Autorización a nivel de propiedad de objeto rota | API3 | Asignación masiva en campos de perfil de usuario |
-| Consumo de recursos sin restricción | API4 | Sin limitación de tasa en endpoints |
+| Consumo de recursos sin restricciones | API4 | Sin limitación de tasa en endpoints |
 | Autorización a nivel de función rota (BFLA) | API5 | Acceder a endpoints de administrador como usuario regular |
-| Falsificación de solicitud del lado del servidor (SSRF) | API7 | Manipular solicitudes URL del lado del servidor |
-| Configuración incorrecta de seguridad | API8 | Mensajes de error verbosos, credenciales predeterminadas |
+| Falsificación de solicitud del lado del servidor (SSRF) | API7 | Manipular solicitudes de URL del lado del servidor |
+| Configuración de seguridad incorrecta | API8 | Mensajes de error verbosos, credenciales predeterminadas |
 
 ### Endpoints clave
 
@@ -353,10 +353,10 @@ curl -s -X POST "http://<PUBLIC_IP>/restaurant/admin/users" \
 | **Imágenes** | `crapi/crapi-web`, `crapi/crapi-identity`, `crapi/crapi-community`, `crapi/crapi-workshop`, PostgreSQL, MongoDB, MailHog |
 | **Instancias** | 7 microservicios (una instancia cada uno) |
 | **Recursos** | ~3.0 CPU / ~2.0 GiB RAM en total |
-| **Framework** | SPA React + microservicios Java/Go/Python |
+| **Framework** | React SPA + microservicios Java/Go/Python |
 | **Proyecto** | [github.com/OWASP/crAPI](https://github.com/OWASP/crAPI) |
 
-crAPI es el proyecto insignia de OWASP para pruebas de seguridad de API. Se ejecuta como 7 microservicios en un puerto dedicado (8888) porque la SPA React tiene sus rutas de API codificadas de forma fija y no puede servirse detrás de un prefijo de ruta. El NSG permite tráfico entrante en el puerto 8888.
+crAPI es el proyecto insignia de OWASP para pruebas de seguridad de API. Se ejecuta como 7 microservicios en un puerto dedicado (8888) porque la SPA de React tiene codificadas sus rutas de API y no puede servirse detrás de un prefijo de ruta. El NSG permite tráfico entrante en el puerto 8888.
 
 MailHog captura todos los correos electrónicos enviados por crAPI (verificación de cuenta, restablecimiento de contraseña). Acceda a MailHog mediante túnel SSH en el puerto 18025.
 
@@ -366,11 +366,11 @@ MailHog captura todos los correos electrónicos enviados por crAPI (verificació
 |---|---|
 | BOLA (Autorización a nivel de objeto rota) | Acceder a vehículos, pedidos e informes de otros usuarios |
 | BFLA (Autorización a nivel de función rota) | Escalar a administrador, acceder a endpoints restringidos |
-| Asignación masiva | Modificar campos protegidos (rol, saldo) mediante API |
+| Asignación masiva | Modificar campos protegidos (rol, saldo) vía API |
 | SSRF (Falsificación de solicitud del lado del servidor) | Manipular la obtención de URL del lado del servidor |
-| Manipulación de JWT | Forjar o modificar tokens JWT para escalación de privilegios |
+| Manipulación de JWT | Falsificar o modificar tokens JWT para escalamiento de privilegios |
 | Inyección NoSQL | Inyectar consultas en endpoints respaldados por MongoDB |
-| Exposición excesiva de datos | La API retorna datos sensibles de usuario |
+| Exposición excesiva de datos | La API devuelve datos sensibles de usuarios |
 
 ### Primeros pasos
 
@@ -388,7 +388,7 @@ curl -s -X POST "http://<PUBLIC_IP>:8888/identity/api/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"Test1234!"}'
 
-# Acceder a MailHog (mediante túnel SSH para verificación de correo electrónico)
+# Acceder a MailHog (vía túnel SSH para verificación de correo electrónico)
 # ssh -L 18025:localhost:18025 azureuser@<PUBLIC_IP>
 # Luego abra http://localhost:18025 en su navegador
 ```
@@ -412,26 +412,26 @@ Port 8888 -> crapi-web (React SPA + nginx)
 | WAF -- Inyección SQL | DVWA | Juice Shop |
 | WAF -- XSS | DVWA | Juice Shop |
 | WAF -- Inyección de comandos | DVWA | -- |
-| Seguridad API -- BOLA | VAmPI | -- |
-| Seguridad API -- Bypass de autenticación | VAmPI | Juice Shop |
-| Seguridad API -- Exposición de datos | VAmPI | httpbin |
+| Seguridad de API -- BOLA | VAmPI | -- |
+| Seguridad de API -- Bypass de autenticación | VAmPI | Juice Shop |
+| Seguridad de API -- Exposición de datos | VAmPI | httpbin |
 | Defensa contra bots -- Fuerza bruta | DVWA | Juice Shop |
 | Defensa contra bots -- Scraping | Juice Shop | -- |
 | Defensa del lado del cliente -- DOM XSS | Juice Shop | -- |
 | Defensa del lado del cliente -- XSS almacenado | DVWA | Juice Shop |
-| Defensa del lado del cliente -- Card Skimmer | CSD Demo | -- |
+| Defensa del lado del cliente -- Skimmer de tarjetas | CSD Demo | -- |
 | Defensa del lado del cliente -- Formjacker | CSD Demo | -- |
 | Defensa del lado del cliente -- Keylogger | CSD Demo | -- |
-| Defensa del lado del cliente -- Cryptominer | CSD Demo | -- |
-| Defensa del lado del cliente -- DOM Hijack | CSD Demo | -- |
-| Seguridad API -- Inyección GraphQL | DVGA | -- |
-| Seguridad API -- DoS GraphQL | DVGA | -- |
-| Seguridad API -- OWASP API Top 10 2023 | RESTaurant | crAPI |
-| Seguridad API -- BFLA | RESTaurant | crAPI |
-| Seguridad API -- Asignación masiva | crAPI | RESTaurant |
-| Seguridad API -- SSRF | crAPI | RESTaurant |
-| Seguridad API -- Manipulación de JWT | crAPI | -- |
-| Seguridad API -- Inyección NoSQL | crAPI | -- |
+| Defensa del lado del cliente -- Criptominero | CSD Demo | -- |
+| Defensa del lado del cliente -- Secuestro de DOM | CSD Demo | -- |
+| Seguridad de API -- Inyección GraphQL | DVGA | -- |
+| Seguridad de API -- DoS GraphQL | DVGA | -- |
+| Seguridad de API -- OWASP API Top 10 2023 | RESTaurant | crAPI |
+| Seguridad de API -- BFLA | RESTaurant | crAPI |
+| Seguridad de API -- Asignación masiva | crAPI | RESTaurant |
+| Seguridad de API -- SSRF | crAPI | RESTaurant |
+| Seguridad de API -- Manipulación de JWT | crAPI | -- |
+| Seguridad de API -- Inyección NoSQL | crAPI | -- |
 | Pruebas de conectividad básica | httpbin | -- |
-| Diagnóstico de solicitudes | whoami | httpbin |
+| Diagnósticos de solicitud | whoami | httpbin |
 | Verificación de inyección de encabezados | whoami | -- |

@@ -1,9 +1,9 @@
 ---
 title: النشر
 description: >-
-  Terraform IaC deployment following the Demo Resource Standard — 9 terraform
-  files with Azure AD deployer auto-resolution, 25 outputs, and hardened
-  cloud-init provisioning 41 Docker containers across 9 applications.
+  نشر Terraform IaC وفقاً لمعيار الموارد التجريبية — 9 ملفات terraform مع الحل
+  التلقائي لناشر Azure AD، و25 مخرجاً، وتهيئة cloud-init مُحصّنة لتشغيل 41 حاوية
+  Docker عبر 9 تطبيقات.
 sidebar:
   order: 3
 i18n:
@@ -17,72 +17,72 @@ i18n:
 git clone https://github.com/f5xc-salesdemos/origin-server.git
 cd origin-server/terraform
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+# عدّل terraform.tfvars بمعرّف اشتراك Azure الخاص بك ومسار مفتاح SSH
 ```
 
-## تكوين Terraform
+## تهيئة Terraform
 
 ### هيكل ملفات Terraform
 
 يحتوي مجلد terraform على 9 ملفات تتبع معيار الموارد التجريبية:
 
-- `versions.tf` — قيود إصدارات Terraform والموفرين (azurerm ~> 4.0, azuread ~> 3.0)
-- `providers.tf` — تكوين موفر Azure RM و Azure AD
-- `data.tf` — مصادر بيانات Azure AD للتحليل التلقائي للناشر
-- `locals.tf` — تحليل الناشر، تسمية الموارد وفق إطار اعتماد السحابة من Azure، العلامات القياسية
-- `main.tf` — مجموعة الموارد (بالاسم `rg-origin-server-{environment}-{deployer}`)
+- `versions.tf` — قيود إصدارات Terraform ومزودي الخدمة (azurerm ~> 4.0, azuread ~> 3.0)
+- `providers.tf` — تهيئة مزود Azure RM و Azure AD
+- `data.tf` — مصادر بيانات Azure AD للحل التلقائي للناشر
+- `locals.tf` — حل الناشر، تسمية الموارد وفق إطار اعتماد السحابة من Azure، العلامات القياسية
+- `main.tf` — مجموعة الموارد (بتسمية `rg-origin-server-{environment}-{deployer}`)
 - `variables.tf` — جميع متغيرات الإدخال (1 مطلوب، 8 اختيارية)
-- `network.tf` — VNet (10.200.0.0/16)، شبكة فرعية، عنوان IP عام، NSG (المنافذ 22/80/443/8888)، NIC
-- `vm.tf` — آلة افتراضية Ubuntu 24.04 مع cloud-init عبر templatefile()
-- `outputs.tf` — 25 مخرجًا (15 قياسيًا + 10 عناوين URL خاصة بالتطبيقات)
+- `network.tf` — شبكة افتراضية (10.200.0.0/16)، شبكة فرعية، عنوان IP عام، مجموعة أمان الشبكة (المنافذ 22/80/443/8888)، واجهة شبكة
+- `vm.tf` — جهاز افتراضي Ubuntu 24.04 مع cloud-init عبر templatefile()
+- `outputs.tf` — 25 مخرجاً (15 قياسياً + 10 عناوين URL للتطبيقات الخاصة بالمكونات)
 
-يحتوي `main.tf` على مجموعة الموارد فقط:
+`main.tf` يحتوي فقط على مجموعة الموارد:
 
 ```hcl file=./_data/main.tf
 ```
 
-يُعرّف `variables.tf` جميع المعاملات القابلة للتكوين. يتم تحليل معرّف `deployer` تلقائيًا من حساب Azure AD الخاص بك — تحتاج فقط إلى تعيين `subscription_id`. القيمة الافتراضية لـ `vm_size` هي `Standard_D16s_v3` (16 وحدة معالجة مركزية افتراضية، 64 جيبي بايت ذاكرة) مُحجَّمة لـ 41 حاوية Docker:
+`variables.tf` يحدد جميع المعاملات القابلة للتهيئة. يتم حل معرّف `deployer` تلقائياً من حساب Azure AD الخاص بك — تحتاج فقط إلى تعيين `subscription_id`. القيمة الافتراضية لـ `vm_size` هي `Standard_D16s_v3` (16 وحدة معالجة مركزية افتراضية، 64 جيبيبايت ذاكرة) بحجم مناسب لـ 41 حاوية Docker:
 
 ```hcl file=./_data/variables.tf
 ```
 
 ### البنية التحتية للشبكة
 
-يُنشئ `network.tf` شبكة VNet والشبكة الفرعية وعنوان IP العام و NSG (المنافذ 22/80/443/8888) و NIC. المنفذ 8888 مطلوب لـ crAPI الذي يعمل على منفذ مخصص:
+`network.tf` ينشئ الشبكة الافتراضية، والشبكة الفرعية، وعنوان IP العام، ومجموعة أمان الشبكة (المنافذ 22/80/443/8888)، وواجهة الشبكة. المنفذ 8888 مطلوب لتطبيق crAPI الذي يعمل على منفذ مخصص:
 
 ```hcl file=./_data/network.tf
 ```
 
-### الآلة الافتراضية مع Cloud-Init
+### الجهاز الافتراضي مع Cloud-Init
 
-يُنشئ `vm.tf` آلة افتراضية Ubuntu 24.04 ويمرر سكربت التهيئة cloud-init. يوفر قرص SSD المتميز بسعة 60 جيبي بايت مساحة كافية لصور Docker وأحجام الحاويات:
+`vm.tf` ينشئ جهاز Ubuntu 24.04 الافتراضي ويمرر سكريبت التهيئة cloud-init. قرص SSD المتميز بسعة 60 جيبيبايت يوفر مساحة كافية لصور Docker وأحجام الحاويات:
 
 ```hcl file=./_data/vm.tf
 ```
 
 ### تهيئة Cloud-Init
 
-يقوم `cloud-init.yaml` بتهيئة الآلة الافتراضية بتكوين مُعزَّز. توفر مكتبة مساعدة مشتركة (`/usr/local/lib/cloud-init-helpers.sh`) منطق إعادة المحاولة على جميع عمليات الشبكة وتسجيل التقدم في `/var/log/cloud-init-progress.log`. يحل الاستقصاء النشط لفحص الصحة محل فترات الانتظار الثابتة لجاهزية الحاويات. تتضمن التهيئة:
+`cloud-init.yaml` يهيئ الجهاز الافتراضي بتكوين محصّن. مكتبة مساعدة مشتركة (`/usr/local/lib/cloud-init-helpers.sh`) توفر منطق إعادة المحاولة لجميع عمليات الشبكة وتسجيل التقدم في `/var/log/cloud-init-progress.log`. يحل استقصاء فحص السلامة النشط محل فترات الانتظار الثابتة لجاهزية الحاويات. يقوم بتهيئة:
 
-- **ضبط النواة**: TCP keepalive، إعادة استخدام TIME_WAIT، 2 مليون tw_buckets، 64 ألف somaxconn
-- **nginx**: 8 كتل upstream مع جلسات ثابتة (ip_hash, cookie hash)، مجمعات keepalive (64--128)، ذاكرة تخزين مؤقت للوكيل لـ Juice Shop، مستوى error_log crit
-- **Docker Compose**: 41 حاوية عبر 9 تطبيقات مع حدود CPU/ذاكرة لكل حاوية
-- **بناء مخصص**: DVWA-FPM (php-fpm مع pm.max_requests=200)، CSD Demo (Flask + gunicorn)، RESTaurant (مستنسخ من GitHub)
-- **إعادة تدوير العمال**: uvicorn --limit-max-requests 200 (RESTaurant)، pm.max_requests 200 (DVWA-FPM) لمنع تسرب الذاكرة تحت الحمل المستمر
+- **ضبط النواة**: TCP keepalive، إعادة استخدام TIME_WAIT، 2M tw_buckets، 64K somaxconn
+- **nginx**: 8 كتل upstream مع جلسات ثابتة (ip_hash, cookie hash)، مجمعات keepalive (64--128)، ذاكرة تخزين مؤقت للبروكسي لـ Juice Shop، مستوى error_log الحرج
+- **Docker Compose**: 41 حاوية عبر 9 تطبيقات مع حدود وحدة المعالجة المركزية/الذاكرة لكل حاوية
+- **بناءات مخصصة**: DVWA-FPM (php-fpm مع pm.max_requests=200)، CSD Demo (Flask + gunicorn)، RESTaurant (مستنسخ من GitHub)
+- **إعادة تدوير العمليات**: uvicorn --limit-max-requests 200 (RESTaurant)، pm.max_requests 200 (DVWA-FPM) لمنع تسرب الذاكرة تحت الحمل المستمر
 
 ```yaml file=./_data/cloud-init.yaml
 ```
 
 ### المخرجات
 
-يكشف `outputs.tf` عن 25 مخرجًا وفق معيار الموارد التجريبية — 15 مخرجًا قياسيًا مشتركًا بين جميع الموارد التجريبية (`deployer`، `public_ip`، `private_ip`، `ssh_command`، `resource_group_name`، `vm_name`، `nsg_name`، `vnet_name`، `subnet_id`، `component`، `environment`، `resource_group_id`، `vm_id`، `nsg_id`، `location`) بالإضافة إلى 10 عناوين URL خاصة بالتطبيقات (`origin_url`، `health_check_url`، `juice_shop_url`، `dvwa_url`، `vampi_url`، `httpbin_url`، `whoami_url`، `dvga_url`، `restaurant_url`، `crapi_url`):
+`outputs.tf` يكشف 25 مخرجاً وفقاً لمعيار الموارد التجريبية — 15 مخرجاً قياسياً مشتركاً بين جميع الموارد التجريبية (`deployer`، `public_ip`، `private_ip`، `ssh_command`، `resource_group_name`، `vm_name`، `nsg_name`، `vnet_name`، `subnet_id`، `component`، `environment`، `resource_group_id`، `vm_id`، `nsg_id`، `location`) بالإضافة إلى 10 عناوين URL للتطبيقات الخاصة بالمكونات (`origin_url`، `health_check_url`، `juice_shop_url`، `dvwa_url`، `vampi_url`، `httpbin_url`، `whoami_url`، `dvga_url`، `restaurant_url`، `crapi_url`):
 
 ```hcl file=./_data/outputs.tf
 ```
 
-### ملف المتغيرات النموذجي
+### مثال على ملف المتغيرات
 
-انسخ `terraform.tfvars.example` إلى `terraform.tfvars` واملأ القيم الخاصة بك. يستثني `.gitignore` ملف `terraform.tfvars` لمنع رفع بيانات الاعتماد:
+انسخ `terraform.tfvars.example` إلى `terraform.tfvars` واملأ القيم الخاصة بك. ملف `.gitignore` يستثني `terraform.tfvars` لمنع إرسال بيانات الاعتماد:
 
 ```hcl file=./_data/terraform.tfvars.example
 ```
@@ -91,7 +91,7 @@ cp terraform.tfvars.example terraform.tfvars
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+# عدّل terraform.tfvars بمعرّف اشتراك Azure الخاص بك ومسار مفتاح SSH
 
 terraform init
 
@@ -104,7 +104,7 @@ terraform apply
 
 ## ما بعد النشر
 
-بعد اكتمال `terraform apply`، انتظر من 5 إلى 10 دقائق حتى ينتهي cloud-init من تثبيت Docker وسحب صور الحاويات وتكوين nginx. عمليات سحب صور Docker هي عنق الزجاجة -- Juice Shop وحده حوالي 400 ميبي بايت.
+بعد اكتمال `terraform apply`، انتظر من 5 إلى 10 دقائق حتى ينتهي cloud-init من تثبيت Docker وسحب صور الحاويات وتهيئة nginx. عمليات سحب صور Docker هي العائق الرئيسي -- صورة Juice Shop وحدها تبلغ حوالي 400 ميبيبايت.
 
 تحقق من نقطة نهاية الصحة:
 
@@ -127,7 +127,7 @@ curl -s "http://$(terraform output -raw public_ip)/health" | jq .
 يتطلب DVWA تهيئة قاعدة البيانات لمرة واحدة. افتح `http://<PUBLIC_IP>/dvwa/setup.php` في المتصفح وانقر على **Create / Reset Database**. بيانات الاعتماد الافتراضية هي `admin` / `password`.
 
 :::note
-يتم تهيئة قاعدة بيانات SQLite الخاصة بـ VAmPI تلقائيًا بواسطة سكربت نقطة دخول gunicorn. تقوم كل حاوية بتشغيل `db.create_all()` عند بدء التشغيل، لذا لا حاجة لأي تدخل يدوي.
+يتم تهيئة قاعدة بيانات SQLite الخاصة بـ VAmPI تلقائياً بواسطة سكريبت نقطة دخول gunicorn. تقوم كل حاوية بتشغيل `db.create_all()` عند بدء التشغيل، لذا لا حاجة لأي تدخل يدوي.
 :::
 
 ## الربط بالمكونات اللاحقة
@@ -135,7 +135,7 @@ curl -s "http://$(terraform output -raw public_ip)/health" | jq .
 بعد النشر، تستخدم المكونات الأخرى مخرجات خادم الأصل كمدخلات لها:
 
 ```bash
-# CDN Simulator — pass origin-server's public IP as its upstream
+# CDN Simulator — مرر عنوان IP العام لخادم الأصل كمصدر upstream
 cd ../cdn-simulator/terraform
 origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
 cat > terraform.tfvars <<EOF
@@ -144,7 +144,7 @@ origin_server   = "http://${origin_ip}"
 origin_host     = "${origin_ip}:80"
 EOF
 
-# Traffic Generator — pass the F5 XC load balancer FQDN (not the origin IP directly)
+# Traffic Generator — مرر اسم النطاق الكامل لموازن حمل F5 XC (وليس عنوان IP للأصل مباشرة)
 cd ../traffic-generator/terraform
 cat > terraform.tfvars <<EOF
 subscription_id = "your-subscription-id"

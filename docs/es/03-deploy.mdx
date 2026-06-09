@@ -1,9 +1,10 @@
 ---
-title: Deploy
+title: Desplegar
 description: >-
-  Terraform IaC deployment following the Demo Resource Standard — 9 terraform
-  files with Azure AD deployer auto-resolution, 25 outputs, and hardened
-  cloud-init provisioning 41 Docker containers across 9 applications.
+  Despliegue de IaC con Terraform siguiendo el Estándar de Recursos de
+  Demostración — 9 archivos terraform con resolución automática del desplegador
+  en Azure AD, 25 salidas y aprovisionamiento reforzado con cloud-init de 41
+  contenedores Docker en 9 aplicaciones.
 sidebar:
   order: 3
 i18n:
@@ -11,29 +12,29 @@ i18n:
   translator: machine
 ---
 
-Todos los archivos de Terraform se encuentran en el directorio [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform). Clone el repositorio y despliegue directamente:
+Todos los archivos de Terraform están en el directorio [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform). Clone el repositorio y despliegue directamente:
 
 ```bash
 git clone https://github.com/f5xc-salesdemos/origin-server.git
 cd origin-server/terraform
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+# Edite terraform.tfvars con su ID de suscripción de Azure y la ruta de su clave SSH
 ```
 
 ## Configuración de Terraform
 
 ### Estructura de archivos de Terraform
 
-El directorio terraform contiene 9 archivos siguiendo el Demo Resource Standard:
+El directorio terraform contiene 9 archivos siguiendo el Estándar de Recursos de Demostración:
 
 - `versions.tf` — Restricciones de versión de Terraform y proveedores (azurerm ~> 4.0, azuread ~> 3.0)
 - `providers.tf` — Configuración del proveedor Azure RM y Azure AD
-- `data.tf` — Fuentes de datos de Azure AD para la auto-resolución del deployer
-- `locals.tf` — Resolución del deployer, nomenclatura de recursos del Azure Cloud Adoption Framework, etiquetas estándar
+- `data.tf` — Fuentes de datos de Azure AD para la resolución automática del desplegador
+- `locals.tf` — Resolución del desplegador, nomenclatura de recursos del Azure Cloud Adoption Framework, etiquetas estándar
 - `main.tf` — Grupo de recursos (nombrado `rg-origin-server-{environment}-{deployer}`)
 - `variables.tf` — Todas las variables de entrada (1 requerida, 8 opcionales)
 - `network.tf` — VNet (10.200.0.0/16), subred, IP pública, NSG (puertos 22/80/443/8888), NIC
-- `vm.tf` — VM Ubuntu 24.04 con cloud-init mediante templatefile()
+- `vm.tf` — VM Ubuntu 24.04 con cloud-init vía templatefile()
 - `outputs.tf` — 25 salidas (15 estándar + 10 URLs de aplicaciones específicas del componente)
 
 `main.tf` contiene únicamente el grupo de recursos:
@@ -41,7 +42,7 @@ El directorio terraform contiene 9 archivos siguiendo el Demo Resource Standard:
 ```hcl file=./_data/main.tf
 ```
 
-`variables.tf` define todos los parámetros configurables. El identificador `deployer` se auto-resuelve desde su cuenta de Azure AD — solo necesita configurar `subscription_id`. El valor predeterminado de `vm_size` es `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) dimensionado para 41 contenedores Docker:
+`variables.tf` define todos los parámetros configurables. El identificador `deployer` se resuelve automáticamente desde su cuenta de Azure AD — solo necesita configurar `subscription_id`. El valor predeterminado de `vm_size` es `Standard_D16s_v3` (16 vCPU, 64 GiB RAM), dimensionado para 41 contenedores Docker:
 
 ```hcl file=./_data/variables.tf
 ```
@@ -62,7 +63,7 @@ El directorio terraform contiene 9 archivos siguiendo el Demo Resource Standard:
 
 ### Aprovisionamiento con Cloud-Init
 
-`cloud-init.yaml` aprovisiona la VM con una configuración reforzada. Una biblioteca auxiliar compartida (`/usr/local/lib/cloud-init-helpers.sh`) proporciona lógica de reintentos en todas las operaciones de red y registro de progreso en `/var/log/cloud-init-progress.log`. La verificación activa de salud mediante polling reemplaza las esperas de duración fija para la preparación de contenedores. Aprovisiona:
+`cloud-init.yaml` aprovisiona la VM con una configuración reforzada. Una biblioteca auxiliar compartida (`/usr/local/lib/cloud-init-helpers.sh`) proporciona lógica de reintentos en todas las operaciones de red y registro de progreso en `/var/log/cloud-init-progress.log`. El sondeo activo de comprobación de salud reemplaza las esperas de duración fija para la disponibilidad de los contenedores. Aprovisiona:
 
 - **Ajuste del kernel**: TCP keepalive, reutilización de TIME_WAIT, 2M tw_buckets, 64K somaxconn
 - **nginx**: 8 bloques upstream con sesiones persistentes (ip_hash, cookie hash), pools keepalive (64--128), caché de proxy para Juice Shop, error_log nivel crit
@@ -75,7 +76,7 @@ El directorio terraform contiene 9 archivos siguiendo el Demo Resource Standard:
 
 ### Salidas
 
-`outputs.tf` expone 25 salidas siguiendo el Demo Resource Standard — 15 salidas estándar compartidas por todos los recursos de demostración (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) más 10 URLs de aplicaciones específicas del componente (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
+`outputs.tf` expone 25 salidas siguiendo el Estándar de Recursos de Demostración — 15 salidas estándar compartidas por todos los recursos de demostración (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) más 10 URLs de aplicaciones específicas del componente (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
 
 ```hcl file=./_data/outputs.tf
 ```
@@ -87,11 +88,11 @@ Copie `terraform.tfvars.example` a `terraform.tfvars` y complete sus valores. El
 ```hcl file=./_data/terraform.tfvars.example
 ```
 
-## Despliegue
+## Desplegar
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your Azure subscription ID and SSH key path
+# Edite terraform.tfvars con su ID de suscripción de Azure y la ruta de su clave SSH
 
 terraform init
 
@@ -100,11 +101,11 @@ terraform plan
 terraform apply
 ```
 
-Terraform muestra la IP pública, el comando SSH y las URLs de las aplicaciones después de un despliegue exitoso.
+Terraform muestra la IP pública, el comando SSH y las URLs de las aplicaciones tras un despliegue exitoso.
 
-## Post-despliegue
+## Post-Despliegue
 
-Después de que `terraform apply` se complete, espere de 5 a 10 minutos para que cloud-init termine de instalar Docker, descargar las imágenes de contenedores y configurar nginx. Las descargas de imágenes Docker son el cuello de botella — solo Juice Shop tiene ~400 MiB.
+Después de que `terraform apply` finalice, espere de 5 a 10 minutos para que cloud-init termine de instalar Docker, descargar las imágenes de contenedores y configurar nginx. Las descargas de imágenes Docker son el cuello de botella — solo Juice Shop ocupa ~400 MiB.
 
 Verifique el endpoint de salud:
 
@@ -127,7 +128,7 @@ Respuesta esperada:
 DVWA requiere una inicialización única de la base de datos. Abra `http://<PUBLIC_IP>/dvwa/setup.php` en un navegador y haga clic en **Create / Reset Database**. Las credenciales predeterminadas son `admin` / `password`.
 
 :::note
-La base de datos SQLite de VAmPI se inicializa automáticamente mediante su script de punto de entrada de gunicorn. Cada contenedor ejecuta `db.create_all()` al iniciar, por lo que no se necesita intervención manual.
+La base de datos SQLite de VAmPI se inicializa automáticamente mediante su script de entrada de gunicorn. Cada contenedor ejecuta `db.create_all()` al iniciar, por lo que no se requiere intervención manual.
 :::
 
 ## Conexión con componentes posteriores
@@ -135,7 +136,7 @@ La base de datos SQLite de VAmPI se inicializa automáticamente mediante su scri
 Después del despliegue, otros componentes utilizan las salidas del servidor de origen como sus entradas:
 
 ```bash
-# CDN Simulator — pass origin-server's public IP as its upstream
+# CDN Simulator — pase la IP pública del origin-server como su upstream
 cd ../cdn-simulator/terraform
 origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
 cat > terraform.tfvars <<EOF
@@ -144,7 +145,7 @@ origin_server   = "http://${origin_ip}"
 origin_host     = "${origin_ip}:80"
 EOF
 
-# Traffic Generator — pass the F5 XC load balancer FQDN (not the origin IP directly)
+# Traffic Generator — pase el FQDN del balanceador de carga F5 XC (no la IP de origen directamente)
 cd ../traffic-generator/terraform
 cat > terraform.tfvars <<EOF
 subscription_id = "your-subscription-id"
