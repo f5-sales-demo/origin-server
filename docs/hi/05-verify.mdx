@@ -12,7 +12,7 @@ i18n:
 
 ## स्मोक टेस्ट
 
-cloud-init पूर्ण होने के लिए 5--10 मिनट का समय देने के बाद ये जांचें चलाएं।
+cloud-init पूरा होने के लिए 5--10 मिनट का समय देने के बाद ये जाँचें चलाएँ।
 
 ### हेल्थ एंडपॉइंट
 
@@ -67,13 +67,13 @@ curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 
 ### स्वचालित स्मोक टेस्ट
 
-रिपॉजिटरी में 39-पॉइंट स्मोक टेस्ट सुइट शामिल है:
+रिपॉजिटरी में 39-पॉइंट स्मोक टेस्ट सूट शामिल है:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-यह सभी 9 एप्लिकेशन, हेल्थ एंडपॉइंट्स, VAmPI पंजीकरण/लॉगिन, CSD Demo exfil राउंड-ट्रिप, DVGA GraphQL, RESTaurant Swagger, पोर्ट 8888 पर crAPI, nginx gzip, और वर्शन हाइडिंग को सत्यापित करता है।
+यह सभी 9 एप्लिकेशन, हेल्थ एंडपॉइंट्स, VAmPI रजिस्ट्रेशन/लॉगिन, CSD Demo exfil राउंड-ट्रिप, DVGA GraphQL, RESTaurant Swagger, पोर्ट 8888 पर crAPI, nginx gzip, और वर्शन हाइडिंग को सत्यापित करता है।
 
 ### Docker कंटेनर स्थिति
 
@@ -140,15 +140,15 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ### Cloud-init अभी भी चल रहा है
 
-यदि एंडपॉइंट्स 502 या कनेक्शन अस्वीकृत लौटाते हैं, तो cloud-init अभी भी प्रोविज़निंग कर रहा हो सकता है:
+यदि एंडपॉइंट्स 502 या कनेक्शन रिफ्यूज्ड लौटाते हैं, तो cloud-init अभी भी प्रोविजनिंग कर रहा हो सकता है:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` -- अभी भी प्रोविज़निंग हो रही है, कुछ मिनट प्रतीक्षा करें
-- `status: done` -- प्रोविज़निंग पूर्ण, Docker कंटेनर जांचें
-- `status: error` -- नीचे दिए गए लॉग जांचें
+- `status: running` -- अभी भी प्रोविजनिंग हो रही है, कुछ मिनट प्रतीक्षा करें
+- `status: done` -- प्रोविजनिंग पूर्ण, Docker कंटेनर जाँचें
+- `status: error` -- नीचे दिए गए लॉग जाँचें
 
 ### Cloud-init लॉग
 
@@ -187,7 +187,7 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### डिस्क स्पेस
 
-Docker इमेज लगभग 4.7 GiB खपत करती हैं। CDN लोड टेस्टिंग के दौरान डिस्क भरने से रोकने के लिए एक्सेस लॉगिंग अक्षम है। डिफेंस-इन-डेप्थ के रूप में Logrotate कॉन्फ़िगर किया गया है (500 MiB सीमा)। डिस्क उपयोग सत्यापित करें:
+Docker इमेज लगभग 4.7 GiB उपभोग करती हैं। CDN लोड टेस्टिंग के तहत डिस्क भर जाने से रोकने के लिए एक्सेस लॉगिंग अक्षम है। Logrotate को गहन सुरक्षा (defense-in-depth) के रूप में कॉन्फ़िगर किया गया है (500 MiB सीमा)। डिस्क उपयोग सत्यापित करें:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -195,7 +195,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### कंटेनर मेमोरी
 
-जांचें कि कौन से कंटेनर अपनी मेमोरी सीमा के करीब पहुंच रहे हैं (OOM जोखिम):
+उन कंटेनरों की जाँच करें जो अपनी मेमोरी सीमा के करीब पहुँच रहे हैं (OOM जोखिम):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"

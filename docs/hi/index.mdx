@@ -1,0 +1,62 @@
+---
+title: ओरिजिन सर्वर
+description: >-
+  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
+  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
+  WAF, API security, bot defense, and client-side defense testing with F5
+  Distributed Cloud
+template: splash
+sidebar:
+  hidden: true
+hero:
+  tagline: >-
+    F5 Distributed Cloud के साथ WAF, API सुरक्षा, बॉट डिफेंस, और क्लाइंट-साइड
+    डिफेंस परीक्षण के लिए Azure में एक मल्टी-ऐप ओरिजिन सर्वर डिप्लॉय करें।
+  image:
+    html: '<div style="font-size:4rem;">&#128421;</div>'
+  actions:
+    - text: शुरू करें
+      link: 01-architecture/
+      icon: right-arrow
+      variant: primary
+    - text: अभी डिप्लॉय करें
+      link: 03-deploy/
+      icon: rocket
+      variant: minimal
+i18n:
+  sourceHash: 659c78136774
+  translator: machine
+---
+
+import { CardGrid } from '@astrojs/starlight/components';
+import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
+
+## यह क्या प्रदान करता है
+
+<CardGrid>
+  <LinkCard
+    title="मल्टी-ऐप ओरिजिन"
+    description="एक Ubuntu 24.04 VM (16 vCPU, 64 GiB) जो nginx को 41 Docker कंटेनरों के लिए रिवर्स प्रॉक्सी के रूप में चलाता है: Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, और crAPI।"
+    href="01-architecture/"
+  />
+  <LinkCard
+    title="Terraform डिप्लॉयमेंट"
+    description="संपूर्ण Azure इन्फ्रास्ट्रक्चर ऐज़ कोड: VNet, PIP, NSG, और Standard_D16s_v3 VM जिसमें Docker + nginx cloud-init प्रोविज़निंग शामिल है। 60 GiB डिस्क, logrotate, और journald कैप्स शामिल हैं।"
+    href="03-deploy/"
+  />
+  <LinkCard
+    title="कमज़ोर एप्लिकेशन"
+    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, और crAPI जो WAF, API सुरक्षा, बॉट डिफेंस, क्लाइंट-साइड डिफेंस, GraphQL सुरक्षा, और रिक्वेस्ट डायग्नोस्टिक्स को कवर करते हैं।"
+    href="04-applications/"
+  />
+  <LinkCard
+    title="F5 XC इंटीग्रेशन"
+    description="WAF, Bot Defense, और API Security के साथ F5 XC HTTP लोड बैलेंसर के पीछे ओरिजिन पूल मेंबर के रूप में उपयोग करें।"
+    href="06-integrate/"
+  />
+  <LinkCard
+    title="API परीक्षण गाइड"
+    description="DVGA (GraphQL), RESTaurant (OWASP 2023), और crAPI (माइक्रोसर्विसेज़) के लिए व्यापक एंडपॉइंट कैटलॉग, भेद्यता मैपिंग, और अटैक पेलोड — ट्रैफ़िक जनरेशन और API प्रोटेक्शन प्रोफ़ाइल विकास के लिए।"
+    href="08-api-testing-guide/"
+  />
+</CardGrid>

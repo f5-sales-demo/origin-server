@@ -1,0 +1,63 @@
+---
+title: Server di Origine
+description: >-
+  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
+  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
+  WAF, API security, bot defense, and client-side defense testing with F5
+  Distributed Cloud
+template: splash
+sidebar:
+  hidden: true
+hero:
+  tagline: >-
+    Distribuisci un server di origine multi-applicazione in Azure per il testing
+    di WAF, sicurezza API, difesa dai bot e difesa lato client con F5
+    Distributed Cloud.
+  image:
+    html: '<div style="font-size:4rem;">&#128421;</div>'
+  actions:
+    - text: Inizia Ora
+      link: 01-architecture/
+      icon: right-arrow
+      variant: primary
+    - text: Distribuisci Ora
+      link: 03-deploy/
+      icon: rocket
+      variant: minimal
+i18n:
+  sourceHash: 659c78136774
+  translator: machine
+---
+
+import { CardGrid } from '@astrojs/starlight/components';
+import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
+
+## Cosa Offre
+
+<CardGrid>
+  <LinkCard
+    title="Origine Multi-Applicazione"
+    description="Una VM Ubuntu 24.04 (16 vCPU, 64 GiB) che esegue nginx come reverse proxy verso 41 container Docker: Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant e crAPI."
+    href="01-architecture/"
+  />
+  <LinkCard
+    title="Distribuzione Terraform"
+    description="Infrastruttura Azure completa come codice: VNet, PIP, NSG e VM Standard_D16s_v3 con provisioning cloud-init di Docker + nginx. Disco da 60 GiB, logrotate e limiti journald inclusi."
+    href="03-deploy/"
+  />
+  <LinkCard
+    title="Applicazioni Vulnerabili"
+    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant e crAPI che coprono WAF, sicurezza API, difesa dai bot, difesa lato client, sicurezza GraphQL e diagnostica delle richieste."
+    href="04-applications/"
+  />
+  <LinkCard
+    title="Integrazione F5 XC"
+    description="Utilizzabile come membro dell'origin pool dietro un bilanciatore di carico HTTP F5 XC con WAF, Bot Defense e API Security."
+    href="06-integrate/"
+  />
+  <LinkCard
+    title="Guida al Testing delle API"
+    description="Catalogo completo degli endpoint, mappatura delle vulnerabilità e payload di attacco per DVGA (GraphQL), RESTaurant (OWASP 2023) e crAPI (microservizi) — per la generazione di traffico e lo sviluppo di profili di protezione API."
+    href="08-api-testing-guide/"
+  />
+</CardGrid>

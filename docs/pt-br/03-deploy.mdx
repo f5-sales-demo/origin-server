@@ -1,10 +1,10 @@
 ---
-title: Implantar
+title: Deploy
 description: >-
-  Implantação Terraform IaC seguindo o Demo Resource Standard — 9 arquivos
-  terraform com auto-resolução de deployer do Azure AD, 25 outputs e
-  provisionamento hardened via cloud-init de 41 contêineres Docker em 9
-  aplicações.
+  Implantação de IaC com Terraform seguindo o Padrão de Recurso de Demonstração
+  — 9 arquivos terraform com auto-resolução de deployer pelo Azure AD, 25
+  outputs e provisionamento hardened via cloud-init de 41 contêineres Docker em
+  9 aplicações.
 sidebar:
   order: 3
 i18n:
@@ -12,32 +12,32 @@ i18n:
   translator: machine
 ---
 
-Todos os arquivos Terraform estão no diretório [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform). Clone o repositório e implante diretamente:
+Todos os arquivos Terraform estão no diretório [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform). Clone o repositório e faça a implantação diretamente:
 
 ```bash
 git clone https://github.com/f5xc-salesdemos/origin-server.git
 cd origin-server/terraform
 cp terraform.tfvars.example terraform.tfvars
-# Edite terraform.tfvars com seu Azure subscription ID e caminho da chave SSH
+# Edite terraform.tfvars com seu ID de assinatura do Azure e caminho da chave SSH
 ```
 
 ## Configuração do Terraform
 
 ### Estrutura de Arquivos Terraform
 
-O diretório terraform contém 9 arquivos seguindo o Demo Resource Standard:
+O diretório terraform contém 9 arquivos seguindo o Padrão de Recurso de Demonstração:
 
 - `versions.tf` — Restrições de versão do Terraform e providers (azurerm ~> 4.0, azuread ~> 3.0)
 - `providers.tf` — Configuração dos providers Azure RM e Azure AD
 - `data.tf` — Data sources do Azure AD para auto-resolução do deployer
 - `locals.tf` — Resolução do deployer, nomenclatura de recursos do Azure Cloud Adoption Framework, tags padrão
-- `main.tf` — Grupo de recursos (nomeado `rg-origin-server-{environment}-{deployer}`)
+- `main.tf` — Resource group (nomeado `rg-origin-server-{environment}-{deployer}`)
 - `variables.tf` — Todas as variáveis de entrada (1 obrigatória, 8 opcionais)
-- `network.tf` — VNet (10.200.0.0/16), sub-rede, IP público, NSG (portas 22/80/443/8888), NIC
+- `network.tf` — VNet (10.200.0.0/16), subnet, IP público, NSG (portas 22/80/443/8888), NIC
 - `vm.tf` — VM Ubuntu 24.04 com cloud-init via templatefile()
 - `outputs.tf` — 25 outputs (15 padrão + 10 URLs de aplicações específicas do componente)
 
-`main.tf` contém apenas o grupo de recursos:
+`main.tf` contém apenas o resource group:
 
 ```hcl file=./_data/main.tf
 ```
@@ -49,7 +49,7 @@ O diretório terraform contém 9 arquivos seguindo o Demo Resource Standard:
 
 ### Infraestrutura de Rede
 
-`network.tf` cria a VNet, sub-rede, IP público, NSG (portas 22/80/443/8888) e NIC. A porta 8888 é necessária para o crAPI que executa em uma porta dedicada:
+`network.tf` cria a VNet, subnet, IP público, NSG (portas 22/80/443/8888) e NIC. A porta 8888 é necessária para o crAPI, que é executado em uma porta dedicada:
 
 ```hcl file=./_data/network.tf
 ```
@@ -63,7 +63,7 @@ O diretório terraform contém 9 arquivos seguindo o Demo Resource Standard:
 
 ### Provisionamento Cloud-Init
 
-`cloud-init.yaml` provisiona a VM com uma configuração hardened. Uma biblioteca auxiliar compartilhada (`/usr/local/lib/cloud-init-helpers.sh`) fornece lógica de retry em todas as operações de rede e logging de progresso em `/var/log/cloud-init-progress.log`. Polling ativo de health-check substitui sleep de duração fixa para prontidão dos contêineres. Ele provisiona:
+`cloud-init.yaml` provisiona a VM com uma configuração hardened. Uma biblioteca auxiliar compartilhada (`/usr/local/lib/cloud-init-helpers.sh`) fornece lógica de retry em todas as operações de rede e registro de progresso em `/var/log/cloud-init-progress.log`. Polling ativo de health-check substitui sleep de duração fixa para verificação de prontidão dos contêineres. O provisionamento inclui:
 
 - **Ajuste de kernel**: TCP keepalive, reutilização de TIME_WAIT, 2M tw_buckets, 64K somaxconn
 - **nginx**: 8 blocos upstream com sessões persistentes (ip_hash, cookie hash), pools keepalive (64--128), proxy cache para Juice Shop, error_log nível crit
@@ -76,23 +76,23 @@ O diretório terraform contém 9 arquivos seguindo o Demo Resource Standard:
 
 ### Outputs
 
-`outputs.tf` expõe 25 outputs seguindo o Demo Resource Standard — 15 outputs padrão compartilhados por todos os demo resources (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) mais 10 URLs de aplicações específicas do componente (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
+`outputs.tf` expõe 25 outputs seguindo o Padrão de Recurso de Demonstração — 15 outputs padrão compartilhados por todos os recursos de demonstração (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) mais 10 URLs de aplicações específicas do componente (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
 
 ```hcl file=./_data/outputs.tf
 ```
 
-### Exemplo de Arquivo de Variáveis
+### Arquivo de Variáveis de Exemplo
 
-Copie `terraform.tfvars.example` para `terraform.tfvars` e preencha seus valores. O `.gitignore` exclui `terraform.tfvars` para evitar o commit de credenciais:
+Copie `terraform.tfvars.example` para `terraform.tfvars` e preencha com seus valores. O `.gitignore` exclui `terraform.tfvars` para evitar o commit de credenciais:
 
 ```hcl file=./_data/terraform.tfvars.example
 ```
 
-## Implantar
+## Implantação
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# Edite terraform.tfvars com seu Azure subscription ID e caminho da chave SSH
+# Edite terraform.tfvars com seu ID de assinatura do Azure e caminho da chave SSH
 
 terraform init
 
@@ -101,13 +101,13 @@ terraform plan
 terraform apply
 ```
 
-O Terraform exibe o IP público, comando SSH e URLs das aplicações após a implantação bem-sucedida.
+O Terraform exibe o IP público, comando SSH e URLs das aplicações após uma implantação bem-sucedida.
 
 ## Pós-Implantação
 
-Após a conclusão do `terraform apply`, aguarde 5--10 minutos para que o cloud-init termine de instalar o Docker, baixar as imagens de contêineres e configurar o nginx. Os pulls de imagens Docker são o gargalo -- somente o Juice Shop tem ~400 MiB.
+Após a conclusão do `terraform apply`, aguarde de 5 a 10 minutos para que o cloud-init termine de instalar o Docker, baixar as imagens dos contêineres e configurar o nginx. Os downloads de imagens Docker são o gargalo — somente o Juice Shop tem ~400 MiB.
 
-Verifique o endpoint de health:
+Verifique o endpoint de saúde:
 
 ```bash
 curl -s "http://$(terraform output -raw public_ip)/health" | jq .
@@ -128,7 +128,7 @@ Resposta esperada:
 O DVWA requer uma inicialização única do banco de dados. Abra `http://<PUBLIC_IP>/dvwa/setup.php` em um navegador e clique em **Create / Reset Database**. As credenciais padrão são `admin` / `password`.
 
 :::note
-O banco de dados SQLite do VAmPI é automaticamente inicializado pelo script de entrypoint do gunicorn. Cada contêiner executa `db.create_all()` na inicialização, portanto nenhuma intervenção manual é necessária.
+O banco de dados SQLite do VAmPI é inicializado automaticamente pelo script de entrada do gunicorn. Cada contêiner executa `db.create_all()` na inicialização, portanto nenhuma intervenção manual é necessária.
 :::
 
 ## Conexão com Componentes Downstream
@@ -156,7 +156,7 @@ EOF
 | Output | Componente Downstream | Variável de Entrada |
 |---|---|---|
 | `public_ip` | CDN Simulator | `origin_server` (com prefixo `http://`) |
-| `public_ip` | CDN Simulator | `origin_host` (com sufixo `:80`, sem esquema) |
+| `public_ip` | CDN Simulator | `origin_host` (com sufixo `:80`, sem scheme) |
 | `public_ip` | F5 XC Origin Pool | Endereço do origin server |
 
-Prossiga para [Aplicações](../04-applications/) para guias de uso ou [Verificar](../05-verify/) para testes de validação.
+Prossiga para [Aplicações](../04-applications/) para guias de uso ou [Verificação](../05-verify/) para testes de validação.

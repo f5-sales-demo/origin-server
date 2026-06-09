@@ -1,7 +1,7 @@
 ---
 title: التحقق
 description: >-
-  اختبارات curl السريعة لجميع نقاط النهاية التسعة للتطبيقات، وفحوصات صحة حاويات
+  اختبارات curl السريعة لجميع نقاط نهاية التطبيقات التسعة، وفحوصات صحة حاويات
   Docker، والتحقق من حالة nginx، وفحص سجلات cloud-init، وخطوات استكشاف الأخطاء
   وإصلاحها الشائعة
 sidebar:
@@ -11,9 +11,9 @@ i18n:
   translator: machine
 ---
 
-## الاختبارات السريعة
+## اختبارات الفحص السريع
 
-قم بتشغيل هذه الفحوصات بعد الانتظار 5--10 دقائق حتى يكتمل cloud-init.
+قم بتشغيل هذه الفحوصات بعد الانتظار من 5 إلى 10 دقائق لاكتمال cloud-init.
 
 ### نقطة نهاية الصحة
 
@@ -64,21 +64,21 @@ curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{ht
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-يجب أن تُرجع جميعها `200` (يُرجع DVWA إعادة توجيه `302` إلى صفحة تسجيل الدخول).
+يجب أن تُرجع جميعها `200` (يُرجع DVWA `302` إعادة توجيه إلى صفحة تسجيل الدخول).
 
-### الاختبار السريع التلقائي
+### اختبار الفحص السريع التلقائي
 
-يتضمن المستودع مجموعة اختبارات سريعة من 39 نقطة:
+يتضمن المستودع مجموعة اختبارات فحص سريع من 39 نقطة:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-يتحقق هذا من جميع التطبيقات التسعة، ونقاط نهاية الصحة، وتسجيل/تسجيل الدخول في VAmPI، ودورة تسريب البيانات الكاملة في CSD Demo، و GraphQL في DVGA، و Swagger في RESTaurant، و crAPI على المنفذ 8888، وضغط gzip في nginx، وإخفاء الإصدار.
+يقوم هذا بالتحقق من جميع التطبيقات التسعة، ونقاط نهاية الصحة، وتسجيل/تسجيل الدخول في VAmPI، ودورة تسريب البيانات الكاملة في CSD Demo، وGraphQL في DVGA، وSwagger في RESTaurant، وcrAPI على المنفذ 8888، وضغط gzip في nginx، وإخفاء الإصدار.
 
 ### حالة حاويات Docker
 
-قم بالاتصال بالجهاز الافتراضي عبر SSH وتحقق من أن جميع الحاويات الـ 41 تعمل:
+قم بالاتصال عبر SSH بالجهاز الافتراضي وتحقق من أن جميع الحاويات الـ 41 تعمل:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
@@ -139,9 +139,9 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ## استكشاف الأخطاء وإصلاحها
 
-### cloud-init لا يزال قيد التشغيل
+### لا يزال cloud-init قيد التشغيل
 
-إذا أرجعت نقاط النهاية خطأ 502 أو رفض الاتصال، فقد يكون cloud-init لا يزال في مرحلة التجهيز:
+إذا كانت نقاط النهاية تُرجع 502 أو رفض الاتصال، فقد يكون cloud-init لا يزال في مرحلة التجهيز:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
@@ -171,9 +171,9 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs restaurant-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 ```
 
-### nginx يُرجع خطأ 502
+### يُرجع nginx الخطأ 502
 
-الحاوية الخلفية غير جاهزة أو قد تعطلت:
+الحاوية الخلفية غير جاهزة أو تعطلت:
 
 ```bash
 # Check nginx error log
@@ -188,7 +188,7 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### مساحة القرص
 
-تستهلك صور Docker ما يقارب 4.7 جيبي بايت. تم تعطيل تسجيل الوصول لمنع استنفاد القرص أثناء اختبار الحمل عبر CDN. تم تكوين logrotate كطبقة حماية إضافية (حد أقصى 500 ميبي بايت). تحقق من استخدام القرص:
+تستهلك صور Docker ما يقارب 4.7 جيبي بايت. تم تعطيل تسجيل الوصول لمنع استنفاد القرص تحت اختبار حمل CDN. تم تكوين logrotate كطبقة حماية إضافية (حد أقصى 500 ميبي بايت). تحقق من استخدام القرص:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -196,7 +196,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### ذاكرة الحاويات
 
-تحقق من الحاويات التي تقترب من حدود ذاكرتها (خطر نفاد الذاكرة OOM):
+تحقق من الحاويات التي تقترب من حدود الذاكرة المخصصة لها (خطر نفاد الذاكرة OOM):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"

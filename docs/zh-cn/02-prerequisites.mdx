@@ -1,5 +1,5 @@
 ---
-title: 前置条件
+title: 前提条件
 description: >-
   Azure 订阅、Terraform >= 1.5、Azure CLI、SSH 密钥对，以及 Standard_D16s_v3 虚拟机（16 vCPU、64
   GiB RAM）用于 41 容器部署
@@ -14,7 +14,7 @@ i18n:
 
 ### Azure 订阅
 
-一个活跃的 Azure 订阅，需具备创建以下资源的权限：
+需要一个活跃的 Azure 订阅，并具有创建以下资源的权限：
 
 - 资源组
 - 虚拟网络和子网
@@ -42,7 +42,7 @@ az account show --query '{name:name, id:id}' -o table
 terraform version
 ```
 
-如未安装，可使用 HashiCorp APT 仓库：
+如果尚未安装，请使用 HashiCorp APT 仓库：
 
 ```bash
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -52,7 +52,7 @@ sudo apt update && sudo apt install terraform
 
 ### Azure AD 权限
 
-您的 Azure AD 账户必须具有 `User.Read` 权限。部署者标识符（用于资源命名）会自动从您的 Azure AD 配置文件中获取。如果使用服务主体或托管标识认证，请显式设置 `deployer` Terraform 变量。
+您的 Azure AD 账户必须具有 `User.Read` 权限。部署者标识符（用于资源命名）会自动从您的 Azure AD 配置文件中获取。对于服务主体或托管身份认证，请显式设置 `deployer` Terraform 变量。
 
 ### SSH 密钥对
 
@@ -71,12 +71,12 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 | 操作系统磁盘 | 60 GiB 高级 SSD |
 | 虚拟网络 + 网络安全组 | 默认 |
 
-有关当前费用，请参阅 [Azure 定价计算器](https://azure.microsoft.com/en-us/pricing/calculator/)。实验室不使用时，请执行 `terraform destroy` 以停止计费。具体步骤请参阅[资源清理](../07-teardown/)。
+有关当前费用，请参阅 [Azure 定价计算器](https://azure.microsoft.com/en-us/pricing/calculator/)。实验室不使用时，请使用 `terraform destroy` 停止计费。相关操作步骤请参阅[资源清理](../07-teardown/)。
 
 :::note
-41 容器部署需要 Standard_D16s_v3（64 GiB RAM）。容器内存分配：4 个 Juice Shop 实例各 1 GiB（共 4 GiB）、4 个 VAmPI 各 512 MiB（共 2 GiB）、4 个 DVWA-FPM + MariaDB（1.8 GiB）、4 个 httpbin 各 256 MiB（共 1 GiB）、4 个 CSD Demo 各 256 MiB（共 1 GiB）、4 个 whoami 各 64 MiB（共 256 MiB）、4 个 DVGA 各 256 MiB（共 1 GiB）、4 个 RESTaurant + PostgreSQL（1.5 GiB）、crAPI 7 个微服务（2 GiB），加上 nginx、操作系统和缓冲区缓存。容器总分配约为 14.5 GiB（占 64 GiB 的 22.7%）。
+41 容器部署需要 Standard_D16s_v3（64 GiB RAM）。容器内存分配：4 个 Juice Shop 实例各 1 GiB（共 4 GiB）、4 个 VAmPI 各 512 MiB（共 2 GiB）、4 个 DVWA-FPM + MariaDB（共 1.8 GiB）、4 个 httpbin 各 256 MiB（共 1 GiB）、4 个 CSD Demo 各 256 MiB（共 1 GiB）、4 个 whoami 各 64 MiB（共 256 MiB）、4 个 DVGA 各 256 MiB（共 1 GiB）、4 个 RESTaurant + PostgreSQL（共 1.5 GiB）、crAPI 7 个微服务（共 2 GiB），外加 nginx、操作系统和缓冲区缓存。容器总分配约为 14.5 GiB（占 64 GiB 的 22.7%）。
 :::
 
 :::note
-网络安全组允许端口 80（HTTP）和 8888（crAPI）的入站流量。需要端口 8888 是因为 crAPI 是一个单页应用程序，其 API 路径为硬编码，无法通过路径前缀进行代理。
+网络安全组允许端口 80（HTTP）和 8888（crAPI）的入站流量。需要端口 8888 是因为 crAPI 是一个单页应用程序，其 API 路径是硬编码的，无法通过路径前缀进行代理。
 :::

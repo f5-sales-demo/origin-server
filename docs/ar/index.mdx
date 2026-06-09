@@ -1,0 +1,63 @@
+---
+title: خادم الأصل
+description: >-
+  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
+  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
+  WAF, API security, bot defense, and client-side defense testing with F5
+  Distributed Cloud
+template: splash
+sidebar:
+  hidden: true
+hero:
+  tagline: >-
+    انشر خادم أصل متعدد التطبيقات في Azure لاختبار جدار حماية تطبيقات الويب
+    (WAF) وأمان واجهات برمجة التطبيقات والحماية من الروبوتات والدفاع من جانب
+    العميل مع F5 Distributed Cloud.
+  image:
+    html: '<div style="font-size:4rem;">&#128421;</div>'
+  actions:
+    - text: ابدأ الآن
+      link: 01-architecture/
+      icon: right-arrow
+      variant: primary
+    - text: انشر الآن
+      link: 03-deploy/
+      icon: rocket
+      variant: minimal
+i18n:
+  sourceHash: 659c78136774
+  translator: machine
+---
+
+import { CardGrid } from '@astrojs/starlight/components';
+import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
+
+## ما يوفره هذا الحل
+
+<CardGrid>
+  <LinkCard
+    title="خادم أصل متعدد التطبيقات"
+    description="جهاز افتراضي واحد بنظام Ubuntu 24.04 (16 وحدة معالجة مركزية افتراضية، 64 جيبي بايت) يشغّل nginx كوكيل عكسي لـ 41 حاوية Docker: Juice Shop وDVWA وVAmPI وhttpbin وwhoami وCSD Demo وDVGA وRESTaurant وcrAPI."
+    href="01-architecture/"
+  />
+  <LinkCard
+    title="النشر باستخدام Terraform"
+    description="بنية تحتية كاملة لـ Azure كتعليمات برمجية: VNet وPIP وNSG وجهاز افتراضي Standard_D16s_v3 مع تهيئة Docker + nginx عبر cloud-init. يتضمن قرص 60 جيبي بايت وlogrotate وحدود journald."
+    href="03-deploy/"
+  />
+  <LinkCard
+    title="التطبيقات المعرضة للثغرات"
+    description="Juice Shop وDVWA وVAmPI وhttpbin وwhoami وCSD Demo وDVGA وRESTaurant وcrAPI تغطي جدار حماية تطبيقات الويب (WAF) وأمان واجهات برمجة التطبيقات والحماية من الروبوتات والدفاع من جانب العميل وأمان GraphQL وتشخيصات الطلبات."
+    href="04-applications/"
+  />
+  <LinkCard
+    title="التكامل مع F5 XC"
+    description="استخدمه كعضو في مجموعة الأصل خلف موازن أحمال HTTP في F5 XC مع WAF والحماية من الروبوتات وأمان واجهات برمجة التطبيقات."
+    href="06-integrate/"
+  />
+  <LinkCard
+    title="دليل اختبار واجهات برمجة التطبيقات"
+    description="كتالوج شامل لنقاط النهاية وتعيين الثغرات وحمولات الهجوم لـ DVGA (GraphQL) وRESTaurant (OWASP 2023) وcrAPI (الخدمات المصغرة) — لتوليد حركة المرور وتطوير ملفات تعريف حماية واجهات برمجة التطبيقات."
+    href="08-api-testing-guide/"
+  />
+</CardGrid>

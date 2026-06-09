@@ -1,7 +1,7 @@
 ---
 title: Integrar
 description: >-
-  Configure la VM como miembro del origin pool de F5 XC con políticas de WAF,
+  Configure la VM como miembro del pool de origen de F5 XC con políticas de WAF,
   Bot Defense, API Discovery y Client-Side Defense; enrutamiento basado en rutas
   a través del balanceador de carga HTTP; verificación de inyección de
   encabezados mediante /whoami
@@ -12,9 +12,9 @@ i18n:
   translator: machine
 ---
 
-## Integración con F5 XC Origin Pool
+## Integración con el Pool de Origen de F5 XC
 
-Este servidor de origen está diseñado para ser utilizado como **miembro de un origin pool** detrás de un balanceador de carga HTTP de F5 Distributed Cloud. La plataforma F5 XC proporciona WAF, Bot Defense, API Security y Client-Side Defense frente a este origen.
+Este servidor de origen está diseñado para ser utilizado como un **miembro del pool de origen** detrás de un balanceador de carga HTTP de F5 Distributed Cloud. La plataforma F5 XC proporciona WAF, Bot Defense, API Security y Client-Side Defense frente a este origen.
 
 ### Arquitectura
 
@@ -22,48 +22,48 @@ Este servidor de origen está diseñado para ser utilizado como **miembro de un 
 Usuario Final -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> VM Servidor de Origen (nginx -> Apps Docker)
 ```
 
-### Configuración del Origin Pool
+### Configuración del Pool de Origen
 
-Cree un origin pool de F5 XC apuntando a la IP pública de esta VM:
+Cree un pool de origen de F5 XC apuntando a la IP pública de esta VM:
 
 | Configuración | Valor |
 |---|---|
 | **Tipo de Servidor de Origen** | IP Pública del Servidor de Origen |
 | **Dirección IP** | `<terraform output public_ip>` |
 | **Puerto** | `80` |
-| **Health Check** | HTTP, ruta `/health` |
+| **Verificación de Salud** | HTTP, ruta `/health` |
 
 ### Configuración del Balanceador de Carga HTTP
 
-Cree un balanceador de carga HTTP con el origin pool:
+Cree un balanceador de carga HTTP con el pool de origen:
 
 | Configuración | Valor |
 |---|---|
 | **Dominios** | Su dominio de demostración (ej., `demo.example.com`) |
-| **Origin Pool** | El pool creado anteriormente |
+| **Pool de Origen** | El pool creado anteriormente |
 | **WAF** | Adjunte su política WAF |
-| **Bot Defense** | Habilite según sea necesario |
-| **API Discovery** | Habilite para los endpoints de VAmPI |
+| **Bot Defense** | Habilitar según sea necesario |
+| **API Discovery** | Habilitar para los endpoints de VAmPI |
 
 ### Enrutamiento Basado en Rutas
 
 Cada aplicación es accesible a través de su prefijo de ruta mediante el balanceador de carga:
 
-| URL del F5 XC LB | Ruta de Origen | Aplicación |
+| URL del LB F5 XC | Ruta de Origen | Aplicación |
 |---|---|---|
 | `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop (4 instancias, sticky por cookie) |
 | `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA (4 instancias + MariaDB, sticky por cookie) |
-| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 instancias, sticky ip_hash) |
+| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 instancias, sticky por ip_hash) |
 | `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin (4 instancias, round-robin) |
 | `https://demo.example.com/whoami/` | `/whoami/` | Diagnóstico de solicitudes (4 instancias) |
-| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo (4 instancias, sticky ip_hash) |
-| `https://demo.example.com/dvga/` | `/dvga/` | DVGA (4 instancias, sticky ip_hash) |
+| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo (4 instancias, sticky por ip_hash) |
+| `https://demo.example.com/dvga/` | `/dvga/` | DVGA (4 instancias, sticky por ip_hash) |
 | `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant (4 instancias, round-robin) |
-| `https://demo.example.com/health` | `/health` | Health check (nginx directo) |
+| `https://demo.example.com/health` | `/health` | Verificación de salud (nginx directo) |
 
 ### Verificar la Inyección de Encabezados de F5 XC
 
-Use el endpoint whoami para verificar qué encabezados inyecta F5 XC en las solicitudes que llegan al origen:
+Utilice el endpoint whoami para verificar qué encabezados inyecta F5 XC en las solicitudes que llegan al origen:
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -79,11 +79,11 @@ Busque estos encabezados inyectados por F5 XC en la respuesta:
 | `True-Client-IP` | IP original del cliente |
 | `X-Forwarded-Proto` | `https` si TLS termina en F5 XC |
 | `X-Volterra-Bot-Type` | Clasificación de bot (cuando Bot Defense está habilitado) |
-| `X-Request-ID` | ID de seguimiento de solicitudes de F5 XC |
+| `X-Request-ID` | ID de seguimiento de solicitud de F5 XC |
 
 ### Pruebas de WAF a Través de F5 XC
 
-Con una política WAF adjunta al balanceador de carga HTTP, pruebe payloads de ataque:
+Con una política WAF adjunta al balanceador de carga HTTP, pruebe cargas útiles de ataque:
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -119,16 +119,16 @@ curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
 
 ### Integración de crAPI (Puerto 8888)
 
-crAPI se ejecuta en un puerto dedicado (8888) porque es una aplicación de página única que tiene sus rutas de API codificadas de forma fija y no puede servirse detrás de un prefijo de ruta. Para integrar crAPI con F5 XC:
+crAPI se ejecuta en un puerto dedicado (8888) porque es una aplicación de página única que tiene codificadas sus rutas de API y no puede servirse detrás de un prefijo de ruta. Para integrar crAPI con F5 XC:
 
 | Configuración | Valor |
 |---|---|
 | **Tipo de Servidor de Origen** | IP Pública del Servidor de Origen |
 | **Dirección IP** | `<terraform output public_ip>` |
 | **Puerto** | `8888` |
-| **Health Check** | HTTP, ruta `/` |
+| **Verificación de Salud** | HTTP, ruta `/` |
 
-Cree un **origin pool separado** para crAPI en el puerto 8888, o agregue un segundo miembro de origin pool a su pool existente con el puerto 8888 y use reglas de enrutamiento para dirigir el tráfico:
+Cree un **pool de origen separado** para crAPI en el puerto 8888, o agregue un segundo miembro de pool de origen a su pool existente con el puerto 8888 y utilice reglas de enrutamiento para dirigir el tráfico:
 
 ```bash
 # Test crAPI through F5 XC (if configured)
@@ -143,14 +143,14 @@ curl -sk "https://${LB_DOMAIN}:8888/"
 El NSG en la VM de origen permite tráfico entrante en el puerto 8888. No se necesitan cambios adicionales en la red de Azure.
 :::
 
-### Conciencia sobre Sesiones Sticky
+### Conciencia de Sesiones Sticky
 
-El servidor de origen utiliza sesiones sticky de nginx internamente para enrutar aplicaciones con estado hacia contenedores backend consistentes. Al configurar el balanceador de carga HTTP de F5 XC, tenga en cuenta:
+El servidor de origen utiliza sesiones sticky de nginx internamente para enrutar aplicaciones con estado a contenedores backend consistentes. Al configurar el balanceador de carga HTTP de F5 XC, tenga en cuenta:
 
 | Aplicación | Método Sticky | Por qué |
 |---|---|---|
-| Juice Shop | `hash $cookie_token` | Estado de sesión Node.js |
-| DVWA | `hash $cookie_PHPSESSID` | Estado de sesión PHP |
+| Juice Shop | `hash $cookie_token` | Estado de sesión de Node.js |
+| DVWA | `hash $cookie_PHPSESSID` | Estado de sesión de PHP |
 | VAmPI | `ip_hash` | Base de datos SQLite por instancia |
 | CSD Demo | `ip_hash` | Registro de exfiltración en memoria por instancia |
 | DVGA | `ip_hash` | Base de datos SQLite por instancia |
@@ -159,14 +159,14 @@ El servidor de origen utiliza sesiones sticky de nginx internamente para enrutar
 | httpbin | Round-robin | Sin estado |
 | whoami | Round-robin | Sin estado |
 
-F5 XC no necesita replicar estas sesiones sticky -- nginx en la VM de origen maneja el enrutamiento al backend. F5 XC debe tratar el origen como un único endpoint (la IP pública de la VM en el puerto 80).
+F5 XC no necesita replicar estas sesiones sticky -- nginx en la VM de origen gestiona el enrutamiento al backend. F5 XC debe tratar el origen como un único endpoint (la IP pública de la VM en el puerto 80).
 
 ### Arquitectura Multi-Componente
 
 Cuando se combina con el Simulador de CDN, la arquitectura completa del laboratorio es:
 
 ```
-Usuario Final -> Simulador CDN (caché nginx) -> F5 XC HTTP LB -> Servidor de Origen (este componente)
+Usuario Final -> Simulador de CDN (caché nginx) -> F5 XC HTTP LB -> Servidor de Origen (este componente)
 ```
 
-El Simulador de CDN utiliza el VIP del balanceador de carga HTTP de F5 XC como su origen, y el balanceador de carga de F5 XC utiliza este servidor de origen como su backend. Esto crea una arquitectura multicapa realista para pruebas exhaustivas.
+El Simulador de CDN utiliza el VIP del balanceador de carga HTTP de F5 XC como su origen, y el balanceador de carga de F5 XC utiliza este servidor de origen como su backend. Esto crea una arquitectura realista de múltiples capas para pruebas exhaustivas.

@@ -1,9 +1,10 @@
 ---
-title: Verificación
+title: Verificar
 description: >-
-  Pruebas de humo con curl para los nueve endpoints de aplicación, verificación
-  de estado de contenedores Docker, verificación de estado de nginx, inspección
-  de logs de cloud-init y pasos comunes de resolución de problemas
+  Pruebas de humo con curl para los nueve endpoints de aplicación,
+  verificaciones de estado de contenedores Docker, verificación del estado de
+  nginx, inspección de logs de cloud-init y pasos comunes de resolución de
+  problemas
 sidebar:
   order: 5
 i18n:
@@ -13,9 +14,9 @@ i18n:
 
 ## Pruebas de humo
 
-Ejecute estas verificaciones después de esperar 5--10 minutos para que cloud-init se complete.
+Ejecute estas verificaciones después de permitir 5--10 minutos para que cloud-init se complete.
 
-### Endpoint de salud
+### Endpoint de estado
 
 ```bash
 ORIGIN_IP=$(terraform output -raw public_ip)
@@ -23,7 +24,7 @@ ORIGIN_IP=$(terraform output -raw public_ip)
 curl -sf "http://${ORIGIN_IP}/health" | jq .
 ```
 
-Esperado:
+Resultado esperado:
 
 ```json
 {
@@ -64,7 +65,7 @@ curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{ht
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-Todos deberían devolver `200` (DVWA devuelve una redirección `302` al login).
+Todos deberían devolver `200` (DVWA devuelve una redirección `302` al inicio de sesión).
 
 ### Prueba de humo automatizada
 
@@ -74,7 +75,7 @@ El repositorio incluye un conjunto de pruebas de humo de 39 puntos:
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-Esto valida las 9 aplicaciones, endpoints de salud, registro/login de VAmPI, ciclo completo de exfiltración de CSD Demo, GraphQL de DVGA, Swagger de RESTaurant, crAPI en el puerto 8888, gzip de nginx y ocultación de versión.
+Esto valida las 9 aplicaciones, endpoints de estado, registro/inicio de sesión de VAmPI, ciclo completo de exfiltración de CSD Demo, GraphQL de DVGA, Swagger de RESTaurant, crAPI en el puerto 8888, gzip de nginx y ocultación de versión.
 
 ### Estado de los contenedores Docker
 
@@ -141,7 +142,7 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ### Cloud-init aún en ejecución
 
-Si los endpoints devuelven 502 o conexión rechazada, es posible que cloud-init aún esté aprovisionando:
+Si los endpoints devuelven 502 o conexión rechazada, cloud-init puede estar aún aprovisionando:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
@@ -173,7 +174,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 
 ### nginx devuelve 502
 
-El contenedor upstream no está listo o ha fallado:
+El contenedor upstream no está listo o se ha detenido inesperadamente:
 
 ```bash
 # Check nginx error log
@@ -188,15 +189,15 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### Espacio en disco
 
-Las imágenes Docker consumen aproximadamente 4.7 GiB. El registro de accesos está deshabilitado para prevenir el agotamiento del disco durante pruebas de carga con CDN. Logrotate está configurado como defensa en profundidad (límite de 500 MiB). Verifique el uso de disco:
+Las imágenes Docker consumen aproximadamente 4.7 GiB. El registro de acceso está deshabilitado para prevenir el agotamiento del disco durante pruebas de carga CDN. Logrotate está configurado como defensa en profundidad (límite de 500 MiB). Verifique el uso de disco:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 ```
 
-### Memoria de contenedores
+### Memoria de los contenedores
 
-Verifique si hay contenedores acercándose a sus límites de memoria (riesgo de OOM):
+Verifique si hay contenedores que se acercan a sus límites de memoria (riesgo de OOM):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"

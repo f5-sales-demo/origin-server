@@ -1,5 +1,5 @@
 ---
-title: إزالة الموارد
+title: التفكيك
 description: >-
   terraform destroy لإزالة جميع موارد Azure، والتحقق من التنظيف باستخدام az CLI،
   وتنظيف ملفات الحالة المحلية، وإزالة مجمع الأصل وموازن تحميل HTTP المرتبطين بـ
@@ -11,9 +11,9 @@ i18n:
   translator: machine
 ---
 
-عند اكتمال جلسة المختبر، قم بإزالة جميع موارد Azure لإيقاف الفوترة.
+عند اكتمال جلسة المختبر، قم بتدمير جميع موارد Azure لإيقاف الفوترة.
 
-## إزالة Terraform
+## تدمير Terraform
 
 من الدليل الذي يحتوي على تكوين Terraform:
 
@@ -23,7 +23,7 @@ terraform plan -destroy
 terraform destroy
 ```
 
-سيطلب Terraform تأكيدًا. اكتب `yes` للمتابعة.
+سيطلب Terraform التأكيد. اكتب `yes` للمتابعة.
 
 ## التحقق من التنظيف
 
@@ -38,7 +38,7 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
 
 ## تنظيف الحالة المحلية
 
-قم بإزالة حالة Terraform والملفات المخزنة مؤقتًا:
+قم بإزالة حالة Terraform والملفات المخزنة مؤقتاً:
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup

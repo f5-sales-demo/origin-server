@@ -1,9 +1,9 @@
 ---
 title: Verificar
 description: >-
-  Testes de fumaça com curl para todos os nove endpoints de aplicação,
-  verificações de saúde dos contêineres Docker, verificação de status do nginx,
-  inspeção de logs do cloud-init e etapas comuns de solução de problemas
+  Testes de verificação curl para todos os nove endpoints de aplicação,
+  verificações de integridade de contêineres Docker, verificação de status do
+  nginx, inspeção de logs do cloud-init e etapas comuns de solução de problemas
 sidebar:
   order: 5
 i18n:
@@ -11,11 +11,11 @@ i18n:
   translator: machine
 ---
 
-## Testes de Fumaça
+## Testes de Verificação
 
-Execute estas verificações após aguardar 5--10 minutos para que o cloud-init seja concluído.
+Execute essas verificações após aguardar 5 a 10 minutos para a conclusão do cloud-init.
 
-### Endpoint de Saúde
+### Endpoint de Integridade
 
 ```bash
 ORIGIN_IP=$(terraform output -raw public_ip)
@@ -36,7 +36,7 @@ Esperado:
 ### Endpoints de Aplicação
 
 ```bash
-# Default landing page
+# Página inicial padrão
 curl -sf "http://${ORIGIN_IP}/" -o /dev/null -w "Landing: %{http_code}\n"
 
 # Juice Shop
@@ -60,25 +60,25 @@ curl -sf "http://${ORIGIN_IP}/dvga/" -o /dev/null -w "DVGA: %{http_code}\n"
 # RESTaurant
 curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{http_code}\n"
 
-# crAPI (port 8888)
+# crAPI (porta 8888)
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-Todos devem retornar `200` (DVWA retorna `302` com redirecionamento para login).
+Todos devem retornar `200` (DVWA retorna redirecionamento `302` para login).
 
-### Teste de Fumaça Automatizado
+### Teste de Verificação Automatizado
 
-O repositório inclui uma suíte de testes de fumaça com 39 pontos de verificação:
+O repositório inclui uma suíte de testes de verificação com 39 pontos:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-Isso valida todas as 9 aplicações, endpoints de saúde, registro/login do VAmPI, ciclo completo de exfiltração do CSD Demo, GraphQL do DVGA, Swagger do RESTaurant, crAPI na porta 8888, gzip do nginx e ocultação de versão.
+Isso valida todas as 9 aplicações, endpoints de integridade, registro/login do VAmPI, ciclo completo de exfiltração do CSD Demo, GraphQL do DVGA, Swagger do RESTaurant, crAPI na porta 8888, gzip do nginx e ocultação de versão.
 
 ### Status dos Contêineres Docker
 
-Acesse a VM via SSH e verifique se todos os 41 contêineres estão em execução:
+Conecte-se via SSH à VM e verifique se todos os 41 contêineres estão em execução:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
@@ -141,7 +141,7 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ### Cloud-init ainda em execução
 
-Se os endpoints retornarem 502 ou conexão recusada, o cloud-init pode ainda estar provisionando:
+Se os endpoints retornarem 502 ou conexão recusada, o cloud-init ainda pode estar provisionando:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
@@ -157,10 +157,10 @@ ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ```
 
-### Contêiner não iniciando
+### Contêiner não inicia
 
 ```bash
-# Check container logs (each app has 4 instances: -1 through -4)
+# Verifique os logs do contêiner (cada aplicação tem 4 instâncias: -1 a -4)
 ssh azureuser@${ORIGIN_IP} "sudo docker logs juice-shop-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs dvwa-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs vampi-1 2>&1 | tail -20"
@@ -176,19 +176,19 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 O contêiner upstream não está pronto ou falhou:
 
 ```bash
-# Check nginx error log
+# Verifique o log de erros do nginx
 ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
 
-# Restart all instances of a specific app
+# Reinicie todas as instâncias de uma aplicação específica
 ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
 
-# Rebuild and restart all containers
+# Reconstrua e reinicie todos os contêineres
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
 ```
 
 ### Espaço em disco
 
-As imagens Docker consomem aproximadamente 4,7 GiB. O log de acesso está desabilitado para evitar esgotamento de disco durante testes de carga via CDN. O logrotate está configurado como defesa em profundidade (limite de 500 MiB). Verifique o uso de disco:
+As imagens Docker consomem aproximadamente 4,7 GiB. O registro de acesso está desabilitado para evitar esgotamento de disco durante testes de carga com CDN. O logrotate está configurado como defesa em profundidade (limite de 500 MiB). Verifique o uso de disco:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
