@@ -39,26 +39,26 @@ cp terraform.tfvars.example terraform.tfvars
 
 `main.tf` มีเฉพาะ resource group เท่านั้น:
 
-```hcl file=../../terraform/main.tf
+```hcl file=../_data/main.tf
 ```
 
 `variables.tf` กำหนดพารามิเตอร์ที่ปรับแต่งได้ทั้งหมด ตัวระบุ `deployer` จะถูก auto-resolve จากบัญชี Azure AD ของคุณ — คุณต้องตั้งค่าเพียง `subscription_id` เท่านั้น ค่าเริ่มต้นของ `vm_size` คือ `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) ซึ่งมีขนาดเพียงพอสำหรับ 41 Docker containers:
 
-```hcl file=../../terraform/variables.tf
+```hcl file=../_data/variables.tf
 ```
 
 ### โครงสร้างพื้นฐานเครือข่าย
 
 `network.tf` สร้าง VNet, subnet, public IP, NSG (พอร์ต 22/80/443/8888) และ NIC พอร์ต 8888 จำเป็นสำหรับ crAPI ซึ่งทำงานบนพอร์ตเฉพาะ:
 
-```hcl file=../../terraform/network.tf
+```hcl file=../_data/network.tf
 ```
 
 ### Virtual Machine พร้อม Cloud-Init
 
 `vm.tf` สร้าง VM Ubuntu 24.04 และส่งสคริปต์ cloud-init provisioning Premium SSD ขนาด 60 GiB มีพื้นที่เพียงพอสำหรับ Docker images และ container volumes:
 
-```hcl file=../../terraform/vm.tf
+```hcl file=../_data/vm.tf
 ```
 
 ### Cloud-Init Provisioning
@@ -71,21 +71,21 @@ cp terraform.tfvars.example terraform.tfvars
 - **Custom builds**: DVWA-FPM (php-fpm พร้อม pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (โคลนจาก GitHub)
 - **การรีไซเคิล Worker**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) เพื่อป้องกัน memory leaks ภายใต้โหลดที่ต่อเนื่อง
 
-```yaml file=../../terraform/cloud-init.yaml
+```yaml file=../_data/cloud-init.yaml
 ```
 
 ### Outputs
 
 `outputs.tf` แสดง 25 outputs ตามมาตรฐาน Demo Resource Standard — 15 outputs มาตรฐานที่ใช้ร่วมกันโดย demo resources ทั้งหมด (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) บวกกับ 10 URL แอปพลิเคชันเฉพาะคอมโพเนนต์ (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
 
-```hcl file=../../terraform/outputs.tf
+```hcl file=../_data/outputs.tf
 ```
 
 ### ตัวอย่างไฟล์ตัวแปร
 
 คัดลอก `terraform.tfvars.example` ไปเป็น `terraform.tfvars` และกรอกค่าของคุณ `.gitignore` จะไม่รวม `terraform.tfvars` เพื่อป้องกันการ commit ข้อมูลรับรอง:
 
-```hcl file=../../terraform/terraform.tfvars.example
+```hcl file=../_data/terraform.tfvars.example
 ```
 
 ## Deploy

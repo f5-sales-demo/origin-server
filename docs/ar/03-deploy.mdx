@@ -38,26 +38,26 @@ cp terraform.tfvars.example terraform.tfvars
 
 يحتوي `main.tf` على مجموعة الموارد فقط:
 
-```hcl file=../../terraform/main.tf
+```hcl file=../_data/main.tf
 ```
 
 يحدد `variables.tf` جميع المعاملات القابلة للتكوين. يتم حل معرف `deployer` تلقائيًا من حساب Azure AD الخاص بك — تحتاج فقط إلى تعيين `subscription_id`. القيمة الافتراضية لـ `vm_size` هي `Standard_D16s_v3` (16 وحدة معالجة مركزية افتراضية، 64 جيبي بايت ذاكرة) مصممة لتشغيل 41 حاوية Docker:
 
-```hcl file=../../terraform/variables.tf
+```hcl file=../_data/variables.tf
 ```
 
 ### البنية التحتية للشبكة
 
 ينشئ `network.tf` شبكة VNet والشبكة الفرعية وعنوان IP العام ومجموعة أمان الشبكة NSG (المنافذ 22/80/443/8888) وواجهة الشبكة NIC. المنفذ 8888 مطلوب لتطبيق crAPI الذي يعمل على منفذ مخصص:
 
-```hcl file=../../terraform/network.tf
+```hcl file=../_data/network.tf
 ```
 
 ### الآلة الافتراضية مع Cloud-Init
 
 ينشئ `vm.tf` آلة افتراضية Ubuntu 24.04 ويمرر سكربت تهيئة cloud-init. يوفر قرص SSD المتميز بسعة 60 جيبي بايت مساحة كافية لصور Docker ووحدات تخزين الحاويات:
 
-```hcl file=../../terraform/vm.tf
+```hcl file=../_data/vm.tf
 ```
 
 ### تهيئة Cloud-Init
@@ -70,21 +70,21 @@ cp terraform.tfvars.example terraform.tfvars
 - **بناءات مخصصة**: DVWA-FPM (php-fpm مع pm.max_requests=200)، CSD Demo (Flask + gunicorn)، RESTaurant (مستنسخ من GitHub)
 - **إعادة تدوير العمال**: uvicorn --limit-max-requests 200 (RESTaurant)، pm.max_requests 200 (DVWA-FPM) لمنع تسرب الذاكرة تحت الحمل المستمر
 
-```yaml file=../../terraform/cloud-init.yaml
+```yaml file=../_data/cloud-init.yaml
 ```
 
 ### المخرجات
 
 يعرض `outputs.tf` عدد 25 مخرجًا وفقًا لمعيار الموارد التجريبية — 15 مخرجًا قياسيًا مشتركًا بين جميع الموارد التجريبية (`deployer`، `public_ip`، `private_ip`، `ssh_command`، `resource_group_name`، `vm_name`، `nsg_name`، `vnet_name`، `subnet_id`، `component`، `environment`، `resource_group_id`، `vm_id`، `nsg_id`، `location`) بالإضافة إلى 10 عناوين URL خاصة بتطبيقات المكونات (`origin_url`، `health_check_url`، `juice_shop_url`، `dvwa_url`، `vampi_url`، `httpbin_url`، `whoami_url`، `dvga_url`، `restaurant_url`، `crapi_url`):
 
-```hcl file=../../terraform/outputs.tf
+```hcl file=../_data/outputs.tf
 ```
 
 ### ملف المتغيرات النموذجي
 
 انسخ `terraform.tfvars.example` إلى `terraform.tfvars` واملأ القيم الخاصة بك. يستثني `.gitignore` ملف `terraform.tfvars` لمنع إرسال بيانات الاعتماد:
 
-```hcl file=../../terraform/terraform.tfvars.example
+```hcl file=../_data/terraform.tfvars.example
 ```
 
 ## النشر

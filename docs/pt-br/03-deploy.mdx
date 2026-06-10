@@ -39,26 +39,26 @@ O diretório terraform contém 9 arquivos seguindo o Padrão de Recurso de Demon
 
 `main.tf` contém apenas o resource group:
 
-```hcl file=../../terraform/main.tf
+```hcl file=../_data/main.tf
 ```
 
 `variables.tf` define todos os parâmetros configuráveis. O identificador `deployer` é auto-resolvido a partir da sua conta Azure AD — você só precisa definir `subscription_id`. O `vm_size` padrão é `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) dimensionado para 41 contêineres Docker:
 
-```hcl file=../../terraform/variables.tf
+```hcl file=../_data/variables.tf
 ```
 
 ### Infraestrutura de Rede
 
 `network.tf` cria a VNet, subnet, IP público, NSG (portas 22/80/443/8888) e NIC. A porta 8888 é necessária para o crAPI, que é executado em uma porta dedicada:
 
-```hcl file=../../terraform/network.tf
+```hcl file=../_data/network.tf
 ```
 
 ### Máquina Virtual com Cloud-Init
 
 `vm.tf` cria a VM Ubuntu 24.04 e passa o script de provisionamento cloud-init. O SSD Premium de 60 GiB fornece espaço suficiente para imagens Docker e volumes de contêineres:
 
-```hcl file=../../terraform/vm.tf
+```hcl file=../_data/vm.tf
 ```
 
 ### Provisionamento Cloud-Init
@@ -71,21 +71,21 @@ O diretório terraform contém 9 arquivos seguindo o Padrão de Recurso de Demon
 - **Builds customizados**: DVWA-FPM (php-fpm com pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (clonado do GitHub)
 - **Reciclagem de workers**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) para prevenir vazamentos de memória sob carga sustentada
 
-```yaml file=../../terraform/cloud-init.yaml
+```yaml file=../_data/cloud-init.yaml
 ```
 
 ### Outputs
 
 `outputs.tf` expõe 25 outputs seguindo o Padrão de Recurso de Demonstração — 15 outputs padrão compartilhados por todos os recursos de demonstração (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) mais 10 URLs de aplicações específicas do componente (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
 
-```hcl file=../../terraform/outputs.tf
+```hcl file=../_data/outputs.tf
 ```
 
 ### Arquivo de Variáveis de Exemplo
 
 Copie `terraform.tfvars.example` para `terraform.tfvars` e preencha com seus valores. O `.gitignore` exclui `terraform.tfvars` para evitar o commit de credenciais:
 
-```hcl file=../../terraform/terraform.tfvars.example
+```hcl file=../_data/terraform.tfvars.example
 ```
 
 ## Implantação
