@@ -37,26 +37,26 @@ terraform 目錄包含 9 個遵循 Demo Resource Standard 的檔案：
 
 `main.tf` 僅包含資源群組：
 
-```hcl file=../../terraform/main.tf
+```hcl file=../_data/main.tf
 ```
 
 `variables.tf` 定義所有可配置參數。`deployer` 識別碼會從您的 Azure AD 帳戶自動解析 — 您只需設定 `subscription_id`。`vm_size` 預設值為 `Standard_D16s_v3`（16 vCPU、64 GiB RAM），為 41 個 Docker 容器調整大小：
 
-```hcl file=../../terraform/variables.tf
+```hcl file=../_data/variables.tf
 ```
 
 ### 網路基礎架構
 
 `network.tf` 建立 VNet、子網路、公用 IP、NSG（連接埠 22/80/443/8888）和 NIC。連接埠 8888 是 crAPI 所需的，因為它在專用連接埠上執行：
 
-```hcl file=../../terraform/network.tf
+```hcl file=../_data/network.tf
 ```
 
 ### 使用 Cloud-Init 的虛擬機器
 
 `vm.tf` 建立 Ubuntu 24.04 VM 並傳遞 cloud-init 佈建腳本。60 GiB Premium SSD 為 Docker 映像檔和容器卷提供足夠空間：
 
-```hcl file=../../terraform/vm.tf
+```hcl file=../_data/vm.tf
 ```
 
 ### Cloud-Init 佈建
@@ -69,21 +69,21 @@ terraform 目錄包含 9 個遵循 Demo Resource Standard 的檔案：
 - **自訂建置**：DVWA-FPM（php-fpm 搭配 pm.max_requests=200）、CSD Demo（Flask + gunicorn）、RESTaurant（從 GitHub 克隆）
 - **工作程序回收**：uvicorn --limit-max-requests 200（RESTaurant）、pm.max_requests 200（DVWA-FPM），以防止持續負載下的記憶體洩漏
 
-```yaml file=../../terraform/cloud-init.yaml
+```yaml file=../_data/cloud-init.yaml
 ```
 
 ### 輸出
 
 `outputs.tf` 遵循 Demo Resource Standard 公開 25 個輸出 — 15 個所有 demo 資源共用的標準輸出（`deployer`、`public_ip`、`private_ip`、`ssh_command`、`resource_group_name`、`vm_name`、`nsg_name`、`vnet_name`、`subnet_id`、`component`、`environment`、`resource_group_id`、`vm_id`、`nsg_id`、`location`）加上 10 個元件特定的應用程式 URL（`origin_url`、`health_check_url`、`juice_shop_url`、`dvwa_url`、`vampi_url`、`httpbin_url`、`whoami_url`、`dvga_url`、`restaurant_url`、`crapi_url`）：
 
-```hcl file=../../terraform/outputs.tf
+```hcl file=../_data/outputs.tf
 ```
 
 ### 範例變數檔案
 
 將 `terraform.tfvars.example` 複製為 `terraform.tfvars` 並填入您的值。`.gitignore` 排除了 `terraform.tfvars` 以防止提交憑證：
 
-```hcl file=../../terraform/terraform.tfvars.example
+```hcl file=../_data/terraform.tfvars.example
 ```
 
 ## 部署

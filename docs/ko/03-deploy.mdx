@@ -37,26 +37,26 @@ terraform 디렉토리에는 데모 리소스 표준을 따르는 9개의 파일
 
 `main.tf`에는 리소스 그룹만 포함되어 있습니다:
 
-```hcl file=../../terraform/main.tf
+```hcl file=../_data/main.tf
 ```
 
 `variables.tf`는 모든 구성 가능한 매개변수를 정의합니다. `deployer` 식별자는 Azure AD 계정에서 자동으로 해석됩니다 — `subscription_id`만 설정하면 됩니다. `vm_size` 기본값은 `Standard_D16s_v3` (16 vCPU, 64 GiB RAM)으로 41개의 Docker 컨테이너에 맞게 크기가 조정되어 있습니다:
 
-```hcl file=../../terraform/variables.tf
+```hcl file=../_data/variables.tf
 ```
 
 ### 네트워크 인프라
 
 `network.tf`는 VNet, 서브넷, 공용 IP, NSG (포트 22/80/443/8888) 및 NIC를 생성합니다. 포트 8888은 전용 포트에서 실행되는 crAPI에 필요합니다:
 
-```hcl file=../../terraform/network.tf
+```hcl file=../_data/network.tf
 ```
 
 ### Cloud-Init이 적용된 가상 머신
 
 `vm.tf`는 Ubuntu 24.04 VM을 생성하고 cloud-init 프로비저닝 스크립트를 전달합니다. 60 GiB Premium SSD는 Docker 이미지와 컨테이너 볼륨을 위한 충분한 공간을 제공합니다:
 
-```hcl file=../../terraform/vm.tf
+```hcl file=../_data/vm.tf
 ```
 
 ### Cloud-Init 프로비저닝
@@ -69,21 +69,21 @@ terraform 디렉토리에는 데모 리소스 표준을 따르는 9개의 파일
 - **커스텀 빌드**: DVWA-FPM (pm.max_requests=200이 적용된 php-fpm), CSD Demo (Flask + gunicorn), RESTaurant (GitHub에서 클론)
 - **워커 재활용**: 지속적인 부하에서의 메모리 누수 방지를 위한 uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM)
 
-```yaml file=../../terraform/cloud-init.yaml
+```yaml file=../_data/cloud-init.yaml
 ```
 
 ### 출력
 
 `outputs.tf`는 데모 리소스 표준을 따르는 25개의 출력을 노출합니다 — 모든 데모 리소스가 공유하는 15개의 표준 출력 (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) 및 10개의 컴포넌트별 애플리케이션 URL (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
 
-```hcl file=../../terraform/outputs.tf
+```hcl file=../_data/outputs.tf
 ```
 
 ### 예제 변수 파일
 
 `terraform.tfvars.example`을 `terraform.tfvars`로 복사하고 값을 입력하세요. `.gitignore`는 자격 증명 커밋을 방지하기 위해 `terraform.tfvars`를 제외합니다:
 
-```hcl file=../../terraform/terraform.tfvars.example
+```hcl file=../_data/terraform.tfvars.example
 ```
 
 ## 배포
