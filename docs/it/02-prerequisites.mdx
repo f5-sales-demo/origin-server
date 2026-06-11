@@ -1,8 +1,8 @@
 ---
 title: Prerequisiti
 description: >-
-  Sottoscrizione Azure, Terraform >= 1.5, Azure CLI, coppia di chiavi SSH e VM
-  Standard_D16s_v3 (16 vCPU, 64 GiB RAM) per il deployment di 41 container
+  Abbonamento Azure, Terraform >= 1.5, Azure CLI, coppia di chiavi SSH e VM
+  Standard_D16s_v3 (16 vCPU, 64 GiB RAM) per la distribuzione di 41 container
 sidebar:
   order: 2
 i18n:
@@ -10,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-## Obbligatori
+## Requisiti
 
-### Sottoscrizione Azure
+### Abbonamento Azure
 
-Una sottoscrizione Azure attiva con i permessi per creare:
+Un abbonamento Azure attivo con autorizzazione per creare:
 
 - Gruppi di risorse
 - Reti virtuali e subnet
@@ -24,7 +24,7 @@ Una sottoscrizione Azure attiva con i permessi per creare:
 
 ### Azure CLI
 
-Installare e autenticarsi con Azure CLI:
+Installare e autenticare Azure CLI:
 
 ```bash
 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
@@ -42,7 +42,7 @@ az account show --query '{name:name, id:id}' -o table
 terraform version
 ```
 
-Se non installato, utilizzare il repository APT di HashiCorp:
+Se non è installato, utilizzare il repository APT di HashiCorp:
 
 ```bash
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -50,9 +50,9 @@ echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://
 sudo apt update && sudo apt install terraform
 ```
 
-### Permessi Azure AD
+### Autorizzazioni Azure AD
 
-Il proprio account Azure AD deve disporre dei permessi `User.Read`. L'identificatore del deployer (utilizzato nella denominazione delle risorse) viene derivato automaticamente dal profilo Azure AD. Per l'autenticazione tramite service principal o managed identity, impostare esplicitamente la variabile Terraform `deployer`.
+Il proprio account Azure AD deve disporre delle autorizzazioni `User.Read`. L'identificatore del deployer (utilizzato nella denominazione delle risorse) viene derivato automaticamente dal profilo Azure AD. Per l'autenticazione tramite service principal o identità gestita, impostare esplicitamente la variabile Terraform `deployer`.
 
 ### Coppia di chiavi SSH
 
@@ -67,16 +67,16 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 | Risorsa | SKU |
 |---|---|
 | VM Ubuntu 24.04 | Standard_D16s_v3 (16 vCPU, 64 GiB) |
-| IP Pubblico | Standard, Statico |
+| IP pubblico | Standard, Statico |
 | Disco OS | 60 GiB Premium SSD |
 | VNet + NSG | Predefinito |
 
-Consultare il [calcolatore prezzi Azure](https://azure.microsoft.com/en-us/pricing/calculator/) per i costi aggiornati. Utilizzare `terraform destroy` quando il laboratorio non è in uso per interrompere gli addebiti. Consultare [Smantellamento](../07-teardown/) per la procedura.
+Consultare il [calcolatore prezzi di Azure](https://azure.microsoft.com/en-us/pricing/calculator/) per i costi correnti. Utilizzare `terraform destroy` quando il laboratorio non è in uso per interrompere i costi. Consultare [Smantellamento](../07-teardown/) per la procedura.
 
 :::note
-Standard_D16s_v3 (64 GiB RAM) è richiesto per il deployment di 41 container. Allocazione memoria dei container: 4 istanze Juice Shop a 1 GiB ciascuna (4 GiB), 4 VAmPI a 512 MiB ciascuna (2 GiB), 4 DVWA-FPM + MariaDB (1,8 GiB), 4 httpbin a 256 MiB (1 GiB), 4 CSD Demo a 256 MiB (1 GiB), 4 whoami a 64 MiB (256 MiB), 4 DVGA a 256 MiB ciascuna (1 GiB), 4 RESTaurant + PostgreSQL (1,5 GiB), crAPI 7 microservizi (2 GiB), più nginx, sistema operativo e buffer cache. L'allocazione totale dei container è di circa 14,5 GiB (22,7% di 64 GiB).
+Standard_D16s_v3 (64 GiB RAM) è richiesto per la distribuzione di 41 container. Allocazione della memoria dei container: 4 istanze di Juice Shop a 1 GiB ciascuna (4 GiB), 4 VAmPI a 512 MiB ciascuna (2 GiB), 4 DVWA-FPM + MariaDB (1,8 GiB), 4 httpbin a 256 MiB (1 GiB), 4 CSD Demo a 256 MiB (1 GiB), 4 whoami a 64 MiB (256 MiB), 4 DVGA a 256 MiB ciascuna (1 GiB), 4 RESTaurant + PostgreSQL (1,5 GiB), crAPI 7 microservizi (2 GiB), più nginx, OS e buffer cache. L'allocazione totale dei container è di circa 14,5 GiB (22,7% di 64 GiB).
 :::
 
 :::note
-Il NSG consente il traffico in ingresso sulle porte 80 (HTTP) e 8888 (crAPI). La porta 8888 è necessaria perché crAPI è un'applicazione a pagina singola che ha i percorsi API codificati staticamente e non può essere servita dietro un prefisso di percorso.
+Il NSG consente il traffico in entrata sulle porte 80 (HTTP) e 8888 (crAPI). La porta 8888 è necessaria perché crAPI è una single-page application che codifica in modo fisso i propri percorsi API e non può essere servita tramite un prefisso di percorso.
 :::

@@ -1,8 +1,8 @@
 ---
 title: सत्यापन
 description: >-
-  सभी नौ एप्लिकेशन एंडपॉइंट्स के लिए curl स्मोक टेस्ट, Docker कंटेनर हेल्थ चेक,
-  nginx स्थिति सत्यापन, cloud-init लॉग निरीक्षण, और सामान्य समस्या निवारण चरण
+  सभी नौ एप्लिकेशन एंडपॉइंट के लिए curl स्मोक टेस्ट, Docker कंटेनर हेल्थ चेक,
+  nginx स्टेटस सत्यापन, cloud-init लॉग निरीक्षण, और सामान्य समस्या निवारण चरण
 sidebar:
   order: 5
 i18n:
@@ -12,7 +12,7 @@ i18n:
 
 ## स्मोक टेस्ट
 
-cloud-init पूरा होने के लिए 5--10 मिनट का समय देने के बाद ये जाँचें चलाएँ।
+cloud-init को पूरा होने के लिए 5--10 मिनट प्रतीक्षा करने के बाद ये जाँचें चलाएँ।
 
 ### हेल्थ एंडपॉइंट
 
@@ -32,7 +32,7 @@ curl -sf "http://${ORIGIN_IP}/health" | jq .
 }
 ```
 
-### एप्लिकेशन एंडपॉइंट्स
+### एप्लिकेशन एंडपॉइंट
 
 ```bash
 # Default landing page
@@ -63,19 +63,19 @@ curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{ht
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-सभी को `200` लौटाना चाहिए (DVWA लॉगिन पर `302` रीडायरेक्ट लौटाता है)।
+सभी को `200` वापस करना चाहिए (DVWA लॉगिन के लिए `302` रीडायरेक्ट वापस करता है)।
 
 ### स्वचालित स्मोक टेस्ट
 
-रिपॉजिटरी में 39-पॉइंट स्मोक टेस्ट सूट शामिल है:
+रिपॉजिटरी में एक 39-पॉइंट स्मोक टेस्ट सूट शामिल है:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-यह सभी 9 एप्लिकेशन, हेल्थ एंडपॉइंट्स, VAmPI रजिस्ट्रेशन/लॉगिन, CSD Demo exfil राउंड-ट्रिप, DVGA GraphQL, RESTaurant Swagger, पोर्ट 8888 पर crAPI, nginx gzip, और वर्शन हाइडिंग को सत्यापित करता है।
+यह सभी 9 एप्लिकेशन, हेल्थ एंडपॉइंट, VAmPI रजिस्ट्रेशन/लॉगिन, CSD Demo exfil राउंड-ट्रिप, DVGA GraphQL, RESTaurant Swagger, पोर्ट 8888 पर crAPI, nginx gzip, और वर्शन हाइडिंग को सत्यापित करता है।
 
-### Docker कंटेनर स्थिति
+### Docker कंटेनर स्टेटस
 
 VM में SSH करें और सत्यापित करें कि सभी 41 कंटेनर चल रहे हैं:
 
@@ -130,7 +130,7 @@ whoami-3           Up X minutes   127.0.0.1:8084->80/tcp
 whoami-4           Up X minutes   127.0.0.1:8085->80/tcp
 ```
 
-### nginx स्थिति
+### nginx स्टेटस
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pager"
@@ -138,9 +138,9 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ## समस्या निवारण
 
-### Cloud-init अभी भी चल रहा है
+### Cloud-init अभी चल रहा है
 
-यदि एंडपॉइंट्स 502 या कनेक्शन रिफ्यूज्ड लौटाते हैं, तो cloud-init अभी भी प्रोविजनिंग कर रहा हो सकता है:
+यदि एंडपॉइंट 502 या कनेक्शन अस्वीकृत वापस करते हैं, तो cloud-init अभी भी प्रोविजनिंग कर रहा होगा:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
@@ -156,7 +156,7 @@ ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ```
 
-### कंटेनर शुरू नहीं हो रहा
+### कंटेनर प्रारंभ नहीं हो रहा
 
 ```bash
 # Check container logs (each app has 4 instances: -1 through -4)
@@ -170,7 +170,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs restaurant-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 ```
 
-### nginx 502 लौटा रहा है
+### nginx 502 वापस कर रहा है
 
 अपस्ट्रीम कंटेनर तैयार नहीं है या क्रैश हो गया है:
 
@@ -185,9 +185,9 @@ ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
 ```
 
-### डिस्क स्पेस
+### डिस्क स्थान
 
-Docker इमेज लगभग 4.7 GiB उपभोग करती हैं। CDN लोड टेस्टिंग के तहत डिस्क भर जाने से रोकने के लिए एक्सेस लॉगिंग अक्षम है। Logrotate को गहन सुरक्षा (defense-in-depth) के रूप में कॉन्फ़िगर किया गया है (500 MiB सीमा)। डिस्क उपयोग सत्यापित करें:
+Docker इमेज लगभग 4.7 GiB उपभोग करती हैं। CDN लोड टेस्टिंग के अंतर्गत डिस्क समाप्ति को रोकने के लिए एक्सेस लॉगिंग अक्षम है। Logrotate को गहन सुरक्षा उपाय के रूप में कॉन्फ़िगर किया गया है (500 MiB सीमा)। डिस्क उपयोग सत्यापित करें:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -195,15 +195,15 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### कंटेनर मेमोरी
 
-उन कंटेनरों की जाँच करें जो अपनी मेमोरी सीमा के करीब पहुँच रहे हैं (OOM जोखिम):
+उन कंटेनरों की जाँच करें जो अपनी मेमोरी सीमा के निकट पहुँच रहे हैं (OOM जोखिम):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
 ```
 
-### सब कुछ पुनः आरंभ करें
+### सब कुछ पुनः प्रारंभ करें
 
-यदि आवश्यक हो, तो सभी सेवाओं को पुनर्निर्माण और पुनः आरंभ करें:
+यदि आवश्यक हो, सभी सेवाओं को पुनर्निर्माण और पुनः प्रारंभ करें:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"

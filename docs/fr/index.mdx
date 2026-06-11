@@ -1,18 +1,18 @@
 ---
 title: Serveur d'origine
 description: >-
-  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
-  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
-  WAF, API security, bot defense, and client-side defense testing with F5
-  Distributed Cloud
+  VM Azure Ubuntu 24.04 exécutant nginx comme proxy inverse vers des conteneurs
+  Docker : Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant
+  et crAPI pour les tests WAF, sécurité des API, défense bot et défense côté
+  client avec F5 Distributed Cloud
 template: splash
 sidebar:
   hidden: true
 hero:
   tagline: >-
-    Déployez un serveur d'origine multi-applications dans Azure pour tester le
-    WAF, la sécurité des API, la défense contre les bots et la défense côté
-    client avec F5 Distributed Cloud.
+    Déployez un serveur d'origine multi-applications dans Azure pour les tests
+    WAF, sécurité des API, défense bot et défense côté client avec F5
+    Distributed Cloud.
   image:
     html: '<div style="font-size:4rem;">&#128421;</div>'
   actions:
@@ -36,8 +36,8 @@ import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
 
 <CardGrid>
   <LinkCard
-    title="Origine multi-applications"
-    description="Une VM Ubuntu 24.04 (16 vCPU, 64 Gio) exécutant nginx en tant que proxy inverse vers 41 conteneurs Docker : Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant et crAPI."
+    title="Serveur d'origine multi-applications"
+    description="Une VM Ubuntu 24.04 (16 vCPU, 64 Gio) exécutant nginx comme proxy inverse vers 41 conteneurs Docker : Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant et crAPI."
     href="01-architecture/"
   />
   <LinkCard
@@ -47,12 +47,12 @@ import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
   />
   <LinkCard
     title="Applications vulnérables"
-    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant et crAPI couvrant le WAF, la sécurité des API, la défense contre les bots, la défense côté client, la sécurité GraphQL et les diagnostics de requêtes."
+    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant et crAPI couvrant le Pare-feu applicatif (WAF), la Sécurité des API, la défense bot, la Défense côté client, la sécurité GraphQL et les diagnostics de requêtes."
     href="04-applications/"
   />
   <LinkCard
     title="Intégration F5 XC"
-    description="Utilisez comme membre du pool d'origine derrière un répartiteur de charge HTTP F5 XC avec WAF, Bot Defense et API Security."
+    description="À utiliser comme membre du pool d'origine derrière un équilibreur de charge HTTP F5 XC avec WAF, Défense Bot et Sécurité des API."
     href="06-integrate/"
   />
   <LinkCard

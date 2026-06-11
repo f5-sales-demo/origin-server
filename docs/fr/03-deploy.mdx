@@ -1,14 +1,14 @@
 ---
 title: Déploiement
 description: >-
-  Déploiement IaC Terraform suivant le Demo Resource Standard — 9 fichiers
-  terraform avec auto-résolution du déployeur Azure AD, 25 sorties, et
-  provisionnement cloud-init renforcé déployant 41 conteneurs Docker à travers 9
+  Déploiement Terraform IaC suivant le Demo Resource Standard — 9 fichiers
+  Terraform avec résolution automatique du déployeur Azure AD, 25 sorties et
+  provisionnement cloud-init renforcé pour 41 conteneurs Docker répartis sur 9
   applications.
 sidebar:
   order: 3
 i18n:
-  sourceHash: 29cfe8b81067
+  sourceHash: 46d2d343bc70
   translator: machine
 ---
 
@@ -18,7 +18,7 @@ Tous les fichiers Terraform se trouvent dans le répertoire [`terraform/`](https
 git clone https://github.com/f5xc-salesdemos/origin-server.git
 cd origin-server/terraform
 cp terraform.tfvars.example terraform.tfvars
-# Modifiez terraform.tfvars avec votre ID d'abonnement Azure et le chemin de votre clé SSH
+# Edit terraform.tfvars with your Azure subscription ID and SSH key path
 ```
 
 ## Configuration Terraform
@@ -29,27 +29,27 @@ Le répertoire terraform contient 9 fichiers suivant le Demo Resource Standard :
 
 - `versions.tf` — Contraintes de version Terraform et des fournisseurs (azurerm ~> 4.0, azuread ~> 3.0)
 - `providers.tf` — Configuration des fournisseurs Azure RM et Azure AD
-- `data.tf` — Sources de données Azure AD pour l'auto-résolution du déployeur
-- `locals.tf` — Résolution du déployeur, nommage des ressources selon l'Azure Cloud Adoption Framework, tags standard
+- `data.tf` — Sources de données Azure AD pour la résolution automatique du déployeur
+- `locals.tf` — Résolution du déployeur, nommage des ressources Azure Cloud Adoption Framework, balises standard
 - `main.tf` — Groupe de ressources (nommé `rg-origin-server-{environment}-{deployer}`)
-- `variables.tf` — Toutes les variables d'entrée (1 requise, 8 optionnelles)
+- `variables.tf` — Toutes les variables d'entrée (1 obligatoire, 8 optionnelles)
 - `network.tf` — VNet (10.200.0.0/16), sous-réseau, IP publique, NSG (ports 22/80/443/8888), NIC
 - `vm.tf` — VM Ubuntu 24.04 avec cloud-init via templatefile()
-- `outputs.tf` — 25 sorties (15 standard + 10 URLs d'applications spécifiques au composant)
+- `outputs.tf` — 25 sorties (15 standard + 10 URLs d'applications spécifiques aux composants)
 
 `main.tf` ne contient que le groupe de ressources :
 
 ```hcl file=../_data/main.tf
 ```
 
-`variables.tf` définit tous les paramètres configurables. L'identifiant `deployer` est auto-résolu à partir de votre compte Azure AD — vous n'avez qu'à définir `subscription_id`. La valeur par défaut de `vm_size` est `Standard_D16s_v3` (16 vCPU, 64 Gio de RAM) dimensionnée pour 41 conteneurs Docker :
+`variables.tf` définit tous les paramètres configurables. L'identifiant `deployer` est résolu automatiquement depuis votre compte Azure AD — vous n'avez besoin de définir que `subscription_id`. La valeur par défaut de `vm_size` est `Standard_D16s_v3` (16 vCPU, 64 Gio de RAM), dimensionnée pour 41 conteneurs Docker :
 
 ```hcl file=../_data/variables.tf
 ```
 
 ### Infrastructure réseau
 
-`network.tf` crée le VNet, le sous-réseau, l'IP publique, le NSG (ports 22/80/443/8888) et la NIC. Le port 8888 est requis pour crAPI qui fonctionne sur un port dédié :
+`network.tf` crée le VNet, le sous-réseau, l'IP publique, le NSG (ports 22/80/443/8888) et la NIC. Le port 8888 est requis pour crAPI qui s'exécute sur un port dédié :
 
 ```hcl file=../_data/network.tf
 ```
@@ -63,12 +63,12 @@ Le répertoire terraform contient 9 fichiers suivant le Demo Resource Standard :
 
 ### Provisionnement Cloud-Init
 
-`cloud-init.yaml` provisionne la VM avec une configuration renforcée. Une bibliothèque d'aide partagée (`/usr/local/lib/cloud-init-helpers.sh`) fournit une logique de réessai sur toutes les opérations réseau et une journalisation de la progression dans `/var/log/cloud-init-progress.log`. Un polling actif de vérification de santé remplace les attentes à durée fixe pour la disponibilité des conteneurs. Il provisionne :
+`cloud-init.yaml` provisionne la VM avec une configuration renforcée. Une bibliothèque d'aide partagée (`/usr/local/lib/cloud-init-helpers.sh`) fournit une logique de réessai sur toutes les opérations réseau et la journalisation de la progression vers `/var/log/cloud-init-progress.log`. L'interrogation active par vérification de l'état de santé remplace les délais d'attente fixes pour la disponibilité des conteneurs. Elle provisionne :
 
-- **Optimisation du noyau** : TCP keepalive, réutilisation TIME_WAIT, 2M tw_buckets, 64K somaxconn
-- **nginx** : 8 blocs upstream avec sessions persistantes (ip_hash, cookie hash), pools keepalive (64--128), cache proxy pour Juice Shop, error_log niveau crit
-- **Docker Compose** : 41 conteneurs à travers 9 applications avec limites CPU/mémoire par conteneur
-- **Builds personnalisés** : DVWA-FPM (php-fpm avec pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (cloné depuis GitHub)
+- **Réglage du noyau** : keepalive TCP, réutilisation TIME_WAIT, 2M tw_buckets, 64K somaxconn
+- **nginx** : 8 blocs upstream avec sessions persistantes (ip_hash, cookie hash), pools keepalive (64--128), cache proxy pour Juice Shop, niveau error_log crit
+- **Docker Compose** : 41 conteneurs répartis sur 9 applications avec des limites CPU/mémoire par conteneur
+- **Constructions personnalisées** : DVWA-FPM (php-fpm avec pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (cloné depuis GitHub)
 - **Recyclage des workers** : uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) pour prévenir les fuites mémoire sous charge soutenue
 
 ```yaml file=../_data/cloud-init.yaml
@@ -76,14 +76,14 @@ Le répertoire terraform contient 9 fichiers suivant le Demo Resource Standard :
 
 ### Sorties
 
-`outputs.tf` expose 25 sorties suivant le Demo Resource Standard — 15 sorties standard partagées par toutes les ressources de démonstration (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) plus 10 URLs d'applications spécifiques au composant (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`) :
+`outputs.tf` expose 25 sorties suivant le Demo Resource Standard — 15 sorties standard partagées par toutes les ressources de démonstration (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) ainsi que 10 URLs d'applications spécifiques aux composants (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`) :
 
 ```hcl file=../_data/outputs.tf
 ```
 
 ### Exemple de fichier de variables
 
-Copiez `terraform.tfvars.example` vers `terraform.tfvars` et renseignez vos valeurs. Le `.gitignore` exclut `terraform.tfvars` pour éviter de commiter des identifiants :
+Copiez `terraform.tfvars.example` vers `terraform.tfvars` et renseignez vos valeurs. Le `.gitignore` exclut `terraform.tfvars` pour éviter de valider des informations d'identification :
 
 ```hcl file=../_data/terraform.tfvars.example
 ```
@@ -92,7 +92,7 @@ Copiez `terraform.tfvars.example` vers `terraform.tfvars` et renseignez vos vale
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# Modifiez terraform.tfvars avec votre ID d'abonnement Azure et le chemin de votre clé SSH
+# Edit terraform.tfvars with your Azure subscription ID and SSH key path
 
 terraform init
 
@@ -105,7 +105,7 @@ Terraform affiche l'IP publique, la commande SSH et les URLs des applications ap
 
 ## Post-déploiement
 
-Après la fin de `terraform apply`, prévoyez 5 à 10 minutes pour que cloud-init termine l'installation de Docker, le téléchargement des images de conteneurs et la configuration de nginx. Les téléchargements d'images Docker constituent le goulot d'étranglement — Juice Shop seul représente ~400 Mio.
+Après la complétion de `terraform apply`, attendez 5 à 10 minutes pour que cloud-init termine l'installation de Docker, le téléchargement des images de conteneurs et la configuration de nginx. Les téléchargements d'images Docker constituent le goulot d'étranglement — Juice Shop seul pèse environ 400 Mio.
 
 Vérifiez le point de terminaison de santé :
 
@@ -136,7 +136,7 @@ La base de données SQLite de VAmPI est automatiquement initialisée par son scr
 Après le déploiement, les autres composants utilisent les sorties du serveur d'origine comme entrées :
 
 ```bash
-# CDN Simulator — passez l'IP publique du origin-server comme upstream
+# CDN Simulator — pass origin-server's public IP as its upstream
 cd ../cdn-simulator/terraform
 origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
 cat > terraform.tfvars <<EOF
@@ -145,7 +145,7 @@ origin_server   = "http://${origin_ip}"
 origin_host     = "${origin_ip}:80"
 EOF
 
-# Traffic Generator — passez le FQDN du load balancer F5 XC (pas l'IP d'origine directement)
+# Traffic Generator — pass the F5 XC load balancer FQDN (not the origin IP directly)
 cd ../traffic-generator/terraform
 cat > terraform.tfvars <<EOF
 subscription_id = "your-subscription-id"
@@ -155,8 +155,8 @@ EOF
 
 | Sortie | Composant en aval | Variable d'entrée |
 |---|---|---|
-| `public_ip` | CDN Simulator | `origin_server` (avec le préfixe `http://`) |
-| `public_ip` | CDN Simulator | `origin_host` (avec le suffixe `:80`, sans schéma) |
-| `public_ip` | F5 XC Origin Pool | Adresse du serveur d'origine |
+| `public_ip` | Simulateur CDN | `origin_server` (avec le préfixe `http://`) |
+| `public_ip` | Simulateur CDN | `origin_host` (avec le suffixe `:80`, sans schéma) |
+| `public_ip` | Pool d'origine F5 XC | Adresse du serveur d'origine |
 
-Poursuivez vers [Applications](../04-applications/) pour les guides d'utilisation ou [Vérification](../05-verify/) pour les tests de validation.
+Passez à [Applications](../04-applications/) pour les guides d'utilisation ou à [Vérifier](../05-verify/) pour les tests de validation.

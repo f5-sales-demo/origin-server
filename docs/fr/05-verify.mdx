@@ -1,9 +1,9 @@
 ---
-title: Vérification
+title: Vérifier
 description: >-
-  Tests curl de validation pour les neuf points de terminaison applicatifs,
-  vérifications de l'état des conteneurs Docker, vérification du statut nginx,
-  inspection des journaux cloud-init et étapes de dépannage courantes
+  Tests smoke curl pour les neuf points de terminaison de l'application,
+  vérifications de l'état de santé des conteneurs Docker, vérification du statut
+  nginx, inspection des journaux cloud-init et étapes de dépannage courantes
 sidebar:
   order: 5
 i18n:
@@ -11,9 +11,9 @@ i18n:
   translator: machine
 ---
 
-## Tests de validation
+## Tests smoke
 
-Exécutez ces vérifications après avoir attendu 5 à 10 minutes pour que cloud-init se termine.
+Exécutez ces vérifications après avoir attendu 5 à 10 minutes que cloud-init se termine.
 
 ### Point de terminaison de santé
 
@@ -33,10 +33,10 @@ Résultat attendu :
 }
 ```
 
-### Points de terminaison applicatifs
+### Points de terminaison des applications
 
 ```bash
-# Default landing page
+# Page d'accueil par défaut
 curl -sf "http://${ORIGIN_IP}/" -o /dev/null -w "Landing: %{http_code}\n"
 
 # Juice Shop
@@ -66,17 +66,17 @@ curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 
 Tous devraient retourner `200` (DVWA retourne une redirection `302` vers la page de connexion).
 
-### Test de validation automatisé
+### Test smoke automatisé
 
-Le dépôt inclut une suite de tests de validation en 39 points :
+Le dépôt inclut une suite de tests smoke en 39 points :
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-Cela valide les 9 applications, les points de terminaison de santé, l'inscription/connexion VAmPI, le cycle complet d'exfiltration CSD Demo, GraphQL DVGA, Swagger RESTaurant, crAPI sur le port 8888, la compression gzip de nginx et le masquage de version.
+Cette suite valide les 9 applications, les points de terminaison de santé, l'inscription/connexion VAmPI, le cycle d'exfiltration CSD Demo, DVGA GraphQL, RESTaurant Swagger, crAPI sur le port 8888, la compression gzip nginx et le masquage de version.
 
-### État des conteneurs Docker
+### Statut des conteneurs Docker
 
 Connectez-vous en SSH à la VM et vérifiez que les 41 conteneurs sont en cours d'exécution :
 
@@ -84,7 +84,7 @@ Connectez-vous en SSH à la VM et vérifiez que les 41 conteneurs sont en cours 
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
 ```
 
-Sortie attendue (41 conteneurs) :
+Résultat attendu (41 conteneurs) :
 
 ```
 NAMES              STATUS         PORTS
@@ -139,15 +139,15 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ## Dépannage
 
-### Cloud-init encore en cours d'exécution
+### Cloud-init toujours en cours d'exécution
 
-Si les points de terminaison retournent 502 ou une connexion refusée, cloud-init peut encore être en cours de provisionnement :
+Si les points de terminaison retournent 502 ou une connexion refusée, cloud-init est peut-être encore en train de provisionner :
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` -- provisionnement encore en cours, patientez quelques minutes
+- `status: running` -- provisionnement en cours, attendez quelques minutes
 - `status: done` -- provisionnement terminé, vérifiez les conteneurs Docker
 - `status: error` -- consultez les journaux ci-dessous
 
@@ -157,10 +157,10 @@ ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ```
 
-### Conteneur qui ne démarre pas
+### Conteneur ne démarrant pas
 
 ```bash
-# Check container logs (each app has 4 instances: -1 through -4)
+# Vérifier les journaux des conteneurs (chaque application a 4 instances : -1 à -4)
 ssh azureuser@${ORIGIN_IP} "sudo docker logs juice-shop-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs dvwa-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs vampi-1 2>&1 | tail -20"
@@ -171,24 +171,24 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs restaurant-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 ```
 
-### nginx retourne 502
+### nginx retournant 502
 
 Le conteneur en amont n'est pas prêt ou a planté :
 
 ```bash
-# Check nginx error log
+# Vérifier le journal des erreurs nginx
 ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
 
-# Restart all instances of a specific app
+# Redémarrer toutes les instances d'une application spécifique
 ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
 
-# Rebuild and restart all containers
+# Reconstruire et redémarrer tous les conteneurs
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
 ```
 
 ### Espace disque
 
-Les images Docker consomment environ 4,7 Gio. La journalisation des accès est désactivée pour éviter l'épuisement du disque lors des tests de charge CDN. Logrotate est configuré en tant que défense en profondeur (limite de 500 Mio). Vérifiez l'utilisation du disque :
+Les images Docker consomment environ 4,7 Gio. La journalisation des accès est désactivée pour éviter l'épuisement du disque lors des tests de charge CDN. Logrotate est configuré en défense en profondeur (limite de 500 Mio). Vérifiez l'utilisation du disque :
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -196,7 +196,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### Mémoire des conteneurs
 
-Vérifiez si des conteneurs approchent de leurs limites mémoire (risque OOM) :
+Vérifiez les conteneurs approchant de leurs limites de mémoire (risque OOM) :
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"

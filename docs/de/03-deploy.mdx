@@ -1,98 +1,98 @@
 ---
-title: Bereitstellung
+title: Bereitstellen
 description: >-
-  Terraform-IaC-Bereitstellung nach dem Demo Resource Standard — 9
-  Terraform-Dateien mit automatischer Azure-AD-Deployer-Erkennung, 25 Outputs
-  und gehärteter Cloud-Init-Provisionierung von 41 Docker-Containern über 9
+  Terraform IaC-Bereitstellung gemäß dem Demo-Ressourcen-Standard — 9
+  Terraform-Dateien mit automatischer Azure AD-Deployer-Auflösung, 25 Ausgaben
+  und gehärtetem Cloud-Init-Provisioning für 41 Docker-Container über 9
   Anwendungen.
 sidebar:
   order: 3
 i18n:
-  sourceHash: 29cfe8b81067
+  sourceHash: 46d2d343bc70
   translator: machine
 ---
 
-Alle Terraform-Dateien befinden sich im Verzeichnis [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform). Klonen Sie das Repository und führen Sie die Bereitstellung direkt durch:
+Alle Terraform-Dateien befinden sich im Verzeichnis [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform). Klonen Sie das Repository und stellen Sie es direkt bereit:
 
 ```bash
 git clone https://github.com/f5xc-salesdemos/origin-server.git
 cd origin-server/terraform
 cp terraform.tfvars.example terraform.tfvars
-# Bearbeiten Sie terraform.tfvars mit Ihrer Azure-Abonnement-ID und Ihrem SSH-Schlüsselpfad
+# Edit terraform.tfvars with your Azure subscription ID and SSH key path
 ```
 
 ## Terraform-Konfiguration
 
 ### Terraform-Dateistruktur
 
-Das Terraform-Verzeichnis enthält 9 Dateien gemäß dem Demo Resource Standard:
+Das Terraform-Verzeichnis enthält 9 Dateien gemäß dem Demo-Ressourcen-Standard:
 
-- `versions.tf` — Terraform- und Provider-Versionsbeschränkungen (azurerm ~> 4.0, azuread ~> 3.0)
-- `providers.tf` — Azure RM- und Azure AD-Provider-Konfiguration
-- `data.tf` — Azure AD-Datenquellen für die automatische Deployer-Erkennung
+- `versions.tf` — Terraform- und Provider-Versionseinschränkungen (azurerm ~> 4.0, azuread ~> 3.0)
+- `providers.tf` — Konfiguration der Azure RM- und Azure AD-Provider
+- `data.tf` — Azure AD-Datenquellen zur automatischen Deployer-Auflösung
 - `locals.tf` — Deployer-Auflösung, Azure Cloud Adoption Framework-Ressourcenbenennung, Standard-Tags
-- `main.tf` — Ressourcengruppe (benannt als `rg-origin-server-{environment}-{deployer}`)
+- `main.tf` — Ressourcengruppe (benannt `rg-origin-server-{environment}-{deployer}`)
 - `variables.tf` — Alle Eingabevariablen (1 erforderlich, 8 optional)
 - `network.tf` — VNet (10.200.0.0/16), Subnetz, öffentliche IP, NSG (Ports 22/80/443/8888), NIC
 - `vm.tf` — Ubuntu 24.04 VM mit Cloud-Init über templatefile()
-- `outputs.tf` — 25 Outputs (15 Standard + 10 komponentenspezifische Anwendungs-URLs)
+- `outputs.tf` — 25 Ausgaben (15 Standard + 10 komponentenspezifische Anwendungs-URLs)
 
-`main.tf` enthält ausschließlich die Ressourcengruppe:
+`main.tf` enthält nur die Ressourcengruppe:
 
 ```hcl file=../_data/main.tf
 ```
 
-`variables.tf` definiert alle konfigurierbaren Parameter. Die `deployer`-Kennung wird automatisch aus Ihrem Azure AD-Konto aufgelöst — Sie müssen lediglich `subscription_id` setzen. Der Standardwert für `vm_size` ist `Standard_D16s_v3` (16 vCPU, 64 GiB RAM), dimensioniert für 41 Docker-Container:
+`variables.tf` definiert alle konfigurierbaren Parameter. Der `deployer`-Bezeichner wird automatisch aus Ihrem Azure AD-Konto aufgelöst — Sie müssen nur `subscription_id` festlegen. Der Standardwert für `vm_size` ist `Standard_D16s_v3` (16 vCPU, 64 GiB RAM), dimensioniert für 41 Docker-Container:
 
 ```hcl file=../_data/variables.tf
 ```
 
 ### Netzwerkinfrastruktur
 
-`network.tf` erstellt das VNet, Subnetz, die öffentliche IP, NSG (Ports 22/80/443/8888) und NIC. Port 8888 wird für crAPI benötigt, das auf einem dedizierten Port läuft:
+`network.tf` erstellt das VNet, Subnetz, die öffentliche IP, NSG (Ports 22/80/443/8888) und NIC. Port 8888 ist für crAPI erforderlich, das auf einem dedizierten Port läuft:
 
 ```hcl file=../_data/network.tf
 ```
 
 ### Virtuelle Maschine mit Cloud-Init
 
-`vm.tf` erstellt die Ubuntu 24.04 VM und übergibt das Cloud-Init-Provisionierungsskript. Die 60 GiB Premium SSD bietet ausreichend Speicherplatz für Docker-Images und Container-Volumes:
+`vm.tf` erstellt die Ubuntu 24.04 VM und übergibt das Cloud-Init-Provisioning-Skript. Die 60 GiB Premium-SSD bietet ausreichend Speicherplatz für Docker-Images und Container-Volumes:
 
 ```hcl file=../_data/vm.tf
 ```
 
-### Cloud-Init-Provisionierung
+### Cloud-Init-Provisioning
 
-`cloud-init.yaml` provisioniert die VM mit einer gehärteten Konfiguration. Eine gemeinsame Hilfsbibliothek (`/usr/local/lib/cloud-init-helpers.sh`) stellt Wiederholungslogik für alle Netzwerkoperationen und Fortschrittsprotokollierung nach `/var/log/cloud-init-progress.log` bereit. Aktive Health-Check-Abfragen ersetzen Wartezeiten mit fester Dauer für die Container-Bereitschaft. Provisioniert werden:
+`cloud-init.yaml` stellt die VM mit einer gehärteten Konfiguration bereit. Eine gemeinsam genutzte Hilfsbibliothek (`/usr/local/lib/cloud-init-helpers.sh`) bietet Wiederholungslogik für alle Netzwerkoperationen und Fortschrittsprotokollierung nach `/var/log/cloud-init-progress.log`. Aktives Health-Check-Polling ersetzt fest vorgegebene Sleep-Dauern für die Container-Bereitschaft. Es stellt bereit:
 
 - **Kernel-Tuning**: TCP-Keepalive, TIME_WAIT-Wiederverwendung, 2M tw_buckets, 64K somaxconn
-- **nginx**: 8 Upstream-Blöcke mit Sticky Sessions (ip_hash, Cookie-Hash), Keepalive-Pools (64--128), Proxy-Cache für Juice Shop, error_log auf crit-Level
+- **nginx**: 8 Upstream-Blöcke mit Sticky Sessions (ip_hash, Cookie-Hash), Keepalive-Pools (64--128), Proxy-Cache für Juice Shop, error_log crit-Ebene
 - **Docker Compose**: 41 Container über 9 Anwendungen mit CPU-/Speicherlimits pro Container
 - **Benutzerdefinierte Builds**: DVWA-FPM (php-fpm mit pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (von GitHub geklont)
-- **Worker-Recycling**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) zur Vermeidung von Speicherlecks unter Dauerlast
+- **Worker-Recycling**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) zur Vermeidung von Speicherlecks unter anhaltender Last
 
 ```yaml file=../_data/cloud-init.yaml
 ```
 
-### Outputs
+### Ausgaben
 
-`outputs.tf` stellt 25 Outputs gemäß dem Demo Resource Standard bereit — 15 Standard-Outputs, die von allen Demo-Ressourcen gemeinsam genutzt werden (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) plus 10 komponentenspezifische Anwendungs-URLs (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
+`outputs.tf` stellt 25 Ausgaben gemäß dem Demo-Ressourcen-Standard bereit — 15 Standardausgaben, die von allen Demo-Ressourcen gemeinsam genutzt werden (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) sowie 10 komponentenspezifische Anwendungs-URLs (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
 
 ```hcl file=../_data/outputs.tf
 ```
 
 ### Beispiel-Variablendatei
 
-Kopieren Sie `terraform.tfvars.example` nach `terraform.tfvars` und tragen Sie Ihre Werte ein. Die `.gitignore` schließt `terraform.tfvars` aus, um das versehentliche Einchecken von Zugangsdaten zu verhindern:
+Kopieren Sie `terraform.tfvars.example` nach `terraform.tfvars` und tragen Sie Ihre Werte ein. Die `.gitignore`-Datei schließt `terraform.tfvars` aus, um das versehentliche Einchecken von Anmeldedaten zu verhindern:
 
 ```hcl file=../_data/terraform.tfvars.example
 ```
 
-## Bereitstellung
+## Bereitstellen
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# Bearbeiten Sie terraform.tfvars mit Ihrer Azure-Abonnement-ID und Ihrem SSH-Schlüsselpfad
+# Edit terraform.tfvars with your Azure subscription ID and SSH key path
 
 terraform init
 
@@ -105,7 +105,7 @@ Terraform gibt nach erfolgreicher Bereitstellung die öffentliche IP, den SSH-Be
 
 ## Nach der Bereitstellung
 
-Nach Abschluss von `terraform apply` warten Sie 5--10 Minuten, bis Cloud-Init die Installation von Docker, das Herunterladen der Container-Images und die Konfiguration von nginx abgeschlossen hat. Die Docker-Image-Downloads sind der Engpass — allein Juice Shop umfasst ~400 MiB.
+Nach Abschluss von `terraform apply` sollten Sie 5--10 Minuten warten, bis Cloud-Init die Installation von Docker, das Abrufen der Container-Images und die Konfiguration von nginx abgeschlossen hat. Das Abrufen der Docker-Images ist der Engpass — Juice Shop allein ist ~400 MiB groß.
 
 Überprüfen Sie den Health-Endpunkt:
 
@@ -125,18 +125,18 @@ Erwartete Antwort:
 
 ### DVWA-Datenbankeinrichtung
 
-DVWA erfordert eine einmalige Datenbankinitialisierung. Öffnen Sie `http://<PUBLIC_IP>/dvwa/setup.php` im Browser und klicken Sie auf **Create / Reset Database**. Die Standard-Zugangsdaten sind `admin` / `password`.
+DVWA erfordert eine einmalige Datenbankinitialisierung. Öffnen Sie `http://<PUBLIC_IP>/dvwa/setup.php` in einem Browser und klicken Sie auf **Create / Reset Database**. Die Standardanmeldedaten lauten `admin` / `password`.
 
 :::note
-Die SQLite-Datenbank von VAmPI wird automatisch durch das gunicorn-Startskript initialisiert. Jeder Container führt beim Start `db.create_all()` aus, sodass kein manueller Eingriff erforderlich ist.
+Die SQLite-Datenbank von VAmPI wird automatisch durch dessen Gunicorn-Einstiegspunkt-Skript initialisiert. Jeder Container führt beim Start `db.create_all()` aus, sodass kein manueller Eingriff erforderlich ist.
 :::
 
-## Anbindung an nachgelagerte Komponenten
+## Verbindung mit nachgelagerten Komponenten
 
-Nach der Bereitstellung verwenden andere Komponenten die Outputs des Origin-Servers als ihre Eingaben:
+Nach der Bereitstellung verwenden andere Komponenten die Ausgaben des Ursprungsservers als ihre Eingaben:
 
 ```bash
-# CDN Simulator — Übergeben Sie die öffentliche IP des Origin-Servers als Upstream
+# CDN Simulator — pass origin-server's public IP as its upstream
 cd ../cdn-simulator/terraform
 origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
 cat > terraform.tfvars <<EOF
@@ -145,7 +145,7 @@ origin_server   = "http://${origin_ip}"
 origin_host     = "${origin_ip}:80"
 EOF
 
-# Traffic Generator — Übergeben Sie den F5 XC Load Balancer-FQDN (nicht direkt die Origin-IP)
+# Traffic Generator — pass the F5 XC load balancer FQDN (not the origin IP directly)
 cd ../traffic-generator/terraform
 cat > terraform.tfvars <<EOF
 subscription_id = "your-subscription-id"
@@ -153,10 +153,10 @@ target_fqdn     = "your-xc-load-balancer.example.com"
 EOF
 ```
 
-| Output | Nachgelagerte Komponente | Eingabevariable |
+| Ausgabe | Nachgelagerte Komponente | Eingabevariable |
 |---|---|---|
-| `public_ip` | CDN Simulator | `origin_server` (mit `http://`-Präfix) |
-| `public_ip` | CDN Simulator | `origin_host` (mit `:80`-Suffix, ohne Schema) |
-| `public_ip` | F5 XC Origin Pool | Origin-Server-Adresse |
+| `public_ip` | CDN-Simulator | `origin_server` (mit `http://`-Präfix) |
+| `public_ip` | CDN-Simulator | `origin_host` (mit `:80`-Suffix, ohne Schema) |
+| `public_ip` | F5 XC Origin Pool | Ursprungsserver-Adresse |
 
-Fahren Sie mit [Anwendungen](../04-applications/) für Nutzungsanleitungen oder [Überprüfung](../05-verify/) für Smoke-Tests fort.
+Fahren Sie mit [Anwendungen](../04-applications/) für Nutzungsanleitungen oder [Überprüfen](../05-verify/) für Smoke-Tests fort.

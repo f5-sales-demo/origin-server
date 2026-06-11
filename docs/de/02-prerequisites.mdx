@@ -2,7 +2,8 @@
 title: Voraussetzungen
 description: >-
   Azure-Abonnement, Terraform >= 1.5, Azure CLI, SSH-Schlüsselpaar und
-  Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) für 41-Container-Bereitstellung
+  Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) für die Bereitstellung mit 41
+  Containern
 sidebar:
   order: 2
 i18n:
@@ -14,13 +15,13 @@ i18n:
 
 ### Azure-Abonnement
 
-Ein aktives Azure-Abonnement mit der Berechtigung zur Erstellung von:
+Ein aktives Azure-Abonnement mit der Berechtigung zum Erstellen von:
 
 - Ressourcengruppen
 - Virtuellen Netzwerken und Subnetzen
 - Netzwerksicherheitsgruppen
 - Öffentlichen IP-Adressen
-- Virtuellen Maschinen (Standard_D16s_v3 -- 16 vCPU, 64 GiB RAM für 41-Container-Workloads)
+- Virtuellen Maschinen (Standard_D16s_v3 -- 16 vCPU, 64 GiB RAM für Workloads mit 41 Containern)
 
 ### Azure CLI
 
@@ -52,7 +53,7 @@ sudo apt update && sudo apt install terraform
 
 ### Azure AD-Berechtigungen
 
-Ihr Azure AD-Konto muss über `User.Read`-Berechtigungen verfügen. Der Deployer-Bezeichner (verwendet in der Ressourcenbenennung) wird automatisch aus Ihrem Azure AD-Profil abgeleitet. Für die Authentifizierung mit Dienstprinzipal oder verwalteter Identität setzen Sie die Terraform-Variable `deployer` explizit.
+Ihr Azure AD-Konto muss über `User.Read`-Berechtigungen verfügen. Der Bereitsteller-Bezeichner (verwendet für die Ressourcenbenennung) wird automatisch aus Ihrem Azure AD-Profil abgeleitet. Legen Sie bei der Authentifizierung mit einem Dienstprinzipal oder einer verwalteten Identität die Terraform-Variable `deployer` explizit fest.
 
 ### SSH-Schlüsselpaar
 
@@ -68,15 +69,15 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 |---|---|
 | Ubuntu 24.04 VM | Standard_D16s_v3 (16 vCPU, 64 GiB) |
 | Öffentliche IP | Standard, Statisch |
-| Betriebssystem-Datenträger | 60 GiB Premium SSD |
+| OS-Datenträger | 60 GiB Premium SSD |
 | VNet + NSG | Standard |
 
-Aktuelle Kosten finden Sie im [Azure-Preisrechner](https://azure.microsoft.com/en-us/pricing/calculator/). Verwenden Sie `terraform destroy`, wenn das Lab nicht in Verwendung ist, um Kosten zu vermeiden. Siehe [Abbau](../07-teardown/) für das Verfahren.
+Aktuelle Kosten finden Sie im [Azure-Preisrechner](https://azure.microsoft.com/en-us/pricing/calculator/). Verwenden Sie `terraform destroy`, wenn das Lab nicht in Betrieb ist, um Gebühren zu stoppen. Das Verfahren ist unter [Abbau](../07-teardown/) beschrieben.
 
 :::note
-Standard_D16s_v3 (64 GiB RAM) ist für die 41-Container-Bereitstellung erforderlich. Container-Speicherzuweisung: 4 Juice Shop-Instanzen mit je 1 GiB (4 GiB), 4 VAmPI mit je 512 MiB (2 GiB), 4 DVWA-FPM + MariaDB (1,8 GiB), 4 httpbin mit 256 MiB (1 GiB), 4 CSD Demo mit 256 MiB (1 GiB), 4 whoami mit 64 MiB (256 MiB), 4 DVGA mit je 256 MiB (1 GiB), 4 RESTaurant + PostgreSQL (1,5 GiB), crAPI 7 Microservices (2 GiB), plus nginx, Betriebssystem und Buffer-Cache. Die gesamte Container-Zuweisung beträgt ungefähr 14,5 GiB (22,7 % von 64 GiB).
+Standard_D16s_v3 (64 GiB RAM) ist für die Bereitstellung mit 41 Containern erforderlich. Container-Speicherzuweisung: 4 Juice Shop-Instanzen mit je 1 GiB (4 GiB), 4 VAmPI mit je 512 MiB (2 GiB), 4 DVWA-FPM + MariaDB (1,8 GiB), 4 httpbin mit 256 MiB (1 GiB), 4 CSD Demo mit 256 MiB (1 GiB), 4 whoami mit 64 MiB (256 MiB), 4 DVGA mit je 256 MiB (1 GiB), 4 RESTaurant + PostgreSQL (1,5 GiB), crAPI 7 Microservices (2 GiB), sowie nginx, Betriebssystem und Puffercache. Die gesamte Container-Zuweisung beträgt ca. 14,5 GiB (22,7 % von 64 GiB).
 :::
 
 :::note
-Die NSG erlaubt eingehenden Datenverkehr auf den Ports 80 (HTTP) und 8888 (crAPI). Port 8888 ist erforderlich, da crAPI eine Single-Page-Anwendung ist, die ihre API-Pfade fest kodiert hat und nicht hinter einem Pfad-Präfix bereitgestellt werden kann.
+Die NSG erlaubt eingehenden Datenverkehr auf den Ports 80 (HTTP) und 8888 (crAPI). Port 8888 ist erforderlich, da crAPI eine Single-Page-Anwendung ist, die ihre API-Pfade fest kodiert und nicht hinter einem Pfad-Präfix bereitgestellt werden kann.
 :::

@@ -1,9 +1,10 @@
 ---
 title: Integrieren
 description: >-
-  Konfiguration der VM als F5 XC Origin-Pool-Mitglied mit WAF, Bot Defense, API
-  Discovery und Client-Side Defense-Richtlinien; pfadbasiertes Routing über
-  HTTP-Load-Balancer; Header-Injection-Überprüfung über /whoami
+  Konfigurieren Sie die VM als F5 XC-Ursprungsserver-Pool-Mitglied mit WAF-,
+  Bot-Abwehr-, API-Discovery- und clientseitigen Abwehrrichtlinien;
+  pfadbasiertes Routing über HTTP-Load-Balancer; Überprüfung der
+  Header-Injektion über /whoami
 sidebar:
   order: 6
 i18n:
@@ -11,58 +12,58 @@ i18n:
   translator: machine
 ---
 
-## F5 XC Origin-Pool-Integration
+## F5 XC Ursprungsserver-Pool-Integration
 
-Dieser Origin-Server ist für die Verwendung als **Origin-Pool-Mitglied** hinter einem F5 Distributed Cloud HTTP-Load-Balancer konzipiert. Die F5 XC-Plattform stellt WAF, Bot Defense, API Security und Client-Side Defense vor diesem Origin bereit.
+Dieser Ursprungsserver ist dafür konzipiert, als **Ursprungsserver-Pool-Mitglied** hinter einem F5 Distributed Cloud HTTP-Load-Balancer eingesetzt zu werden. Die F5 XC Plattform stellt WAF, Bot-Abwehr, API-Sicherheit und clientseitige Abwehr vor diesem Ursprungsserver bereit.
 
 ### Architektur
 
 ```
-Endbenutzer -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker Apps)
+End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker apps)
 ```
 
-### Origin-Pool-Konfiguration
+### Ursprungsserver-Pool-Konfiguration
 
-Erstellen Sie einen F5 XC Origin-Pool, der auf die öffentliche IP dieser VM zeigt:
+Erstellen Sie einen F5 XC-Ursprungsserver-Pool, der auf die öffentliche IP dieser VM verweist:
 
 | Einstellung | Wert |
 |---|---|
-| **Origin-Server-Typ** | Öffentliche IP des Origin-Servers |
+| **Ursprungsserver-Typ** | Öffentliche IP des Ursprungsservers |
 | **IP-Adresse** | `<terraform output public_ip>` |
 | **Port** | `80` |
 | **Health Check** | HTTP, Pfad `/health` |
 
 ### HTTP-Load-Balancer-Konfiguration
 
-Erstellen Sie einen HTTP-Load-Balancer mit dem Origin-Pool:
+Erstellen Sie einen HTTP-Load-Balancer mit dem Ursprungsserver-Pool:
 
 | Einstellung | Wert |
 |---|---|
 | **Domains** | Ihre Demo-Domain (z. B. `demo.example.com`) |
-| **Origin-Pool** | Der oben erstellte Pool |
-| **WAF** | Ihre WAF-Richtlinie anhängen |
-| **Bot Defense** | Nach Bedarf aktivieren |
+| **Ursprungsserver-Pool** | Der oben erstellte Pool |
+| **WAF** | Fügen Sie Ihre WAF-Richtlinie hinzu |
+| **Bot-Abwehr** | Nach Bedarf aktivieren |
 | **API Discovery** | Für VAmPI-Endpunkte aktivieren |
 
 ### Pfadbasiertes Routing
 
-Jede Anwendung ist über ihr Pfadpräfix durch den Load Balancer erreichbar:
+Jede Anwendung ist über ihr Pfad-Präfix durch den Load-Balancer erreichbar:
 
-| F5 XC LB URL | Origin-Pfad | Anwendung |
+| F5 XC LB URL | Ursprungspfad | Anwendung |
 |---|---|---|
 | `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop (4 Instanzen, Cookie-Sticky) |
 | `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA (4 Instanzen + MariaDB, Cookie-Sticky) |
 | `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 Instanzen, ip_hash-Sticky) |
 | `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin (4 Instanzen, Round-Robin) |
-| `https://demo.example.com/whoami/` | `/whoami/` | Anfragediagnose (4 Instanzen) |
+| `https://demo.example.com/whoami/` | `/whoami/` | Anfrage-Diagnose (4 Instanzen) |
 | `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo (4 Instanzen, ip_hash-Sticky) |
 | `https://demo.example.com/dvga/` | `/dvga/` | DVGA (4 Instanzen, ip_hash-Sticky) |
 | `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant (4 Instanzen, Round-Robin) |
 | `https://demo.example.com/health` | `/health` | Health Check (nginx direkt) |
 
-### F5 XC Header-Injection überprüfen
+### F5 XC Header-Injektion überprüfen
 
-Verwenden Sie den whoami-Endpunkt, um zu überprüfen, welche Header F5 XC in Anfragen einfügt, die den Origin erreichen:
+Verwenden Sie den whoami-Endpunkt, um zu überprüfen, welche Header F5 XC in Anfragen injiziert, die den Ursprungsserver erreichen:
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -70,38 +71,38 @@ LB_DOMAIN="demo.example.com"
 curl -sk "https://${LB_DOMAIN}/whoami/"
 ```
 
-Achten Sie auf diese von F5 XC eingefügten Header in der Antwort:
+Suchen Sie in der Antwort nach diesen von F5 XC injizierten Headern:
 
 | Header | Bedeutung |
 |---|---|
 | `X-Forwarded-For` | Client-IP-Kette durch F5 XC |
 | `True-Client-IP` | Ursprüngliche Client-IP |
-| `X-Forwarded-Proto` | `https` wenn TLS bei F5 XC terminiert wird |
-| `X-Volterra-Bot-Type` | Bot-Klassifizierung (wenn Bot Defense aktiviert ist) |
-| `X-Request-ID` | F5 XC Anfrage-Tracking-ID |
+| `X-Forwarded-Proto` | `https`, wenn TLS bei F5 XC terminiert |
+| `X-Volterra-Bot-Type` | Bot-Klassifizierung (wenn Bot-Abwehr aktiviert ist) |
+| `X-Request-ID` | F5 XC-Anfrage-Tracking-ID |
 
 ### WAF-Tests über F5 XC
 
-Mit einer an den HTTP-Load-Balancer angehängten WAF-Richtlinie testen Sie Angriffs-Payloads:
+Mit einer an den HTTP-Load-Balancer angehängten WAF-Richtlinie können Angriffs-Payloads getestet werden:
 
 ```bash
 LB_DOMAIN="demo.example.com"
 
-# SQL Injection (sollte von der WAF blockiert werden)
+# SQL Injection (sollte von WAF blockiert werden)
 curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/sqli/?id=%27+OR+1%3D1--&Submit=Submit"
 
-# XSS (sollte von der WAF blockiert werden)
+# XSS (sollte von WAF blockiert werden)
 curl -sk "https://${LB_DOMAIN}/juice-shop/rest/products/search?q=<script>alert(1)</script>"
 
-# Command Injection (sollte von der WAF blockiert werden)
+# Command Injection (sollte von WAF blockiert werden)
 curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/exec/" \
   -d "ip=127.0.0.1;cat+/etc/passwd&Submit=Submit"
 
-# Normale Anfrage (sollte durchgelassen werden)
+# Normale Anfrage (sollte durchgehen)
 curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
 ```
 
-### API-Security-Tests
+### API-Sicherheitstests
 
 Aktivieren Sie API Discovery auf dem HTTP-Load-Balancer, um die API-Endpunkte von VAmPI zu erfassen:
 
@@ -118,38 +119,38 @@ curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
 
 ### crAPI-Integration (Port 8888)
 
-crAPI läuft auf einem dedizierten Port (8888), da es eine Single-Page-Anwendung ist, die ihre API-Pfade fest codiert hat und nicht hinter einem Pfadpräfix bereitgestellt werden kann. Um crAPI mit F5 XC zu integrieren:
+crAPI läuft auf einem dedizierten Port (8888), da es sich um eine Single-Page-Anwendung handelt, die ihre API-Pfade fest kodiert und nicht hinter einem Pfad-Präfix betrieben werden kann. Um crAPI mit F5 XC zu integrieren:
 
 | Einstellung | Wert |
 |---|---|
-| **Origin-Server-Typ** | Öffentliche IP des Origin-Servers |
+| **Ursprungsserver-Typ** | Öffentliche IP des Ursprungsservers |
 | **IP-Adresse** | `<terraform output public_ip>` |
 | **Port** | `8888` |
 | **Health Check** | HTTP, Pfad `/` |
 
-Erstellen Sie einen **separaten Origin-Pool** für crAPI auf Port 8888, oder fügen Sie ein zweites Origin-Pool-Mitglied zu Ihrem bestehenden Pool mit Port 8888 hinzu und verwenden Sie Routenregeln, um den Traffic zu lenken:
+Erstellen Sie einen **separaten Ursprungsserver-Pool** für crAPI auf Port 8888, oder fügen Sie Ihrem vorhandenen Pool ein zweites Ursprungsserver-Pool-Mitglied mit Port 8888 hinzu und verwenden Sie Routing-Regeln, um den Datenverkehr zu leiten:
 
 ```bash
 # crAPI über F5 XC testen (falls konfiguriert)
 curl -sk "https://${LB_DOMAIN}:8888/"
 
-# Oder bei Verwendung von Routenregeln auf derselben LB-Domain:
-# Konfigurieren Sie eine F5 XC-Routenregel, die auf Host-Header oder Pfadpräfix matched,
-# um an den crAPI-Origin-Pool (Port 8888) weiterzuleiten
+# Oder bei Verwendung von Routing-Regeln auf derselben LB-Domain:
+# Konfigurieren Sie eine F5 XC-Routing-Regel, die den Host-Header oder das Pfad-Präfix
+# abgleicht, um den Datenverkehr an den crAPI-Ursprungsserver-Pool (Port 8888) weiterzuleiten
 ```
 
 :::note
-Die NSG auf der Origin-VM erlaubt eingehenden Traffic auf Port 8888. Es sind keine zusätzlichen Azure-Netzwerkänderungen erforderlich.
+Die NSG auf der Ursprungsserver-VM erlaubt eingehenden Datenverkehr auf Port 8888. Es sind keine zusätzlichen Azure-Netzwerkänderungen erforderlich.
 :::
 
-### Sticky-Session-Bewusstsein
+### Bewusstsein für Sticky Sessions
 
-Der Origin-Server verwendet intern nginx-Sticky-Sessions, um zustandsbehaftete Anwendungen an konsistente Backend-Container zu routen. Beachten Sie bei der Konfiguration des F5 XC HTTP-Load-Balancers Folgendes:
+Der Ursprungsserver verwendet intern nginx-Sticky-Sessions, um zustandsbehaftete Anwendungen konsistent an Backend-Container weiterzuleiten. Bei der Konfiguration des F5 XC HTTP-Load-Balancers ist Folgendes zu beachten:
 
 | Anwendung | Sticky-Methode | Grund |
 |---|---|---|
-| Juice Shop | `hash $cookie_token` | Node.js-Sitzungszustand |
-| DVWA | `hash $cookie_PHPSESSID` | PHP-Sitzungszustand |
+| Juice Shop | `hash $cookie_token` | Node.js-Sitzungsstatus |
+| DVWA | `hash $cookie_PHPSESSID` | PHP-Sitzungsstatus |
 | VAmPI | `ip_hash` | SQLite-Datenbank pro Instanz |
 | CSD Demo | `ip_hash` | In-Memory-Exfil-Log pro Instanz |
 | DVGA | `ip_hash` | SQLite-Datenbank pro Instanz |
@@ -158,14 +159,14 @@ Der Origin-Server verwendet intern nginx-Sticky-Sessions, um zustandsbehaftete A
 | httpbin | Round-Robin | Zustandslos |
 | whoami | Round-Robin | Zustandslos |
 
-F5 XC muss diese Sticky-Sessions nicht replizieren -- nginx auf der Origin-VM übernimmt das Backend-Routing. F5 XC sollte den Origin als einzelnen Endpunkt behandeln (die öffentliche IP der VM auf Port 80).
+F5 XC muss diese Sticky Sessions nicht replizieren – nginx auf der Ursprungsserver-VM übernimmt das Backend-Routing. F5 XC sollte den Ursprungsserver als einzelnen Endpunkt behandeln (die öffentliche IP der VM auf Port 80).
 
 ### Multi-Komponenten-Architektur
 
-In Kombination mit dem CDN-Simulator ergibt sich die vollständige Lab-Architektur:
+In Kombination mit dem CDN-Simulator ergibt sich die folgende vollständige Lab-Architektur:
 
 ```
-Endbenutzer -> CDN-Simulator (nginx-Cache) -> F5 XC HTTP LB -> Origin Server (diese Komponente)
+End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this component)
 ```
 
-Der CDN-Simulator verwendet die F5 XC HTTP-Load-Balancer-VIP als seinen Origin, und der F5 XC-Load-Balancer verwendet diesen Origin-Server als sein Backend. Dies erzeugt eine realistische mehrschichtige Architektur für umfassende Tests.
+Der CDN-Simulator verwendet die F5 XC HTTP-Load-Balancer-VIP als seinen Ursprungsserver, und der F5 XC-Load-Balancer verwendet diesen Ursprungsserver als Backend. Dies schafft eine realistische mehrschichtige Architektur für umfassende Tests.

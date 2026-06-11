@@ -10,7 +10,7 @@ i18n:
 
 ## 冒煙測試
 
-在等待 5--10 分鐘讓 cloud-init 完成後，執行以下檢查。
+請在等待 cloud-init 完成 5 至 10 分鐘後執行以下檢查。
 
 ### 健康端點
 
@@ -33,7 +33,7 @@ curl -sf "http://${ORIGIN_IP}/health" | jq .
 ### 應用程式端點
 
 ```bash
-# Default landing page
+# 預設首頁
 curl -sf "http://${ORIGIN_IP}/" -o /dev/null -w "Landing: %{http_code}\n"
 
 # Juice Shop
@@ -57,7 +57,7 @@ curl -sf "http://${ORIGIN_IP}/dvga/" -o /dev/null -w "DVGA: %{http_code}\n"
 # RESTaurant
 curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{http_code}\n"
 
-# crAPI (port 8888)
+# crAPI（連接埠 8888）
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
@@ -65,17 +65,17 @@ curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 
 ### 自動化冒煙測試
 
-儲存庫包含一個 39 項冒煙測試套件：
+儲存庫內含一套 39 項冒煙測試套件：
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-此測試會驗證所有 9 個應用程式、健康端點、VAmPI 註冊/登入、CSD Demo 資料外洩往返測試、DVGA GraphQL、RESTaurant Swagger、crAPI 的 8888 連接埠、nginx gzip，以及版本隱藏。
+此測試套件會驗證所有 9 個應用程式、健康端點、VAmPI 註冊/登入、CSD Demo 資料外洩往返、DVGA GraphQL、RESTaurant Swagger、crAPI 連接埠 8888、nginx gzip，以及版本隱藏功能。
 
 ### Docker 容器狀態
 
-透過 SSH 連線至 VM 並確認所有 41 個容器皆在執行中：
+SSH 進入虛擬機器，確認所有 41 個容器均正常運行：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
@@ -138,15 +138,15 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ### Cloud-init 仍在執行中
 
-如果端點回傳 502 或連線被拒，cloud-init 可能仍在佈建中：
+若端點回傳 502 或連線遭拒，cloud-init 可能仍在進行佈建：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` -- 仍在佈建中，請等待幾分鐘
-- `status: done` -- 佈建完成，請檢查 Docker 容器
-- `status: error` -- 請檢查以下日誌
+- `status: running` — 仍在佈建中，請等待幾分鐘
+- `status: done` — 佈建完成，請檢查 Docker 容器
+- `status: error` — 請查閱下方的日誌說明
 
 ### Cloud-init 日誌
 
@@ -157,7 +157,7 @@ ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ### 容器無法啟動
 
 ```bash
-# Check container logs (each app has 4 instances: -1 through -4)
+# 查看容器日誌（每個應用程式有 4 個實例：-1 至 -4）
 ssh azureuser@${ORIGIN_IP} "sudo docker logs juice-shop-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs dvwa-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs vampi-1 2>&1 | tail -20"
@@ -173,19 +173,19 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 上游容器尚未就緒或已當機：
 
 ```bash
-# Check nginx error log
+# 查看 nginx 錯誤日誌
 ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
 
-# Restart all instances of a specific app
+# 重新啟動特定應用程式的所有實例
 ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
 
-# Rebuild and restart all containers
+# 重新建置並重新啟動所有容器
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
 ```
 
 ### 磁碟空間
 
-Docker 映像檔約佔用 4.7 GiB。存取日誌已停用，以防止在 CDN 負載測試下磁碟空間耗盡。Logrotate 已配置為縱深防禦機制（500 MiB 上限）。驗證磁碟使用量：
+Docker 映像約佔用 4.7 GiB 的空間。為避免在 CDN 負載測試期間磁碟空間耗盡，存取日誌記錄已停用。Logrotate 已作為縱深防禦措施進行設定（上限為 500 MiB）。請確認磁碟使用情況：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -201,7 +201,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Nam
 
 ### 重新啟動所有服務
 
-如有需要，重新建置並重新啟動所有服務：
+如有需要，請重新建置並重新啟動所有服務：
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"

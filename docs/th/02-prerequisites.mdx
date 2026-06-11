@@ -1,8 +1,8 @@
 ---
 title: ข้อกำหนดเบื้องต้น
 description: >-
-  Azure subscription, Terraform >= 1.5, Azure CLI, คู่คีย์ SSH และ VM
-  Standard_D16s_v3 (16 vCPU, 64 GiB RAM) สำหรับการติดตั้ง 41 คอนเทนเนอร์
+  การสมัครใช้งาน Azure, Terraform >= 1.5, Azure CLI, คู่คีย์ SSH, และ VM รุ่น
+  Standard_D16s_v3 (16 vCPU, 64 GiB RAM) สำหรับการปรับใช้งานคอนเทนเนอร์ 41 ตัว
 sidebar:
   order: 2
 i18n:
@@ -10,21 +10,21 @@ i18n:
   translator: machine
 ---
 
-## สิ่งที่จำเป็น
+## ที่จำเป็น
 
-### Azure Subscription
+### การสมัครใช้งาน Azure
 
-Azure subscription ที่ใช้งานอยู่พร้อมสิทธิ์ในการสร้าง:
+การสมัครใช้งาน Azure ที่ยังใช้งานอยู่พร้อมสิทธิ์ในการสร้าง:
 
-- Resource groups
-- Virtual networks และ subnets
-- Network security groups
-- Public IP addresses
-- Virtual machines (Standard_D16s_v3 -- 16 vCPU, 64 GiB RAM สำหรับ workloads 41 คอนเทนเนอร์)
+- กลุ่มทรัพยากร
+- เครือข่ายเสมือนและซับเน็ต
+- กลุ่มความปลอดภัยเครือข่าย
+- ที่อยู่ IP สาธารณะ
+- เครื่องเสมือน (Standard_D16s_v3 -- 16 vCPU, 64 GiB RAM สำหรับงานคอนเทนเนอร์ 41 ตัว)
 
 ### Azure CLI
 
-ติดตั้งและยืนยันตัวตน Azure CLI:
+ติดตั้งและตรวจสอบสิทธิ์ Azure CLI:
 
 ```bash
 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
@@ -42,7 +42,7 @@ az account show --query '{name:name, id:id}' -o table
 terraform version
 ```
 
-หากยังไม่ได้ติดตั้ง ให้ใช้ HashiCorp APT repository:
+หากยังไม่ได้ติดตั้ง ให้ใช้ที่เก็บ APT ของ HashiCorp:
 
 ```bash
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -52,7 +52,7 @@ sudo apt update && sudo apt install terraform
 
 ### สิทธิ์ Azure AD
 
-บัญชี Azure AD ของคุณต้องมีสิทธิ์ `User.Read` ตัวระบุผู้ติดตั้ง (ใช้ในการตั้งชื่อทรัพยากร) จะถูกดึงมาจากโปรไฟล์ Azure AD ของคุณโดยอัตโนมัติ สำหรับการยืนยันตัวตนด้วย service principal หรือ managed identity ให้ตั้งค่าตัวแปร Terraform `deployer` อย่างชัดเจน
+บัญชี Azure AD ของคุณต้องมีสิทธิ์ `User.Read` ตัวระบุผู้ปรับใช้งาน (ที่ใช้ในการตั้งชื่อทรัพยากร) จะได้รับมาโดยอัตโนมัติจากโปรไฟล์ Azure AD ของคุณ สำหรับการตรวจสอบสิทธิ์ด้วย service principal หรือ managed identity ให้กำหนดตัวแปร Terraform `deployer` อย่างชัดเจน
 
 ### คู่คีย์ SSH
 
@@ -67,16 +67,16 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 | ทรัพยากร | SKU |
 |---|---|
 | Ubuntu 24.04 VM | Standard_D16s_v3 (16 vCPU, 64 GiB) |
-| Public IP | Standard, Static |
+| IP สาธารณะ | Standard, Static |
 | OS Disk | 60 GiB Premium SSD |
 | VNet + NSG | Default |
 
-ดู [เครื่องคำนวณราคา Azure](https://azure.microsoft.com/en-us/pricing/calculator/) สำหรับค่าใช้จ่ายปัจจุบัน ใช้ `terraform destroy` เมื่อไม่ได้ใช้งาน lab เพื่อหยุดการเรียกเก็บเงิน ดู [การรื้อถอน](../07-teardown/) สำหรับขั้นตอน
+ดู [เครื่องคำนวณราคา Azure](https://azure.microsoft.com/en-us/pricing/calculator/) สำหรับค่าใช้จ่ายปัจจุบัน ใช้ `terraform destroy` เมื่อไม่ได้ใช้งานแล็บเพื่อหยุดการเรียกเก็บเงิน ดู [การรื้อถอน](../07-teardown/) สำหรับขั้นตอน
 
 :::note
-Standard_D16s_v3 (64 GiB RAM) จำเป็นสำหรับการติดตั้ง 41 คอนเทนเนอร์ การจัดสรรหน่วยความจำคอนเทนเนอร์: Juice Shop 4 อินสแตนซ์ที่ 1 GiB ต่ออัน (4 GiB), VAmPI 4 ตัวที่ 512 MiB ต่ออัน (2 GiB), DVWA-FPM + MariaDB 4 ชุด (1.8 GiB), httpbin 4 ตัวที่ 256 MiB (1 GiB), CSD Demo 4 ตัวที่ 256 MiB (1 GiB), whoami 4 ตัวที่ 64 MiB (256 MiB), DVGA 4 ตัวที่ 256 MiB ต่ออัน (1 GiB), RESTaurant + PostgreSQL 4 ชุด (1.5 GiB), crAPI 7 ไมโครเซอร์วิส (2 GiB) รวมถึง nginx, OS และ buffer cache การจัดสรรคอนเทนเนอร์ทั้งหมดอยู่ที่ประมาณ 14.5 GiB (22.7% ของ 64 GiB)
+Standard_D16s_v3 (64 GiB RAM) จำเป็นสำหรับการปรับใช้งานคอนเทนเนอร์ 41 ตัว การจัดสรรหน่วยความจำของคอนเทนเนอร์: Juice Shop 4 อินสแตนซ์ที่ 1 GiB ต่ออินสแตนซ์ (4 GiB), VAmPI 4 ตัวที่ 512 MiB ต่อตัว (2 GiB), DVWA-FPM + MariaDB 4 ชุด (1.8 GiB), httpbin 4 ตัวที่ 256 MiB (1 GiB), CSD Demo 4 ตัวที่ 256 MiB (1 GiB), whoami 4 ตัวที่ 64 MiB (256 MiB), DVGA 4 ตัวที่ 256 MiB ต่อตัว (1 GiB), RESTaurant + PostgreSQL 4 ชุด (1.5 GiB), crAPI 7 ไมโครเซอร์วิส (2 GiB) รวมถึง nginx, ระบบปฏิบัติการ และ buffer cache การจัดสรรคอนเทนเนอร์ทั้งหมดอยู่ที่ประมาณ 14.5 GiB (22.7% ของ 64 GiB)
 :::
 
 :::note
-NSG อนุญาตทราฟฟิกขาเข้าบนพอร์ต 80 (HTTP) และ 8888 (crAPI) พอร์ต 8888 จำเป็นเนื่องจาก crAPI เป็น single-page application ที่ hardcode เส้นทาง API ของตัวเองและไม่สามารถให้บริการผ่าน path prefix ได้
+NSG อนุญาตการรับส่งข้อมูลขาเข้าบนพอร์ต 80 (HTTP) และ 8888 (crAPI) พอร์ต 8888 จำเป็นเนื่องจาก crAPI เป็นแอปพลิเคชันแบบ single-page ที่กำหนด API path แบบตายตัวและไม่สามารถให้บริการผ่าน path prefix ได้
 :::

@@ -1,9 +1,9 @@
 ---
 title: 架構
 description: >-
-  41 個容器部署於 Standard_D16s_v3（16 vCPU、64 GiB）：nginx 反向代理搭配
-  reuseport、黏性工作階段及代理快取，將流量路由至負載平衡的 Juice Shop、DVWA-FPM、VAmPI、httpbin、whoami、CSD
-  Demo、DVGA、RESTaurant 及 crAPI 實例，運行於 Ubuntu 24.04
+  在 Standard_D16s_v3（16 vCPU、64 GiB）上部署 41 個容器：nginx 反向代理搭配
+  reuseport、黏性會話與代理快取，路由至負載平衡的 Juice Shop、DVWA-FPM、VAmPI、httpbin、whoami、CSD
+  Demo、DVGA、RESTaurant 及 crAPI 實例，執行於 Ubuntu 24.04
 sidebar:
   order: 1
 i18n:
@@ -13,15 +13,15 @@ i18n:
 
 ## 用途
 
-此元件提供單一來源伺服器，託管多個用於安全測試展示的易受攻擊網頁應用程式。它代表典型負載平衡器架構中的「來源端」——即 F5 XC HTTP 負載平衡器所保護的後端內容伺服器。
+此元件提供一個單一來源伺服器，託管多個有漏洞的 Web 應用程式，用於安全測試示範。它代表典型負載平衡器架構中的「來源端」——即 F5 XC HTTP 負載平衡器所保護的後端內容伺服器。
 
 在生產架構中：
 
 ```
-終端使用者 -> F5 XC HTTP LB（WAF/Bot/API 安全）-> 來源伺服器 -> 應用程式
+End User -> F5 XC HTTP LB (WAF/Bot/API Security) -> Origin Server -> Application
 ```
 
-此元件以一台專門建構的虛擬機取代真實的生產應用程式伺服器，運行知名的易受攻擊應用程式來觸發 WAF 規則、API 安全策略及機器人偵測。
+此元件以一台執行知名有漏洞應用程式的專用虛擬機器，取代真實的生產應用程式伺服器，用以觸發 WAF 規則、API 安全策略及機器人偵測。
 
 ## 架構
 
@@ -43,29 +43,29 @@ graph LR
     REST --> RESTDB[(PostgreSQL 15.4<br/>restaurant-db)]
 ```
 
-**41 個容器**運行於 Standard_D16s_v3 虛擬機（16 vCPU、64 GiB RAM、60 GiB 磁碟）。
+**41 個容器**部署於 Standard_D16s_v3 虛擬機器（16 vCPU、64 GiB RAM、60 GiB 磁碟）。
 
 nginx 反向代理：
 
-- **監聽連接埠 80**，搭配 `reuseport` 及 `backlog=4096` 以處理高並發 CDN 流量
+- **監聽埠 80**，搭配 `reuseport` 與 `backlog=4096`，以應對高並發的 CDN 流量
 - **依路徑前綴路由**至負載平衡的上游池（每個應用程式 4 個實例）
-- **黏性工作階段**防止狀態遺失：Juice Shop 使用 `hash $cookie_token`，DVWA 使用 `hash $cookie_PHPSESSID`，VAmPI 及 CSD Demo 使用 `ip_hash`（每個實例具有 SQLite/記憶體內狀態）
+- **黏性會話**防止狀態遺失：Juice Shop 使用 `hash $cookie_token`，DVWA 使用 `hash $cookie_PHPSESSID`，VAmPI 與 CSD Demo 使用 `ip_hash`（每個實例的 SQLite／記憶體內狀態）
 - **代理快取**用於 Juice Shop 靜態資源（10 MB 區域、100 MB 上限、60 秒 TTL）
-- **停用存取日誌**以防止在 CDN 負載測試下磁碟耗盡（logrotate 作為縱深防禦）
-- **傳遞用戶端標頭**（`X-Real-IP`、`X-Forwarded-For`、`X-Forwarded-Proto`）以提供來源端可見性
-- **核心調校**透過 sysctl：`somaxconn=65535`、`tcp_tw_reuse=1`、`ip_local_port_range=1024-65535`
+- **停用存取日誌**以防止 CDN 壓力測試下磁碟耗盡（logrotate 作為深度防禦）
+- **傳遞用戶端標頭**（`X-Real-IP`、`X-Forwarded-For`、`X-Forwarded-Proto`）以提升來源端可見性
+- **透過 sysctl 進行核心調校**：`somaxconn=65535`、`tcp_tw_reuse=1`、`ip_local_port_range=1024-65535`
 
-## 應用程式對應表
+## 應用程式對應
 
-| 路徑 | 上游 | 實例數 | 連接埠 | 黏性工作階段 | 用途 |
+| 路徑 | 上游 | 實例數 | 埠號 | 黏性會話 | 用途 |
 |---|---|---|---|---|---|
-| `/` | nginx | -- | -- | -- | 包含所有應用程式連結的首頁 |
-| `/health` | nginx | -- | -- | -- | JSON 健康檢查端點（列出 9 個應用程式） |
-| `/juice-shop/` | juice_shop | 4 | 3001-3004 | `hash $cookie_token` | 現代網頁應用程式安全（XSS、注入、CSRF） |
-| `/dvwa/` | dvwa | 4 + MariaDB | 8101-8104 | `hash $cookie_PHPSESSID` | 經典 WAF 測試，具可調整難度等級 |
+| `/` | nginx | -- | -- | -- | 含所有應用程式連結的登陸頁面 |
+| `/health` | nginx | -- | -- | -- | JSON 健康狀態端點（列出 9 個應用程式） |
+| `/juice-shop/` | juice_shop | 4 | 3001-3004 | `hash $cookie_token` | 現代 Web 應用程式安全（XSS、注入、CSRF） |
+| `/dvwa/` | dvwa | 4 + MariaDB | 8101-8104 | `hash $cookie_PHPSESSID` | 可調整難度的傳統 WAF 測試 |
 | `/vampi/` | vampi | 4 | 5101-5104 | `ip_hash` | REST API 安全測試（OWASP API Top 10） |
-| `/httpbin/` | httpbin_up | 4 | 8201-8204 | -- | HTTP 請求/回應服務，用於 API 展示 |
-| `/whoami/` | whoami_up | 4 | 8082-8085 | -- | 請求診斷——顯示所有標頭及用戶端 IP |
+| `/httpbin/` | httpbin_up | 4 | 8201-8204 | -- | 用於 API 示範的 HTTP 請求／回應服務 |
+| `/whoami/` | whoami_up | 4 | 8082-8085 | -- | 請求診斷——顯示所有標頭與用戶端 IP |
 | `/csd-demo/` | csd_demo | 4 | 5001-5004 | `ip_hash` | 用戶端防禦測試（Magecart 攻擊） |
 | `/dvga/` | dvga | 4 | 5201-5204 | `ip_hash` | GraphQL API 安全測試（注入、DoS、授權繞過） |
 | `/restaurant/` | restaurant | 4 + PostgreSQL | 8301-8304 | -- | REST API 安全（OWASP API Top 10 2023） |
@@ -73,24 +73,24 @@ nginx 反向代理：
 
 ## 模組化元件設計
 
-這是更大實驗室環境的一部分。每個元件都是獨立且可個別部署的：
+這是較大型實驗室環境中的一個部分。每個元件均獨立且分別部署：
 
-- **此元件**提供來源伺服器（Azure 虛擬機上的 nginx + Docker 容器）
-- **CDN 模擬器**提供 CDN 邊緣層（Azure 虛擬機上的 nginx 快取）
-- **其他元件**提供 F5 XC 設定、DNS、WAF 策略、API 安全等
+- **此元件**提供來源伺服器（nginx + Azure VM 上的 Docker 容器）
+- **CDN 模擬器**提供 CDN 邊緣層（Azure VM 上的 nginx 快取）
+- **其他元件**提供 F5 XC 設定、DNS、WAF 策略、API 安全性等
 
-人類操作員逐一新增元件。每個元件的文件撰寫方式讓 AI 助理可以閱讀並自主部署基礎架構。
+操作人員每次新增一個元件。每個元件的文件均以 AI 助理可讀取並自主部署基礎設施的方式撰寫。
 
-## 為何選擇這些應用程式
+## 選用這些應用程式的理由
 
-| 應用程式 | 選擇原因 |
+| 應用程式 | 選用原因 |
 |---|---|
-| **Juice Shop** | OWASP 旗艦專案；現代 Node.js SPA，包含 100 多個涵蓋 OWASP Top 10 的挑戰；積極維護中；4 個實例搭配代理快取 |
-| **DVWA** | 業界標準 WAF 測試工具；可調整安全等級（低/中/高/不可能）；自訂 php-fpm + nginx 建置以提升效能；共享 MariaDB 10.11 後端 |
-| **VAmPI** | 專為 OWASP API Security Top 10 建構；具有已知弱點的 REST API；每個實例搭配 4 個 worker 的 gunicorn；ip_hash 黏性以維持 SQLite 一致性 |
-| **httpbin** | Kenneth Reitz 的經典 HTTP 測試服務；搭配 4 個 gevent worker 的 gunicorn；適用於 API 展示及請求檢查 |
-| **whoami** | Traefik 的請求回顯伺服器；顯示來源端所見的完整請求細節——對於驗證 F5 XC 標頭注入至關重要 |
-| **CSD Demo** | 自訂結帳頁面，具有 5 種可切換的 Magecart 風格攻擊（卡片側錄器、表單劫持器、鍵盤記錄器、加密貨幣挖礦程式、DOM 劫持）；外洩端點 + 攻擊者儀表板；gunicorn 單一 worker 以維持記憶體內狀態持久性 |
-| **DVGA** | Damn Vulnerable GraphQL Application；GraphQL 特定弱點包括注入、DoS、批次攻擊及授權繞過；GraphiQL UI 提供互動式探索；ip_hash 黏性以維持每個實例的 SQLite |
-| **RESTaurant** | Damn Vulnerable RESTaurant API Game；專為 OWASP API Security Top 10 2023 建構；FastAPI 搭配 Swagger UI；共享 PostgreSQL 15.4 後端；涵蓋 BOLA、BFLA、大量賦值、SSRF 及注入 |
-| **crAPI** | OWASP Completely Ridiculous API；7 個微服務架構涵蓋 BOLA、BFLA、大量賦值、SSRF、JWT 操縱及 NoSQL 注入；專用連接埠 8888（SPA 搭配硬編碼 API 路徑）；MailHog 用於電子郵件擷取 |
+| **Juice Shop** | OWASP 旗艦專案；現代 Node.js SPA，包含 100 多個涵蓋 OWASP Top 10 的挑戰；持續維護；4 個實例搭配代理快取 |
+| **DVWA** | WAF 測試的業界標準；可調整安全等級（低／中／高／不可能）；自訂 php-fpm + nginx 建置以提升效能；共用 MariaDB 10.11 後端 |
+| **VAmPI** | 專為 OWASP API Security Top 10 設計；具有已知漏洞的 REST API；每個實例使用 gunicorn 搭配 4 個 worker；ip_hash 黏性以確保 SQLite 一致性 |
+| **httpbin** | Kenneth Reitz 的標準 HTTP 測試服務；gunicorn 搭配 4 個 gevent worker；適用於 API 示範與請求檢查 |
+| **whoami** | Traefik 的請求回應伺服器；以來源端視角顯示完整請求詳情——對驗證 F5 XC 標頭注入不可或缺 |
+| **CSD Demo** | 自訂結帳頁面，內含 5 種可切換的 Magecart 風格攻擊（卡片側錄、表單劫持、鍵盤記錄、挖礦程式、DOM 劫持）；含外洩端點與攻擊者儀表板；gunicorn 單一 worker 以維持記憶體內狀態持久性 |
+| **DVGA** | Damn Vulnerable GraphQL Application；GraphQL 特有漏洞，包括注入、DoS、批次攻擊及授權繞過；GraphiQL UI 供互動式探索；ip_hash 黏性以確保每個實例的 SQLite 獨立性 |
+| **RESTaurant** | Damn Vulnerable RESTaurant API Game；專為 OWASP API Security Top 10 2023 設計；FastAPI 搭配 Swagger UI；共用 PostgreSQL 15.4 後端；涵蓋 BOLA、BFLA、大量賦值、SSRF 及注入 |
+| **crAPI** | OWASP Completely Ridiculous API；7 個微服務架構，涵蓋 BOLA、BFLA、大量賦值、SSRF、JWT 操控及 NoSQL 注入；專用埠 8888（SPA 含硬編碼 API 路徑）；MailHog 用於電子郵件擷取 |

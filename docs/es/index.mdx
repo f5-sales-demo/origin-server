@@ -1,18 +1,18 @@
 ---
-title: Servidor de Origen
+title: Servidor de origen
 description: >-
-  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
-  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
-  WAF, API security, bot defense, and client-side defense testing with F5
-  Distributed Cloud
+  VM Ubuntu 24.04 en Azure ejecutando nginx como proxy inverso hacia
+  contenedores Docker: Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA,
+  RESTaurant y crAPI para pruebas de WAF, seguridad de API, defensa bot y
+  defensa del lado del cliente con F5 Distributed Cloud
 template: splash
 sidebar:
   hidden: true
 hero:
   tagline: >-
     Despliegue un servidor de origen multi-aplicación en Azure para pruebas de
-    WAF, seguridad de API, defensa contra bots y defensa del lado del cliente
-    con F5 Distributed Cloud.
+    WAF, seguridad de API, defensa bot y defensa del lado del cliente con F5
+    Distributed Cloud.
   image:
     html: '<div style="font-size:4rem;">&#128421;</div>'
   actions:
@@ -20,7 +20,7 @@ hero:
       link: 01-architecture/
       icon: right-arrow
       variant: primary
-    - text: Desplegar Ahora
+    - text: Desplegar ahora
       link: 03-deploy/
       icon: rocket
       variant: minimal
@@ -32,32 +32,32 @@ i18n:
 import { CardGrid } from '@astrojs/starlight/components';
 import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
 
-## Qué Proporciona
+## Qué ofrece esto
 
 <CardGrid>
   <LinkCard
-    title="Origen Multi-Aplicación"
+    title="Origen multi-aplicación"
     description="Una VM Ubuntu 24.04 (16 vCPU, 64 GiB) ejecutando nginx como proxy inverso hacia 41 contenedores Docker: Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant y crAPI."
     href="01-architecture/"
   />
   <LinkCard
     title="Despliegue con Terraform"
-    description="Infraestructura completa de Azure como código: VNet, PIP, NSG y VM Standard_D16s_v3 con aprovisionamiento cloud-init de Docker + nginx. Disco de 60 GiB, logrotate y límites de journald incluidos."
+    description="Infraestructura completa de Azure como código: VNet, PIP, NSG y VM Standard_D16s_v3 con aprovisionamiento cloud-init de Docker + nginx. Incluye disco de 60 GiB, logrotate y límites de journald."
     href="03-deploy/"
   />
   <LinkCard
-    title="Aplicaciones Vulnerables"
-    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant y crAPI cubriendo WAF, seguridad de API, defensa contra bots, defensa del lado del cliente, seguridad GraphQL y diagnósticos de solicitudes."
+    title="Aplicaciones vulnerables"
+    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant y crAPI que cubren WAF, seguridad de API, defensa bot, defensa del lado del cliente, seguridad GraphQL y diagnóstico de solicitudes."
     href="04-applications/"
   />
   <LinkCard
     title="Integración con F5 XC"
-    description="Utilícelo como miembro del pool de origen detrás de un balanceador de carga HTTP de F5 XC con WAF, Defensa contra Bots y Seguridad de API."
+    description="Úselo como miembro del grupo de origen detrás de un balanceador de carga HTTP de F5 XC con WAF, Defensa Bot y Seguridad de API."
     href="06-integrate/"
   />
   <LinkCard
-    title="Guía de Pruebas de API"
-    description="Catálogo completo de endpoints, mapeo de vulnerabilidades y payloads de ataque para DVGA (GraphQL), RESTaurant (OWASP 2023) y crAPI (microservicios) — para generación de tráfico y desarrollo de perfiles de protección de API."
+    title="Guía de pruebas de API"
+    description="Catálogo exhaustivo de endpoints, mapeo de vulnerabilidades y payloads de ataque para DVGA (GraphQL), RESTaurant (OWASP 2023) y crAPI (microservicios) — para generación de tráfico y desarrollo de perfiles de protección de API."
     href="08-api-testing-guide/"
   />
 </CardGrid>

@@ -1,8 +1,8 @@
 ---
-title: 清除資源
+title: 清除環境
 description: >-
-  使用 terraform destroy 移除所有 Azure 資源，透過 az CLI 驗證清除結果，清理本機狀態檔案，以及移除相關的 F5 XC
-  來源池和 HTTP 負載平衡器
+  使用 terraform destroy 移除所有 Azure 資源、以 az CLI 驗證清除結果、清理本地狀態檔案，並移除相關的 F5 XC 來源池與
+  HTTP 負載平衡器
 sidebar:
   order: 7
 i18n:
@@ -10,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-當實驗課程結束後，請銷毀所有 Azure 資源以停止計費。
+實驗課程結束後，請銷毀所有 Azure 資源以停止計費。
 
 ## Terraform 銷毀
 
-從包含 Terraform 設定的目錄中執行：
+在包含 Terraform 設定的目錄中執行：
 
 ```bash
 terraform plan -destroy
@@ -22,7 +22,7 @@ terraform plan -destroy
 terraform destroy
 ```
 
-Terraform 會提示確認。輸入 `yes` 以繼續。
+Terraform 將提示確認。輸入 `yes` 以繼續。
 
 ## 驗證清除結果
 
@@ -35,9 +35,9 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
   || echo "Resource group still exists"
 ```
 
-## 清理本機狀態
+## 清理本地狀態
 
-移除 Terraform 狀態檔案和快取檔案：
+移除 Terraform 狀態及快取檔案：
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
@@ -45,8 +45,8 @@ rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 
 ## F5 XC 清除
 
-如果您建立了指向此來源伺服器的 F5 XC 資源，請將其移除：
+若您已建立指向此來源伺服器的 F5 XC 資源，請將其移除：
 
 1. 刪除 HTTP 負載平衡器
 2. 刪除來源池
-3. 刪除為測試建立的任何 WAF 原則
+3. 刪除任何為測試而建立的 WAF 政策

@@ -1,17 +1,14 @@
 ---
 title: 來源伺服器
 description: >-
-  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
-  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
-  WAF, API security, bot defense, and client-side defense testing with F5
-  Distributed Cloud
+  執行 nginx 反向代理至 Docker 容器的 Ubuntu 24.04 Azure VM：Juice
+  Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant 和 crAPI，用於 F5
+  Distributed Cloud 的 WAF、API 安全性、機器人防禦及用戶端防禦測試
 template: splash
 sidebar:
   hidden: true
 hero:
-  tagline: >-
-    在 Azure 中部署多應用程式來源伺服器，用於搭配 F5 Distributed Cloud 進行 WAF、API 安全性、Bot
-    防禦及用戶端防禦測試。
+  tagline: 在 Azure 中部署多應用程式來源伺服器，搭配 F5 Distributed Cloud 進行 WAF、API 安全性、機器人防禦及用戶端防禦測試。
   image:
     html: '<div style="font-size:4rem;">&#128421;</div>'
   actions:
@@ -31,32 +28,32 @@ i18n:
 import { CardGrid } from '@astrojs/starlight/components';
 import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
 
-## 本方案提供的內容
+## 提供的功能
 
 <CardGrid>
   <LinkCard
     title="多應用程式來源"
-    description="一台 Ubuntu 24.04 VM（16 vCPU、64 GiB），執行 nginx 作為反向代理，連接 41 個 Docker 容器：Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant 及 crAPI。"
+    description="一台 Ubuntu 24.04 VM（16 vCPU、64 GiB），執行 nginx 作為反向代理，連接至 41 個 Docker 容器：Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant 和 crAPI。"
     href="01-architecture/"
   />
   <LinkCard
     title="Terraform 部署"
-    description="完整的 Azure 基礎設施即程式碼：VNet、PIP、NSG 及 Standard_D16s_v3 VM，搭配 Docker + nginx cloud-init 佈建。包含 60 GiB 磁碟、logrotate 及 journald 容量限制。"
+    description="完整的 Azure 基礎架構即程式碼：VNet、PIP、NSG 及 Standard_D16s_v3 VM，含 Docker + nginx cloud-init 佈建。包含 60 GiB 磁碟、logrotate 及 journald 容量限制。"
     href="03-deploy/"
   />
   <LinkCard
-    title="漏洞應用程式"
-    description="Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant 及 crAPI，涵蓋 WAF、API 安全性、Bot 防禦、用戶端防禦、GraphQL 安全性及請求診斷。"
+    title="易受攻擊的應用程式"
+    description="Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant 和 crAPI，涵蓋 WAF、API 安全性、機器人防禦、用戶端防禦、GraphQL 安全性及請求診斷。"
     href="04-applications/"
   />
   <LinkCard
     title="F5 XC 整合"
-    description="作為 F5 XC HTTP 負載平衡器後端的來源池成員使用，搭配 WAF、Bot Defense 及 API Security。"
+    description="作為 F5 XC HTTP 負載平衡器後端的來源集區成員，搭配 WAF、Bot Defense 及 API Security 使用。"
     href="06-integrate/"
   />
   <LinkCard
     title="API 測試指南"
-    description="完整的端點目錄、漏洞對應及攻擊酬載，適用於 DVGA（GraphQL）、RESTaurant（OWASP 2023）及 crAPI（微服務）— 用於流量產生及 API 防護設定檔開發。"
+    description="完整的端點目錄、弱點對應及攻擊載荷，適用於 DVGA（GraphQL）、RESTaurant（OWASP 2023）和 crAPI（微服務）——用於流量產生與 API 保護設定檔開發。"
     href="08-api-testing-guide/"
   />
 </CardGrid>
