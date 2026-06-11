@@ -1,9 +1,9 @@
 ---
 title: Desmontagem
 description: >-
-  terraform destroy para remover todos os recursos Azure, verificar a limpeza
-  com az CLI, limpar arquivos de estado locais e remover o origin pool e o HTTP
-  load balancer associados ao F5 XC
+  terraform destroy para remover todos os recursos Azure, verificar limpeza com
+  az CLI, limpar arquivos de estado locais e remover o pool de origem e o
+  balanceador de carga HTTP F5 XC associados
 sidebar:
   order: 7
 i18n:
@@ -13,9 +13,9 @@ i18n:
 
 Quando a sessão do laboratório estiver concluída, destrua todos os recursos Azure para interromper a cobrança.
 
-## Terraform Destroy
+## Destruição com Terraform
 
-A partir do diretório que contém a configuração do Terraform:
+No diretório que contém a configuração do Terraform:
 
 ```bash
 terraform plan -destroy
@@ -48,6 +48,6 @@ rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 
 Se você criou recursos F5 XC apontando para este servidor de origem, remova-os:
 
-1. Exclua o HTTP load balancer
-2. Exclua o origin pool
+1. Exclua o balanceador de carga HTTP
+2. Exclua o pool de origem
 3. Exclua quaisquer políticas WAF criadas para testes

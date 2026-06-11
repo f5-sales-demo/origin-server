@@ -1,8 +1,8 @@
 ---
-title: 環境の削除
+title: ティアダウン
 description: >-
-  terraform destroyによるすべてのAzureリソースの削除、az
-  CLIによるクリーンアップの確認、ローカルステートファイルの削除、および関連するF5 XCオリジンプールとHTTPロードバランサーの削除
+  terraform destroy を使用してすべての Azure リソースを削除し、az CLI
+  でクリーンアップを確認し、ローカルステートファイルを削除し、関連する F5 XC オリジンプールおよび HTTP ロードバランサーを削除する
 sidebar:
   order: 7
 i18n:
@@ -10,11 +10,11 @@ i18n:
   translator: machine
 ---
 
-ラボセッションが完了したら、課金を停止するためにすべてのAzureリソースを削除します。
+ラボセッションが完了したら、課金を停止するためにすべての Azure リソースを破棄します。
 
 ## Terraform Destroy
 
-Terraform設定ファイルが含まれるディレクトリから実行します：
+Terraform 設定が含まれるディレクトリから実行します。
 
 ```bash
 terraform plan -destroy
@@ -22,11 +22,11 @@ terraform plan -destroy
 terraform destroy
 ```
 
-Terraformから確認を求められます。`yes` と入力して続行してください。
+Terraform は確認を求めるプロンプトを表示します。続行するには `yes` と入力してください。
 
 ## クリーンアップの確認
 
-すべてのリソースが削除されたことを確認します：
+すべてのリソースが削除されたことを確認します。
 
 ```bash
 az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
@@ -35,18 +35,18 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
   || echo "Resource group still exists"
 ```
 
-## ローカルステートの削除
+## ローカルステートのクリーンアップ
 
-Terraformのステートファイルとキャッシュファイルを削除します：
+Terraform のステートファイルおよびキャッシュファイルを削除します。
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 ```
 
-## F5 XCのクリーンアップ
+## F5 XC のクリーンアップ
 
-このオリジンサーバーを参照するF5 XCリソースを作成した場合は、それらを削除してください：
+このオリジンサーバーを参照する F5 XC リソースを作成した場合は、それらを削除してください。
 
-1. HTTPロードバランサーを削除する
+1. HTTP ロードバランサーを削除する
 2. オリジンプールを削除する
-3. テスト用に作成したWAFポリシーを削除する
+3. テスト用に作成した WAF ポリシーを削除する

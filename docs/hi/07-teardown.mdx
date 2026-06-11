@@ -2,8 +2,8 @@
 title: टियरडाउन
 description: >-
   सभी Azure संसाधनों को हटाने के लिए terraform destroy, az CLI से क्लीनअप
-  सत्यापित करें, स्थानीय state फ़ाइलें साफ़ करें, और संबद्ध F5 XC origin pool
-  तथा HTTP load balancer हटाएं
+  सत्यापित करें, स्थानीय स्टेट फ़ाइलें साफ़ करें, और संबद्ध F5 XC ऑरिजिन पूल और
+  HTTP लोड बैलेंसर हटाएं
 sidebar:
   order: 7
 i18n:
@@ -11,7 +11,7 @@ i18n:
   translator: machine
 ---
 
-जब लैब सत्र पूरा हो जाए, तो बिलिंग रोकने के लिए सभी Azure संसाधनों को नष्ट कर दें।
+जब लैब सत्र पूर्ण हो जाए, तो बिलिंग रोकने के लिए सभी Azure संसाधनों को नष्ट करें।
 
 ## Terraform Destroy
 
@@ -23,7 +23,7 @@ terraform plan -destroy
 terraform destroy
 ```
 
-Terraform पुष्टि के लिए पूछेगा। आगे बढ़ने के लिए `yes` टाइप करें।
+Terraform पुष्टि के लिए संकेत देगा। आगे बढ़ने के लिए `yes` टाइप करें।
 
 ## क्लीनअप सत्यापित करें
 
@@ -36,9 +36,9 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
   || echo "Resource group still exists"
 ```
 
-## स्थानीय State साफ़ करें
+## स्थानीय स्टेट साफ़ करें
 
-Terraform state और कैश्ड फ़ाइलें हटाएं:
+Terraform स्टेट और कैश की गई फ़ाइलें हटाएं:
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
@@ -46,8 +46,8 @@ rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 
 ## F5 XC क्लीनअप
 
-यदि आपने इस origin server की ओर इंगित करने वाले F5 XC संसाधन बनाए हैं, तो उन्हें हटाएं:
+यदि आपने इस ऑरिजिन सर्वर की ओर संकेत करने वाले F5 XC संसाधन बनाए हैं, तो उन्हें हटाएं:
 
-1. HTTP load balancer हटाएं
-2. Origin pool हटाएं
-3. परीक्षण के लिए बनाई गई किसी भी WAF नीतियों को हटाएं
+1. HTTP लोड बैलेंसर हटाएं
+2. ऑरिजिन पूल हटाएं
+3. परीक्षण के लिए बनाई गई कोई भी WAF नीतियां हटाएं

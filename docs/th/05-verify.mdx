@@ -1,9 +1,9 @@
 ---
-title: การตรวจสอบ
+title: ตรวจสอบ
 description: >-
-  การทดสอบ curl smoke test สำหรับ endpoint ของแอปพลิเคชันทั้งเก้าจุด,
-  การตรวจสอบสุขภาพคอนเทนเนอร์ Docker, การตรวจสอบสถานะ nginx, การตรวจสอบล็อก
-  cloud-init และขั้นตอนการแก้ไขปัญหาทั่วไป
+  การทดสอบ curl smoke tests สำหรับ endpoints ของแอปพลิเคชันทั้งเก้ารายการ
+  การตรวจสอบ health ของ Docker container การยืนยันสถานะ nginx การตรวจสอบ log ของ
+  cloud-init และขั้นตอนการแก้ไขปัญหาที่พบบ่อย
 sidebar:
   order: 5
 i18n:
@@ -11,9 +11,9 @@ i18n:
   translator: machine
 ---
 
-## การทดสอบ Smoke Test
+## การทดสอบเบื้องต้น (Smoke Tests)
 
-ดำเนินการตรวจสอบเหล่านี้หลังจากรอให้ cloud-init ทำงานเสร็จสิ้นประมาณ 5--10 นาที
+รันการตรวจสอบเหล่านี้หลังจากรอ 5--10 นาที เพื่อให้ cloud-init ทำงานเสร็จสมบูรณ์
 
 ### Health Endpoint
 
@@ -33,7 +33,7 @@ curl -sf "http://${ORIGIN_IP}/health" | jq .
 }
 ```
 
-### Endpoint ของแอปพลิเคชัน
+### Endpoints ของแอปพลิเคชัน
 
 ```bash
 # Default landing page
@@ -64,27 +64,27 @@ curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{ht
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-ทุกรายการควรส่งคืน `200` (DVWA จะส่งคืน `302` redirect ไปยังหน้า login)
+ทั้งหมดควรคืนค่า `200` (DVWA จะคืนค่า `302` redirect ไปยังหน้า login)
 
-### Smoke Test อัตโนมัติ
+### การทดสอบเบื้องต้นแบบอัตโนมัติ
 
-ที่เก็บข้อมูลมีชุดทดสอบ smoke test จำนวน 39 จุด:
+Repository นี้มีชุดทดสอบ smoke test จำนวน 39 รายการ:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-ชุดทดสอบนี้จะตรวจสอบแอปพลิเคชันทั้ง 9 ตัว, health endpoint, การลงทะเบียน/เข้าสู่ระบบ VAmPI, การทดสอบ round-trip ของ CSD Demo exfil, DVGA GraphQL, RESTaurant Swagger, crAPI บนพอร์ต 8888, nginx gzip และการซ่อนเวอร์ชัน
+ชุดทดสอบนี้จะตรวจสอบแอปพลิเคชันทั้ง 9 รายการ, health endpoints, การลงทะเบียน/เข้าสู่ระบบของ VAmPI, การทดสอบ exfil round-trip ของ CSD Demo, GraphQL ของ DVGA, Swagger ของ RESTaurant, crAPI บนพอร์ต 8888, nginx gzip และการซ่อนเวอร์ชัน
 
-### สถานะคอนเทนเนอร์ Docker
+### สถานะ Docker Container
 
-SSH เข้าสู่ VM และตรวจสอบว่าคอนเทนเนอร์ทั้ง 41 ตัวกำลังทำงาน:
+SSH เข้าสู่ VM และตรวจสอบว่า container ทั้ง 41 รายการกำลังทำงาน:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
 ```
 
-ผลลัพธ์ที่คาดหวัง (คอนเทนเนอร์ 41 ตัว):
+ผลลัพธ์ที่คาดหวัง (41 containers):
 
 ```
 NAMES              STATUS         PORTS
@@ -139,25 +139,25 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ## การแก้ไขปัญหา
 
-### Cloud-init ยังคงทำงานอยู่
+### cloud-init ยังทำงานอยู่
 
-หาก endpoint ส่งคืน 502 หรือปฏิเสธการเชื่อมต่อ cloud-init อาจยังคงอยู่ระหว่างการจัดเตรียม:
+หาก endpoints คืนค่า 502 หรือปฏิเสธการเชื่อมต่อ อาจเป็นเพราะ cloud-init ยังอยู่ในขั้นตอนการจัดเตรียม:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` -- ยังคงจัดเตรียมอยู่ โปรดรอสักครู่
-- `status: done` -- การจัดเตรียมเสร็จสมบูรณ์ ตรวจสอบคอนเทนเนอร์ Docker
-- `status: error` -- ตรวจสอบล็อกด้านล่าง
+- `status: running` -- ยังอยู่ในขั้นตอนการจัดเตรียม รอสักครู่
+- `status: done` -- การจัดเตรียมเสร็จสมบูรณ์ ให้ตรวจสอบ Docker containers
+- `status: error` -- ตรวจสอบ logs ด้านล่าง
 
-### ล็อก Cloud-init
+### Logs ของ cloud-init
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ```
 
-### คอนเทนเนอร์ไม่สามารถเริ่มต้นได้
+### Container ไม่สามารถเริ่มต้นได้
 
 ```bash
 # Check container logs (each app has 4 instances: -1 through -4)
@@ -171,9 +171,9 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs restaurant-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 ```
 
-### nginx ส่งคืน 502
+### nginx คืนค่า 502
 
-คอนเทนเนอร์ upstream ยังไม่พร้อมหรือเกิดข้อผิดพลาด:
+upstream container ยังไม่พร้อมหรือเกิดข้อผิดพลาด:
 
 ```bash
 # Check nginx error log
@@ -188,15 +188,15 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### พื้นที่ดิสก์
 
-อิมเมจ Docker ใช้พื้นที่ประมาณ 4.7 GiB การบันทึกล็อกการเข้าถึงถูกปิดใช้งานเพื่อป้องกันพื้นที่ดิสก์หมดในระหว่างการทดสอบโหลด CDN Logrotate ถูกกำหนดค่าเป็นการป้องกันเชิงลึก (จำกัดที่ 500 MiB) ตรวจสอบการใช้พื้นที่ดิสก์:
+Docker images ใช้พื้นที่ประมาณ 4.7 GiB การบันทึก access log ถูกปิดใช้งานเพื่อป้องกันดิสก์เต็มจากการทดสอบโหลด CDN Logrotate ถูกกำหนดค่าเป็นการป้องกันเชิงลึก (จำกัดที่ 500 MiB) ตรวจสอบการใช้งานดิสก์:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 ```
 
-### หน่วยความจำคอนเทนเนอร์
+### หน่วยความจำของ Container
 
-ตรวจสอบคอนเทนเนอร์ที่เข้าใกล้ขีดจำกัดหน่วยความจำ (เสี่ยงต่อ OOM):
+ตรวจสอบ containers ที่ใกล้ถึงขีดจำกัดหน่วยความจำ (ความเสี่ยง OOM):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
@@ -204,7 +204,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Nam
 
 ### รีสตาร์ททุกอย่าง
 
-หากจำเป็น ให้ build ใหม่และรีสตาร์ทบริการทั้งหมด:
+หากจำเป็น ให้ rebuild และรีสตาร์ทบริการทั้งหมด:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"

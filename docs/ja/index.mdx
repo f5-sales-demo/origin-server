@@ -1,21 +1,20 @@
 ---
 title: オリジンサーバー
 description: >-
-  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
-  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
-  WAF, API security, bot defense, and client-side defense testing with F5
-  Distributed Cloud
+  Ubuntu 24.04 Azure VM が nginx リバースプロキシとして Docker コンテナを実行: Juice
+  Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant、crAPI を使用した F5
+  Distributed Cloud での WAF、API セキュリティ、ボット防御、クライアントサイド防御テスト
 template: splash
 sidebar:
   hidden: true
 hero:
   tagline: >-
-    WAF、APIセキュリティ、ボット防御、クライアントサイド防御をF5 Distributed
-    Cloudでテストするための、マルチアプリオリジンサーバーをAzureにデプロイします。
+    F5 Distributed Cloud を使用した WAF、API セキュリティ、ボット防御、クライアントサイド防御テスト向けに、Azure
+    にマルチアプリのオリジンサーバーをデプロイします。
   image:
     html: '<div style="font-size:4rem;">&#128421;</div>'
   actions:
-    - text: はじめに
+    - text: はじめる
       link: 01-architecture/
       icon: right-arrow
       variant: primary
@@ -31,32 +30,32 @@ i18n:
 import { CardGrid } from '@astrojs/starlight/components';
 import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
 
-## 本構成で提供されるもの
+## このリソースが提供するもの
 
 <CardGrid>
   <LinkCard
     title="マルチアプリオリジン"
-    description="1台のUbuntu 24.04 VM（16 vCPU、64 GiB）上で、nginxをリバースプロキシとして41個のDockerコンテナ（Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant、crAPI）を実行します。"
+    description="1 台の Ubuntu 24.04 VM（16 vCPU、64 GiB）が nginx をリバースプロキシとして 41 個の Docker コンテナを実行: Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant、crAPI。"
     href="01-architecture/"
   />
   <LinkCard
-    title="Terraformデプロイメント"
-    description="完全なAzureインフラストラクチャアズコード：VNet、PIP、NSG、およびDocker + nginx cloud-initプロビジョニングを備えたStandard_D16s_v3 VM。60 GiBディスク、logrotate、journaldの制限設定を含みます。"
+    title="Terraform デプロイメント"
+    description="完全な Azure インフラストラクチャーのコード化: VNet、PIP、NSG、Docker + nginx cloud-init プロビジョニングを備えた Standard_D16s_v3 VM。60 GiB ディスク、logrotate、journald の上限設定を含む。"
     href="03-deploy/"
   />
   <LinkCard
-    title="脆弱性のあるアプリケーション"
-    description="Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant、crAPIにより、WAF、APIセキュリティ、ボット防御、クライアントサイド防御、GraphQLセキュリティ、リクエスト診断をカバーします。"
+    title="脆弱性アプリケーション"
+    description="Juice Shop、DVWA、VAmPI、httpbin、whoami、CSD Demo、DVGA、RESTaurant、crAPI が WAF、API セキュリティ、ボット防御、クライアントサイド防御、GraphQL セキュリティ、リクエスト診断をカバー。"
     href="04-applications/"
   />
   <LinkCard
-    title="F5 XC統合"
-    description="WAF、Bot Defense、API Securityを備えたF5 XC HTTPロードバランサー配下のオリジンプールメンバーとして使用します。"
+    title="F5 XC インテグレーション"
+    description="WAF、Bot 高度防御、API セキュリティを備えた F5 XC HTTP ロードバランサーのオリジンプールメンバーとして使用。"
     href="06-integrate/"
   />
   <LinkCard
-    title="APIテストガイド"
-    description="DVGA（GraphQL）、RESTaurant（OWASP 2023）、crAPI（マイクロサービス）の包括的なエンドポイントカタログ、脆弱性マッピング、攻撃ペイロード — トラフィック生成およびAPI保護プロファイル開発用。"
+    title="API テストガイド"
+    description="DVGA（GraphQL）、RESTaurant（OWASP 2023）、crAPI（マイクロサービス）向けの包括的なエンドポイントカタログ、脆弱性マッピング、攻撃ペイロード — トラフィック生成および API 保護プロファイル開発用。"
     href="08-api-testing-guide/"
   />
 </CardGrid>

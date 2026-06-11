@@ -2,8 +2,8 @@
 title: Überprüfen
 description: >-
   curl-Smoke-Tests für alle neun Anwendungsendpunkte,
-  Docker-Container-Gesundheitsprüfungen, nginx-Statusüberprüfung,
-  cloud-init-Loginspektion und häufige Fehlerbehebungsschritte
+  Docker-Container-Integritätsprüfungen, nginx-Statusverifizierung,
+  cloud-init-Protokollinspektion und häufige Fehlerbehebungsschritte
 sidebar:
   order: 5
 i18n:
@@ -13,9 +13,9 @@ i18n:
 
 ## Smoke-Tests
 
-Führen Sie diese Überprüfungen durch, nachdem Sie 5–10 Minuten für den Abschluss von cloud-init gewartet haben.
+Führen Sie diese Prüfungen durch, nachdem Sie 5–10 Minuten gewartet haben, bis cloud-init abgeschlossen ist.
 
-### Health-Endpunkt
+### Integritätsendpunkt
 
 ```bash
 ORIGIN_IP=$(terraform output -raw public_ip)
@@ -23,7 +23,7 @@ ORIGIN_IP=$(terraform output -raw public_ip)
 curl -sf "http://${ORIGIN_IP}/health" | jq .
 ```
 
-Erwartete Ausgabe:
+Erwartet:
 
 ```json
 {
@@ -64,7 +64,7 @@ curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{ht
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-Alle sollten `200` zurückgeben (DVWA gibt eine `302`-Weiterleitung zur Anmeldeseite zurück).
+Alle sollten `200` zurückgeben (DVWA gibt `302`-Weiterleitung zur Anmeldung zurück).
 
 ### Automatisierter Smoke-Test
 
@@ -74,11 +74,11 @@ Das Repository enthält eine Smoke-Test-Suite mit 39 Prüfpunkten:
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-Diese validiert alle 9 Anwendungen, Health-Endpunkte, VAmPI-Registrierung/-Anmeldung, CSD-Demo-Exfiltrations-Roundtrip, DVGA GraphQL, RESTaurant Swagger, crAPI auf Port 8888, nginx gzip und Versionsverschleierung.
+Diese validiert alle 9 Anwendungen, Integritätsendpunkte, VAmPI-Registrierung/Anmeldung, CSD-Demo-Exfil-Rundtrip, DVGA GraphQL, RESTaurant Swagger, crAPI auf Port 8888, nginx gzip und Versionsverbergung.
 
 ### Docker-Container-Status
 
-Verbinden Sie sich per SSH mit der VM und überprüfen Sie, ob alle 41 Container laufen:
+Stellen Sie eine SSH-Verbindung zur VM her und überprüfen Sie, ob alle 41 Container laufen:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
@@ -139,19 +139,19 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ## Fehlerbehebung
 
-### Cloud-init läuft noch
+### cloud-init läuft noch
 
-Wenn Endpunkte 502 oder "Verbindung abgelehnt" zurückgeben, könnte cloud-init noch mit der Bereitstellung beschäftigt sein:
+Wenn Endpunkte 502 oder „Verbindung verweigert" zurückgeben, kann cloud-init noch bereitstellen:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` – Bereitstellung läuft noch, warten Sie einige Minuten
-- `status: done` – Bereitstellung abgeschlossen, überprüfen Sie die Docker-Container
-- `status: error` – überprüfen Sie die Logs unten
+- `status: running` – wird noch bereitgestellt, warten Sie einige Minuten
+- `status: done` – Bereitstellung abgeschlossen, Docker-Container prüfen
+- `status: error` – Protokolle unten prüfen
 
-### Cloud-init-Logs
+### cloud-init-Protokolle
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
@@ -160,7 +160,7 @@ ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ### Container startet nicht
 
 ```bash
-# Container-Logs prüfen (jede App hat 4 Instanzen: -1 bis -4)
+# Container-Protokolle prüfen (jede App hat 4 Instanzen: -1 bis -4)
 ssh azureuser@${ORIGIN_IP} "sudo docker logs juice-shop-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs dvwa-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs vampi-1 2>&1 | tail -20"
@@ -173,22 +173,22 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 
 ### nginx gibt 502 zurück
 
-Der Upstream-Container ist nicht bereit oder ist abgestürzt:
+Der Upstream-Container ist nicht bereit oder abgestürzt:
 
 ```bash
-# nginx-Fehlerlog prüfen
+# nginx-Fehlerprotokoll prüfen
 ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
 
 # Alle Instanzen einer bestimmten App neu starten
 ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
 
-# Alle Container neu bauen und neu starten
+# Alle Container neu erstellen und neu starten
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
 ```
 
 ### Speicherplatz
 
-Docker-Images verbrauchen ungefähr 4,7 GiB. Das Zugriffs-Logging ist deaktiviert, um eine Festplattenerschöpfung bei CDN-Lasttests zu vermeiden. Logrotate ist als Tiefenverteidigung konfiguriert (500 MiB Obergrenze). Überprüfen Sie die Festplattennutzung:
+Docker-Images verbrauchen ungefähr 4,7 GiB. Die Zugriffsprotokollierung ist deaktiviert, um eine Erschöpfung des Speicherplatzes bei CDN-Lasttests zu verhindern. Logrotate ist als Defense-in-Depth konfiguriert (500-MiB-Grenze). Speicherplatzbelegung überprüfen:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -196,7 +196,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### Container-Arbeitsspeicher
 
-Überprüfen Sie, ob Container sich ihren Speicherlimits nähern (OOM-Risiko):
+Auf Container prüfen, die sich ihren Arbeitsspeichergrenzen nähern (OOM-Risiko):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
@@ -204,7 +204,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Nam
 
 ### Alles neu starten
 
-Falls erforderlich, bauen Sie alle Dienste neu und starten Sie sie neu:
+Falls erforderlich, alle Dienste neu erstellen und neu starten:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"

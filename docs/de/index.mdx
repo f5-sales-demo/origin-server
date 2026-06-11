@@ -1,17 +1,17 @@
 ---
-title: Origin-Server
+title: Ursprungsserver
 description: >-
-  Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice
-  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for
-  WAF, API security, bot defense, and client-side defense testing with F5
+  Ubuntu 24.04 Azure VM mit nginx Reverse Proxy zu Docker-Containern: Juice
+  Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant und crAPI für
+  WAF-, API-Sicherheits-, Bot-Abwehr- und clientseitige Abwehrtests mit F5
   Distributed Cloud
 template: splash
 sidebar:
   hidden: true
 hero:
   tagline: >-
-    Stellen Sie einen Multi-App-Origin-Server in Azure für WAF-,
-    API-Sicherheits-, Bot-Abwehr- und Client-Side-Defense-Tests mit F5
+    Stellen Sie einen Multi-App-Ursprungsserver in Azure für WAF-,
+    API-Sicherheits-, Bot-Abwehr- und clientseitige Abwehrtests mit F5
     Distributed Cloud bereit.
   image:
     html: '<div style="font-size:4rem;">&#128421;</div>'
@@ -32,12 +32,12 @@ i18n:
 import { CardGrid } from '@astrojs/starlight/components';
 import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
 
-## Was dies bereitstellt
+## Was dies bietet
 
 <CardGrid>
   <LinkCard
-    title="Multi-App-Origin"
-    description="Eine Ubuntu 24.04 VM (16 vCPU, 64 GiB), die nginx als Reverse Proxy für 41 Docker-Container betreibt: Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant und crAPI."
+    title="Multi-App-Ursprungsserver"
+    description="Eine Ubuntu 24.04 VM (16 vCPU, 64 GiB) mit nginx als Reverse Proxy zu 41 Docker-Containern: Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant und crAPI."
     href="01-architecture/"
   />
   <LinkCard
@@ -46,18 +46,18 @@ import LinkCard from '@f5xc-salesdemos/docs-theme/components/LinkCard.astro';
     href="03-deploy/"
   />
   <LinkCard
-    title="Verwundbare Anwendungen"
-    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant und crAPI – abdeckend WAF, API-Sicherheit, Bot-Abwehr, Client-Side-Defense, GraphQL-Sicherheit und Anfragediagnose."
+    title="Vulnerable Anwendungen"
+    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant und crAPI decken WAF-, API-Sicherheits-, Bot-Abwehr-, clientseitige Abwehr-, GraphQL-Sicherheits- und Anfragediagnosetests ab."
     href="04-applications/"
   />
   <LinkCard
-    title="F5 XC-Integration"
-    description="Verwendung als Origin-Pool-Mitglied hinter einem F5 XC HTTP Load Balancer mit WAF, Bot Defense und API Security."
+    title="F5 XC Integration"
+    description="Als Ursprungspool-Mitglied hinter einem F5 XC HTTP-Load-Balancer mit Web-App-Firewall (WAF), Bot-Abwehr und API-Sicherheit verwenden."
     href="06-integrate/"
   />
   <LinkCard
     title="API-Testleitfaden"
-    description="Umfassender Endpunktkatalog, Schwachstellenzuordnung und Angriffs-Payloads für DVGA (GraphQL), RESTaurant (OWASP 2023) und crAPI (Microservices) – zur Traffic-Generierung und Entwicklung von API-Schutzprofilen."
+    description="Umfassender Endpunktkatalog, Schwachstellenzuordnung und Angriffspayloads für DVGA (GraphQL), RESTaurant (OWASP 2023) und crAPI (Microservices) — für die Datenverkehrsgenerierung und die Entwicklung von API-Schutzprofilen."
     href="08-api-testing-guide/"
   />
 </CardGrid>

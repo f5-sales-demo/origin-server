@@ -1,9 +1,9 @@
 ---
 title: Verificar
 description: >-
-  Pruebas de humo con curl para los nueve endpoints de aplicación,
-  verificaciones de estado de contenedores Docker, verificación del estado de
-  nginx, inspección de logs de cloud-init y pasos comunes de resolución de
+  Pruebas de humo con curl para los nueve endpoints de la aplicación,
+  comprobaciones de salud de contenedores Docker, verificación del estado de
+  nginx, inspección de registros de cloud-init y pasos comunes de resolución de
   problemas
 sidebar:
   order: 5
@@ -14,9 +14,9 @@ i18n:
 
 ## Pruebas de humo
 
-Ejecute estas verificaciones después de permitir 5--10 minutos para que cloud-init se complete.
+Ejecute estas comprobaciones después de esperar entre 5 y 10 minutos para que cloud-init finalice.
 
-### Endpoint de estado
+### Endpoint de salud
 
 ```bash
 ORIGIN_IP=$(terraform output -raw public_ip)
@@ -34,10 +34,10 @@ Resultado esperado:
 }
 ```
 
-### Endpoints de aplicación
+### Endpoints de la aplicación
 
 ```bash
-# Default landing page
+# Página de inicio predeterminada
 curl -sf "http://${ORIGIN_IP}/" -o /dev/null -w "Landing: %{http_code}\n"
 
 # Juice Shop
@@ -69,13 +69,13 @@ Todos deberían devolver `200` (DVWA devuelve una redirección `302` al inicio d
 
 ### Prueba de humo automatizada
 
-El repositorio incluye un conjunto de pruebas de humo de 39 puntos:
+El repositorio incluye un conjunto de 39 pruebas de humo:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-Esto valida las 9 aplicaciones, endpoints de estado, registro/inicio de sesión de VAmPI, ciclo completo de exfiltración de CSD Demo, GraphQL de DVGA, Swagger de RESTaurant, crAPI en el puerto 8888, gzip de nginx y ocultación de versión.
+Esto valida las 9 aplicaciones, los endpoints de salud, el registro/inicio de sesión de VAmPI, el ciclo completo de exfiltración de CSD Demo, GraphQL de DVGA, Swagger de RESTaurant, crAPI en el puerto 8888, gzip de nginx y el ocultamiento de versión.
 
 ### Estado de los contenedores Docker
 
@@ -85,7 +85,7 @@ Conéctese por SSH a la VM y verifique que los 41 contenedores estén en ejecuci
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
 ```
 
-Salida esperada (41 contenedores):
+Resultado esperado (41 contenedores):
 
 ```
 NAMES              STATUS         PORTS
@@ -142,17 +142,17 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ### Cloud-init aún en ejecución
 
-Si los endpoints devuelven 502 o conexión rechazada, cloud-init puede estar aún aprovisionando:
+Si los endpoints devuelven 502 o la conexión es rechazada, es posible que cloud-init todavía esté aprovisionando:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` -- aún aprovisionando, espere unos minutos
-- `status: done` -- aprovisionamiento completado, verifique los contenedores Docker
-- `status: error` -- revise los logs a continuación
+- `status: running` -- todavía aprovisionando, espere unos minutos
+- `status: done` -- aprovisionamiento completado, revise los contenedores Docker
+- `status: error` -- consulte los registros a continuación
 
-### Logs de cloud-init
+### Registros de cloud-init
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
@@ -189,7 +189,7 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### Espacio en disco
 
-Las imágenes Docker consumen aproximadamente 4.7 GiB. El registro de acceso está deshabilitado para prevenir el agotamiento del disco durante pruebas de carga CDN. Logrotate está configurado como defensa en profundidad (límite de 500 MiB). Verifique el uso de disco:
+Las imágenes de Docker consumen aproximadamente 4,7 GiB. El registro de acceso está deshabilitado para evitar el agotamiento del disco durante las pruebas de carga de CDN. Logrotate está configurado como defensa en profundidad (límite de 500 MiB). Verifique el uso del disco:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -197,7 +197,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### Memoria de los contenedores
 
-Verifique si hay contenedores que se acercan a sus límites de memoria (riesgo de OOM):
+Compruebe si algún contenedor se acerca a sus límites de memoria (riesgo de OOM):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"

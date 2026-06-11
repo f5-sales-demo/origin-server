@@ -1,9 +1,9 @@
 ---
-title: Smantellamento
+title: Teardown
 description: >-
   terraform destroy per rimuovere tutte le risorse Azure, verificare la pulizia
-  con az CLI, eliminare i file di stato locali e rimuovere l'origin pool e
-  l'HTTP load balancer F5 XC associati
+  con az CLI, pulire i file di stato locali e rimuovere il pool di origine e il
+  bilanciatore del carico HTTP F5 XC associati
 sidebar:
   order: 7
 i18n:
@@ -23,7 +23,7 @@ terraform plan -destroy
 terraform destroy
 ```
 
-Terraform richiederà una conferma. Digitare `yes` per procedere.
+Terraform chiederà conferma. Digitare `yes` per procedere.
 
 ## Verifica della pulizia
 
@@ -38,7 +38,7 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
 
 ## Pulizia dello stato locale
 
-Rimuovere lo stato di Terraform e i file memorizzati nella cache:
+Rimuovere lo stato Terraform e i file memorizzati nella cache:
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
@@ -48,6 +48,6 @@ rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 
 Se sono state create risorse F5 XC che puntano a questo server di origine, rimuoverle:
 
-1. Eliminare l'HTTP load balancer
-2. Eliminare l'origin pool
-3. Eliminare eventuali policy WAF create per i test
+1. Eliminare il bilanciatore del carico HTTP
+2. Eliminare il pool di origine
+3. Eliminare eventuali policy WAF create a scopo di test

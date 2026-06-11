@@ -1,9 +1,9 @@
 ---
 title: Verifica
 description: >-
-  Test di verifica curl per tutti e nove gli endpoint applicativi, controlli di
+  Test smoke curl per tutti e nove gli endpoint dell'applicazione, controlli di
   integrità dei container Docker, verifica dello stato di nginx, ispezione dei
-  log di cloud-init e procedure di risoluzione dei problemi comuni
+  log cloud-init e procedure comuni di risoluzione dei problemi
 sidebar:
   order: 5
 i18n:
@@ -11,11 +11,11 @@ i18n:
   translator: machine
 ---
 
-## Test di verifica
+## Test Smoke
 
 Eseguire questi controlli dopo aver atteso 5--10 minuti per il completamento di cloud-init.
 
-### Endpoint di integrità
+### Endpoint di Integrità
 
 ```bash
 ORIGIN_IP=$(terraform output -raw public_ip)
@@ -23,7 +23,7 @@ ORIGIN_IP=$(terraform output -raw public_ip)
 curl -sf "http://${ORIGIN_IP}/health" | jq .
 ```
 
-Output atteso:
+Risultato atteso:
 
 ```json
 {
@@ -33,7 +33,7 @@ Output atteso:
 }
 ```
 
-### Endpoint applicativi
+### Endpoint dell'Applicazione
 
 ```bash
 # Pagina di destinazione predefinita
@@ -66,19 +66,19 @@ curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 
 Tutti dovrebbero restituire `200` (DVWA restituisce un redirect `302` alla pagina di login).
 
-### Test di verifica automatizzato
+### Test Smoke Automatizzato
 
-Il repository include una suite di test di verifica con 39 controlli:
+Il repository include una suite di test smoke a 39 punti:
 
 ```bash
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-Questo valida tutte le 9 applicazioni, gli endpoint di integrità, la registrazione/login di VAmPI, il ciclo completo di esfiltrazione di CSD Demo, GraphQL di DVGA, Swagger di RESTaurant, crAPI sulla porta 8888, la compressione gzip di nginx e l'occultamento della versione.
+Questo valida tutte le 9 applicazioni, gli endpoint di integrità, la registrazione/login di VAmPI, il round-trip di esfiltrazione di CSD Demo, GraphQL di DVGA, Swagger di RESTaurant, crAPI sulla porta 8888, gzip di nginx e il mascheramento della versione.
 
-### Stato dei container Docker
+### Stato dei Container Docker
 
-Accedere alla VM tramite SSH e verificare che tutti i 41 container siano in esecuzione:
+Accedere via SSH alla VM e verificare che tutti i 41 container siano in esecuzione:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
@@ -137,7 +137,7 @@ whoami-4           Up X minutes   127.0.0.1:8085->80/tcp
 ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pager"
 ```
 
-## Risoluzione dei problemi
+## Risoluzione dei Problemi
 
 ### Cloud-init ancora in esecuzione
 
@@ -147,17 +147,17 @@ Se gli endpoint restituiscono 502 o connessione rifiutata, cloud-init potrebbe e
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` -- ancora in fase di provisioning, attendere qualche minuto
+- `status: running` -- provisioning ancora in corso, attendere qualche minuto
 - `status: done` -- provisioning completato, verificare i container Docker
-- `status: error` -- consultare i log di seguito
+- `status: error` -- controllare i log riportati di seguito
 
-### Log di cloud-init
+### Log di Cloud-init
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ```
 
-### Container che non si avvia
+### Container non si avvia
 
 ```bash
 # Controllare i log del container (ogni app ha 4 istanze: da -1 a -4)
@@ -173,13 +173,13 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 
 ### nginx restituisce 502
 
-Il container upstream non è pronto o si è arrestato in modo anomalo:
+Il container upstream non è pronto o è andato in crash:
 
 ```bash
 # Controllare il log degli errori di nginx
 ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
 
-# Riavviare tutte le istanze di una specifica app
+# Riavviare tutte le istanze di un'app specifica
 ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
 
 # Ricostruire e riavviare tutti i container
@@ -188,7 +188,7 @@ ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build &
 
 ### Spazio su disco
 
-Le immagini Docker occupano circa 4,7 GiB. La registrazione degli accessi è disabilitata per prevenire l'esaurimento del disco durante i test di carico CDN. Logrotate è configurato come difesa in profondità (limite di 500 MiB). Verificare l'utilizzo del disco:
+Le immagini Docker consumano circa 4,7 GiB. La registrazione degli accessi è disabilitata per evitare l'esaurimento del disco durante i test di carico CDN. Logrotate è configurato come difesa in profondità (limite di 500 MiB). Verificare l'utilizzo del disco:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -196,7 +196,7 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### Memoria dei container
 
-Verificare la presenza di container che si avvicinano ai propri limiti di memoria (rischio OOM):
+Verificare i container che si avvicinano ai limiti di memoria (rischio OOM):
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"

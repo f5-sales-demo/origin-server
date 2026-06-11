@@ -1,8 +1,8 @@
 ---
 title: 集成
 description: >-
-  将虚拟机配置为 F5 XC 源站池成员，配置 WAF、Bot Defense、API Discovery 和 Client-Side Defense
-  策略；通过 HTTP 负载均衡器进行基于路径的路由；通过 /whoami 验证请求头注入
+  将虚拟机配置为 F5 XC 源池成员，支持 WAF、Bot Defense、API Discovery 和 Client-Side Defense
+  策略；通过 HTTP 负载均衡器实现基于路径的路由；通过 /whoami 验证请求头注入
 sidebar:
   order: 6
 i18n:
@@ -10,58 +10,58 @@ i18n:
   translator: machine
 ---
 
-## F5 XC 源站池集成
+## F5 XC 源池集成
 
-此源服务器设计用作 F5 Distributed Cloud HTTP 负载均衡器后端的**源站池成员**。F5 XC 平台在此源站前提供 WAF、Bot Defense、API Security 和 Client-Side Defense 防护。
+此源服务器设计为在 F5 Distributed Cloud HTTP 负载均衡器后方作为**源池成员**使用。F5 XC 平台在此源服务器前端提供 WAF、Bot Defense、API Security 和 Client-Side Defense 功能。
 
 ### 架构
 
 ```
-终端用户 -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> 源服务器虚拟机 (nginx -> Docker 应用)
+End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker apps)
 ```
 
-### 源站池配置
+### 源池配置
 
-创建一个 F5 XC 源站池，指向此虚拟机的公网 IP：
+创建一个指向此虚拟机公网 IP 的 F5 XC 源池：
 
 | 设置 | 值 |
 |---|---|
-| **源服务器类型** | Public IP of Origin Server |
+| **源服务器类型** | 源服务器的公网 IP |
 | **IP 地址** | `<terraform output public_ip>` |
 | **端口** | `80` |
 | **健康检查** | HTTP，路径 `/health` |
 
 ### HTTP 负载均衡器配置
 
-使用源站池创建 HTTP 负载均衡器：
+使用源池创建 HTTP 负载均衡器：
 
 | 设置 | 值 |
 |---|---|
 | **域名** | 您的演示域名（例如 `demo.example.com`） |
-| **源站池** | 上面创建的池 |
-| **WAF** | 绑定您的 WAF 策略 |
-| **Bot Defense** | 根据需要启用 |
+| **源池** | 上面创建的源池 |
+| **WAF** | 附加您的 WAF 策略 |
+| **Bot Defense** | 按需启用 |
 | **API Discovery** | 为 VAmPI 端点启用 |
 
 ### 基于路径的路由
 
-每个应用程序都可以通过负载均衡器的路径前缀进行访问：
+每个应用程序均可通过负载均衡器的路径前缀访问：
 
-| F5 XC LB URL | 源站路径 | 应用程序 |
+| F5 XC LB URL | 源路径 | 应用程序 |
 |---|---|---|
-| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop（4 个实例，cookie 会话保持） |
-| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA（4 个实例 + MariaDB，cookie 会话保持） |
-| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI（4 个实例，ip_hash 会话保持） |
+| `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop（4 个实例，Cookie 粘性） |
+| `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA（4 个实例 + MariaDB，Cookie 粘性） |
+| `https://demo.example.com/vampi/` | `/vampi/` | VAmPI（4 个实例，ip_hash 粘性） |
 | `https://demo.example.com/httpbin/` | `/httpbin/` | httpbin（4 个实例，轮询） |
 | `https://demo.example.com/whoami/` | `/whoami/` | 请求诊断（4 个实例） |
-| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo（4 个实例，ip_hash 会话保持） |
-| `https://demo.example.com/dvga/` | `/dvga/` | DVGA（4 个实例，ip_hash 会话保持） |
+| `https://demo.example.com/csd-demo/` | `/csd-demo/` | CSD Demo（4 个实例，ip_hash 粘性） |
+| `https://demo.example.com/dvga/` | `/dvga/` | DVGA（4 个实例，ip_hash 粘性） |
 | `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant（4 个实例，轮询） |
-| `https://demo.example.com/health` | `/health` | 健康检查（nginx 直接响应） |
+| `https://demo.example.com/health` | `/health` | 健康检查（nginx 直接处理） |
 
 ### 验证 F5 XC 请求头注入
 
-使用 whoami 端点验证 F5 XC 向到达源站的请求注入了哪些请求头：
+使用 whoami 端点验证 F5 XC 向到达源服务器的请求中注入了哪些请求头：
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -73,15 +73,15 @@ curl -sk "https://${LB_DOMAIN}/whoami/"
 
 | 请求头 | 含义 |
 |---|---|
-| `X-Forwarded-For` | 通过 F5 XC 的客户端 IP 链 |
+| `X-Forwarded-For` | 经过 F5 XC 的客户端 IP 链 |
 | `True-Client-IP` | 原始客户端 IP |
-| `X-Forwarded-Proto` | 如果 TLS 在 F5 XC 终止则为 `https` |
+| `X-Forwarded-Proto` | TLS 在 F5 XC 终止时为 `https` |
 | `X-Volterra-Bot-Type` | Bot 分类（启用 Bot Defense 时） |
-| `X-Request-ID` | F5 XC 请求跟踪 ID |
+| `X-Request-ID` | F5 XC 请求追踪 ID |
 
 ### 通过 F5 XC 进行 WAF 测试
 
-在 HTTP 负载均衡器上附加 WAF 策略后，测试攻击载荷：
+为 HTTP 负载均衡器附加 WAF 策略后，测试攻击载荷：
 
 ```bash
 LB_DOMAIN="demo.example.com"
@@ -105,7 +105,7 @@ curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
 在 HTTP 负载均衡器上启用 API Discovery 以映射 VAmPI 的 API 端点：
 
 ```bash
-# 这些请求会在 F5 XC 中构建 API 清单
+# 以下请求将在 F5 XC 中构建 API 资产清单
 curl -sk "https://${LB_DOMAIN}/vampi/users/v1"
 curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/register" \
   -H "Content-Type: application/json" \
@@ -117,35 +117,35 @@ curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
 
 ### crAPI 集成（端口 8888）
 
-crAPI 运行在专用端口（8888）上，因为它是一个单页应用程序，硬编码了 API 路径，无法通过路径前缀方式提供服务。要将 crAPI 与 F5 XC 集成：
+crAPI 运行在专用端口（8888）上，原因是它是一个单页应用程序，其 API 路径已硬编码，无法在路径前缀后方提供服务。如需将 crAPI 与 F5 XC 集成：
 
 | 设置 | 值 |
 |---|---|
-| **源服务器类型** | Public IP of Origin Server |
+| **源服务器类型** | 源服务器的公网 IP |
 | **IP 地址** | `<terraform output public_ip>` |
 | **端口** | `8888` |
 | **健康检查** | HTTP，路径 `/` |
 
-为 crAPI 在端口 8888 上创建一个**单独的源站池**，或将第二个源站池成员添加到现有池中（端口为 8888），并使用路由规则来引导流量：
+为 crAPI 在端口 8888 上创建一个**独立的源池**，或者向现有源池添加第二个端口为 8888 的源池成员，并使用路由规则来引导流量：
 
 ```bash
-# 通过 F5 XC 测试 crAPI（如果已配置）
+# 通过 F5 XC 测试 crAPI（如已配置）
 curl -sk "https://${LB_DOMAIN}:8888/"
 
-# 或者如果在同一 LB 域名上使用路由规则：
-# 配置 F5 XC 路由规则，匹配 Host 头或路径前缀
-# 以转发到 crAPI 源站池（端口 8888）
+# 或者，如果在同一 LB 域名上使用路由规则：
+# 配置 F5 XC 路由规则，匹配 Host 请求头或路径前缀，
+# 将流量转发至 crAPI 源池（端口 8888）
 ```
 
 :::note
-源虚拟机上的 NSG 允许端口 8888 的入站流量。无需额外的 Azure 网络更改。
+源虚拟机上的 NSG 允许端口 8888 的入站流量。无需对 Azure 网络进行额外更改。
 :::
 
-### 会话保持感知
+### 粘性会话说明
 
-源服务器在内部使用 nginx 会话保持，将有状态应用程序路由到一致的后端容器。在配置 F5 XC HTTP 负载均衡器时，请注意：
+源服务器在内部使用 nginx 粘性会话，将有状态应用程序的请求路由到固定的后端容器。在配置 F5 XC HTTP 负载均衡器时，请注意以下事项：
 
-| 应用程序 | 会话保持方式 | 原因 |
+| 应用程序 | 粘性方式 | 原因 |
 |---|---|---|
 | Juice Shop | `hash $cookie_token` | Node.js 会话状态 |
 | DVWA | `hash $cookie_PHPSESSID` | PHP 会话状态 |
@@ -153,18 +153,18 @@ curl -sk "https://${LB_DOMAIN}:8888/"
 | CSD Demo | `ip_hash` | 每个实例独立的内存数据泄露日志 |
 | DVGA | `ip_hash` | 每个实例独立的 SQLite 数据库 |
 | RESTaurant | 轮询 | 共享 PostgreSQL 后端 |
-| crAPI | --（单端口 8888） | 7 个微服务，PostgreSQL + MongoDB |
+| crAPI | -- （单端口 8888） | 7 个微服务，PostgreSQL + MongoDB |
 | httpbin | 轮询 | 无状态 |
 | whoami | 轮询 | 无状态 |
 
-F5 XC 不需要复制这些会话保持 -- 源虚拟机上的 nginx 负责后端路由。F5 XC 应将源站视为单个端点（虚拟机的公网 IP，端口 80）。
+F5 XC 无需复制这些粘性会话——源虚拟机上的 nginx 负责处理后端路由。F5 XC 应将源服务器视为单一端点（虚拟机公网 IP 的 80 端口）。
 
 ### 多组件架构
 
-与 CDN 模拟器结合使用时，完整的实验架构为：
+与 CDN 模拟器结合使用时，完整的实验室架构如下：
 
 ```
-终端用户 -> CDN 模拟器 (nginx 缓存) -> F5 XC HTTP LB -> 源服务器（此组件）
+End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this component)
 ```
 
-CDN 模拟器使用 F5 XC HTTP 负载均衡器 VIP 作为其源站，而 F5 XC 负载均衡器使用此源服务器作为其后端。这创建了一个真实的多层架构，用于全面测试。
+CDN 模拟器以 F5 XC HTTP 负载均衡器的虚拟 IP 作为其源，F5 XC 负载均衡器以此源服务器作为其后端。这构建了一个真实的多层架构，可用于全面的测试场景。

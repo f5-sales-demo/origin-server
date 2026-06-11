@@ -1,9 +1,9 @@
 ---
-title: التفكيك
+title: الإزالة
 description: >-
-  terraform destroy لإزالة جميع موارد Azure، والتحقق من التنظيف باستخدام az CLI،
-  وتنظيف ملفات الحالة المحلية، وإزالة مجمع الأصل وموازن تحميل HTTP المرتبطين بـ
-  F5 XC
+  استخدام terraform destroy لإزالة جميع موارد Azure، والتحقق من التنظيف باستخدام
+  az CLI، وتنظيف ملفات الحالة المحلية، وإزالة خادم المصدر المرتبط وموازن تحميل
+  HTTP في F5 XC
 sidebar:
   order: 7
 i18n:
@@ -11,9 +11,9 @@ i18n:
   translator: machine
 ---
 
-عند اكتمال جلسة المختبر، قم بتدمير جميع موارد Azure لإيقاف الفوترة.
+عند اكتمال جلسة المختبر، قم بإزالة جميع موارد Azure لإيقاف الفوترة.
 
-## تدمير Terraform
+## إزالة Terraform
 
 من الدليل الذي يحتوي على تكوين Terraform:
 
@@ -27,7 +27,7 @@ terraform destroy
 
 ## التحقق من التنظيف
 
-تأكد من إزالة جميع الموارد:
+تأكيد إزالة جميع الموارد:
 
 ```bash
 az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
@@ -38,7 +38,7 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
 
 ## تنظيف الحالة المحلية
 
-قم بإزالة حالة Terraform والملفات المخزنة مؤقتاً:
+إزالة حالة Terraform والملفات المؤقتة:
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
@@ -46,8 +46,8 @@ rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 
 ## تنظيف F5 XC
 
-إذا قمت بإنشاء موارد F5 XC تشير إلى خادم الأصل هذا، فقم بإزالتها:
+إذا قمت بإنشاء موارد F5 XC تشير إلى خادم المصدر هذا، قم بإزالتها:
 
 1. احذف موازن تحميل HTTP
-2. احذف مجمع الأصل
-3. احذف أي سياسات WAF تم إنشاؤها للاختبار
+2. احذف مجموعة المصدر
+3. احذف أي سياسات جدار حماية تطبيقات الويب (WAF) تم إنشاؤها للاختبار

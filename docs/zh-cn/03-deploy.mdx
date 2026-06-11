@@ -1,87 +1,87 @@
 ---
 title: 部署
 description: >-
-  遵循演示资源标准的 Terraform IaC 部署 — 9 个 terraform 文件，支持 Azure AD 部署者自动解析、25
-  个输出，以及通过强化的 cloud-init 配置在 9 个应用程序中部署 41 个 Docker 容器。
+  遵循 Demo Resource Standard 的 Terraform IaC 部署 — 包含 Azure AD 部署者自动解析的 9 个
+  terraform 文件、25 个输出，以及跨 9 个应用运行 41 个 Docker 容器的加固 cloud-init 配置。
 sidebar:
   order: 3
 i18n:
-  sourceHash: 29cfe8b81067
+  sourceHash: 46d2d343bc70
   translator: machine
 ---
 
-所有 Terraform 文件位于 [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform) 目录中。克隆仓库即可直接部署：
+所有 Terraform 文件均位于 [`terraform/`](https://github.com/f5xc-salesdemos/origin-server/tree/main/terraform) 目录中。克隆仓库并直接部署：
 
 ```bash
 git clone https://github.com/f5xc-salesdemos/origin-server.git
 cd origin-server/terraform
 cp terraform.tfvars.example terraform.tfvars
-# 编辑 terraform.tfvars，填入您的 Azure 订阅 ID 和 SSH 密钥路径
+# 使用您的 Azure 订阅 ID 和 SSH 密钥路径编辑 terraform.tfvars
 ```
 
 ## Terraform 配置
 
 ### Terraform 文件结构
 
-terraform 目录包含 9 个文件，遵循演示资源标准：
+terraform 目录包含 9 个遵循 Demo Resource Standard 的文件：
 
-- `versions.tf` — Terraform 和 provider 版本约束（azurerm ~> 4.0、azuread ~> 3.0）
+- `versions.tf` — Terraform 及 provider 版本约束（azurerm ~> 4.0，azuread ~> 3.0）
 - `providers.tf` — Azure RM 和 Azure AD provider 配置
 - `data.tf` — 用于部署者自动解析的 Azure AD 数据源
-- `locals.tf` — 部署者解析、Azure 云采用框架资源命名、标准标签
+- `locals.tf` — 部署者解析、Azure Cloud Adoption Framework 资源命名、标准标签
 - `main.tf` — 资源组（命名为 `rg-origin-server-{environment}-{deployer}`）
 - `variables.tf` — 所有输入变量（1 个必填，8 个可选）
 - `network.tf` — VNet（10.200.0.0/16）、子网、公共 IP、NSG（端口 22/80/443/8888）、NIC
 - `vm.tf` — 使用 templatefile() 通过 cloud-init 配置的 Ubuntu 24.04 虚拟机
-- `outputs.tf` — 25 个输出（15 个标准输出 + 10 个组件特定的应用程序 URL）
+- `outputs.tf` — 25 个输出（15 个标准输出 + 10 个组件专属应用程序 URL）
 
 `main.tf` 仅包含资源组：
 
 ```hcl file=../_data/main.tf
 ```
 
-`variables.tf` 定义所有可配置参数。`deployer` 标识符从您的 Azure AD 账户自动解析 — 您只需设置 `subscription_id`。`vm_size` 默认值为 `Standard_D16s_v3`（16 vCPU，64 GiB 内存），专为 41 个 Docker 容器而设定：
+`variables.tf` 定义所有可配置参数。`deployer` 标识符会从您的 Azure AD 账户自动解析 — 您只需设置 `subscription_id`。`vm_size` 默认值为 `Standard_D16s_v3`（16 vCPU，64 GiB RAM），为运行 41 个 Docker 容器而配置：
 
 ```hcl file=../_data/variables.tf
 ```
 
 ### 网络基础设施
 
-`network.tf` 创建 VNet、子网、公共 IP、NSG（端口 22/80/443/8888）和 NIC。端口 8888 是 crAPI 所需的，该应用运行在专用端口上：
+`network.tf` 创建 VNet、子网、公共 IP、NSG（端口 22/80/443/8888）和 NIC。端口 8888 是 crAPI 所必需的，该应用在专用端口上运行：
 
 ```hcl file=../_data/network.tf
 ```
 
-### 带有 Cloud-Init 的虚拟机
+### 使用 Cloud-Init 的虚拟机
 
-`vm.tf` 创建 Ubuntu 24.04 虚拟机并传递 cloud-init 配置脚本。60 GiB 高级 SSD 为 Docker 镜像和容器卷提供了充足的空间：
+`vm.tf` 创建 Ubuntu 24.04 虚拟机并传入 cloud-init 配置脚本。60 GiB 高级 SSD 为 Docker 镜像和容器卷提供了充足的存储空间：
 
 ```hcl file=../_data/vm.tf
 ```
 
 ### Cloud-Init 配置
 
-`cloud-init.yaml` 使用强化配置来配置虚拟机。共享辅助库（`/usr/local/lib/cloud-init-helpers.sh`）为所有网络操作提供重试逻辑，并将进度日志记录到 `/var/log/cloud-init-progress.log`。主动健康检查轮询取代了固定时长的 sleep 来检测容器就绪状态。它配置了：
+`cloud-init.yaml` 以加固配置对虚拟机进行初始化。共享辅助库（`/usr/local/lib/cloud-init-helpers.sh`）为所有网络操作提供重试逻辑，并将进度日志写入 `/var/log/cloud-init-progress.log`。主动健康检查轮询取代了固定时长的 sleep 等待，用于判断容器就绪状态。配置内容包括：
 
-- **内核调优**：TCP keepalive、TIME_WAIT 重用、2M tw_buckets、64K somaxconn
-- **nginx**：8 个带粘性会话的上游块（ip_hash、cookie hash）、keepalive 连接池（64--128）、Juice Shop 的代理缓存、error_log crit 级别
-- **Docker Compose**：9 个应用程序中的 41 个容器，每个容器有 CPU/内存限制
+- **内核调优**：TCP keepalive、TIME_WAIT 复用、2M tw_buckets、64K somaxconn
+- **nginx**：8 个上游块，配置粘性会话（ip_hash、cookie hash）、keepalive 连接池（64--128）、Juice Shop 的代理缓存，error_log 级别为 crit
+- **Docker Compose**：跨 9 个应用运行 41 个容器，每个容器配置 CPU/内存限制
 - **自定义构建**：DVWA-FPM（php-fpm，pm.max_requests=200）、CSD Demo（Flask + gunicorn）、RESTaurant（从 GitHub 克隆）
-- **Worker 回收**：uvicorn --limit-max-requests 200（RESTaurant）、pm.max_requests 200（DVWA-FPM），防止持续负载下的内存泄漏
+- **Worker 回收**：uvicorn --limit-max-requests 200（RESTaurant）、pm.max_requests 200（DVWA-FPM），以防止持续负载下的内存泄漏
 
 ```yaml file=../_data/cloud-init.yaml
 ```
 
 ### 输出
 
-`outputs.tf` 遵循演示资源标准暴露 25 个输出 — 15 个所有演示资源共享的标准输出（`deployer`、`public_ip`、`private_ip`、`ssh_command`、`resource_group_name`、`vm_name`、`nsg_name`、`vnet_name`、`subnet_id`、`component`、`environment`、`resource_group_id`、`vm_id`、`nsg_id`、`location`）加上 10 个组件特定的应用程序 URL（`origin_url`、`health_check_url`、`juice_shop_url`、`dvwa_url`、`vampi_url`、`httpbin_url`、`whoami_url`、`dvga_url`、`restaurant_url`、`crapi_url`）：
+`outputs.tf` 遵循 Demo Resource Standard 暴露 25 个输出 — 15 个所有 demo 资源共享的标准输出（`deployer`、`public_ip`、`private_ip`、`ssh_command`、`resource_group_name`、`vm_name`、`nsg_name`、`vnet_name`、`subnet_id`、`component`、`environment`、`resource_group_id`、`vm_id`、`nsg_id`、`location`），以及 10 个组件专属的应用程序 URL（`origin_url`、`health_check_url`、`juice_shop_url`、`dvwa_url`、`vampi_url`、`httpbin_url`、`whoami_url`、`dvga_url`、`restaurant_url`、`crapi_url`）：
 
 ```hcl file=../_data/outputs.tf
 ```
 
 ### 示例变量文件
 
-将 `terraform.tfvars.example` 复制为 `terraform.tfvars` 并填入您的值。`.gitignore` 排除了 `terraform.tfvars` 以防止提交凭据：
+将 `terraform.tfvars.example` 复制为 `terraform.tfvars` 并填入您的值。`.gitignore` 已排除 `terraform.tfvars`，以防止将凭据提交到版本控制：
 
 ```hcl file=../_data/terraform.tfvars.example
 ```
@@ -90,7 +90,7 @@ terraform 目录包含 9 个文件，遵循演示资源标准：
 
 ```bash
 cp terraform.tfvars.example terraform.tfvars
-# 编辑 terraform.tfvars，填入您的 Azure 订阅 ID 和 SSH 密钥路径
+# 使用您的 Azure 订阅 ID 和 SSH 密钥路径编辑 terraform.tfvars
 
 terraform init
 
@@ -99,11 +99,11 @@ terraform plan
 terraform apply
 ```
 
-部署成功后，Terraform 会输出公共 IP、SSH 命令和应用程序 URL。
+部署成功后，Terraform 将输出公共 IP、SSH 命令和应用程序 URL。
 
-## 部署后
+## 部署后操作
 
-`terraform apply` 完成后，请等待 5--10 分钟让 cloud-init 完成 Docker 安装、容器镜像拉取和 nginx 配置。Docker 镜像拉取是瓶颈 -- 仅 Juice Shop 就约 400 MiB。
+`terraform apply` 完成后，请等待 5--10 分钟，让 cloud-init 完成 Docker 安装、容器镜像拉取和 nginx 配置。Docker 镜像拉取是主要瓶颈 — 仅 Juice Shop 就约 400 MiB。
 
 验证健康检查端点：
 
@@ -121,20 +121,20 @@ curl -s "http://$(terraform output -raw public_ip)/health" | jq .
 }
 ```
 
-### DVWA 数据库设置
+### DVWA 数据库初始化
 
-DVWA 需要一次性的数据库初始化。在浏览器中打开 `http://<PUBLIC_IP>/dvwa/setup.php`，然后点击 **Create / Reset Database**。默认凭据为 `admin` / `password`。
+DVWA 需要进行一次性数据库初始化。在浏览器中打开 `http://<PUBLIC_IP>/dvwa/setup.php`，然后点击 **Create / Reset Database**。默认凭据为 `admin` / `password`。
 
 :::note
-VAmPI 的 SQLite 数据库由其 gunicorn 入口脚本自动初始化。每个容器在启动时运行 `db.create_all()`，因此无需手动干预。
+VAmPI 的 SQLite 数据库由其 gunicorn 入口脚本自动初始化。每个容器在启动时会执行 `db.create_all()`，因此无需手动干预。
 :::
 
 ## 连接下游组件
 
-部署完成后，其他组件使用源服务器的输出作为其输入：
+部署完成后，其他组件将使用源服务器的输出作为其输入：
 
 ```bash
-# CDN 模拟器 — 将 origin-server 的公共 IP 作为其上游传递
+# CDN Simulator — 将 origin-server 的公共 IP 作为其上游地址传入
 cd ../cdn-simulator/terraform
 origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
 cat > terraform.tfvars <<EOF
@@ -143,7 +143,7 @@ origin_server   = "http://${origin_ip}"
 origin_host     = "${origin_ip}:80"
 EOF
 
-# 流量生成器 — 传递 F5 XC 负载均衡器 FQDN（而非直接使用源 IP）
+# Traffic Generator — 传入 F5 XC 负载均衡器 FQDN（而非直接使用源 IP）
 cd ../traffic-generator/terraform
 cat > terraform.tfvars <<EOF
 subscription_id = "your-subscription-id"
@@ -153,8 +153,8 @@ EOF
 
 | 输出 | 下游组件 | 输入变量 |
 |---|---|---|
-| `public_ip` | CDN 模拟器 | `origin_server`（带 `http://` 前缀） |
-| `public_ip` | CDN 模拟器 | `origin_host`（带 `:80` 后缀，无协议） |
+| `public_ip` | CDN Simulator | `origin_server`（加 `http://` 前缀） |
+| `public_ip` | CDN Simulator | `origin_host`（加 `:80` 后缀，无协议头） |
 | `public_ip` | F5 XC Origin Pool | 源服务器地址 |
 
-继续前往[应用程序](../04-applications/)查看使用指南，或前往[验证](../05-verify/)进行冒烟测试。
+继续前往 [应用程序](../04-applications/) 查看使用指南，或前往 [验证](../05-verify/) 执行冒烟测试。

@@ -1,8 +1,8 @@
 ---
-title: インテグレーション
+title: 統合
 description: >-
-  VMをF5 XCオリジンプールメンバーとして構成し、WAF、Bot Defense、API Discovery、Client-Side
-  Defenseポリシーを適用。HTTPロードバランサーによるパスベースルーティング、/whoamiを使用したヘッダーインジェクションの検証
+  VMをF5 XCオリジンプールメンバーとして設定し、WAF、Bot Defense、API
+  Discovery、クライアントサイド防御ポリシーを構成する。HTTPロードバランサーを通じたパスベースのルーティング、/whoamiによるヘッダーインジェクション確認
 sidebar:
   order: 6
 i18n:
@@ -12,40 +12,40 @@ i18n:
 
 ## F5 XC オリジンプール統合
 
-このオリジンサーバーは、F5 Distributed Cloud HTTPロードバランサーの背後で**オリジンプールメンバー**として使用するように設計されています。F5 XCプラットフォームは、このオリジンの前段でWAF、Bot Defense、API Security、Client-Side Defenseを提供します。
+このオリジンサーバーは、F5 Distributed Cloud HTTPロードバランサーの背後にある**オリジンプールメンバー**として使用するよう設計されています。F5 XC プラットフォームは、このオリジンの前段でWeb アプリファイアウォール (WAF)、Bot Defense、API セキュリティ、およびクライアントサイド防御を提供します。
 
 ### アーキテクチャ
 
 ```
-エンドユーザー -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> オリジンサーバーVM (nginx -> Dockerアプリ)
+End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker apps)
 ```
 
-### オリジンプールの構成
+### オリジンプールの設定
 
 このVMのパブリックIPを指すF5 XCオリジンプールを作成します：
 
 | 設定 | 値 |
 |---|---|
-| **オリジンサーバータイプ** | Public IP of Origin Server |
+| **オリジンサーバータイプ** | オリジンサーバーのパブリックIP |
 | **IPアドレス** | `<terraform output public_ip>` |
 | **ポート** | `80` |
 | **ヘルスチェック** | HTTP、パス `/health` |
 
-### HTTPロードバランサーの構成
+### HTTPロードバランサーの設定
 
 オリジンプールを使用してHTTPロードバランサーを作成します：
 
 | 設定 | 値 |
 |---|---|
-| **ドメイン** | デモ用ドメイン（例：`demo.example.com`） |
+| **ドメイン** | デモドメイン（例：`demo.example.com`） |
 | **オリジンプール** | 上記で作成したプール |
-| **WAF** | WAFポリシーをアタッチ |
+| **WAF** | WAFポリシーを適用 |
 | **Bot Defense** | 必要に応じて有効化 |
-| **API Discovery** | VAmPIエンドポイント用に有効化 |
+| **API Discovery** | VAmPIエンドポイント向けに有効化 |
 
-### パスベースルーティング
+### パスベースのルーティング
 
-各アプリケーションは、ロードバランサーを通じてパスプレフィックスでアクセスできます：
+各アプリケーションは、ロードバランサーを通じてそれぞれのパスプレフィックスでアクセスできます：
 
 | F5 XC LB URL | オリジンパス | アプリケーション |
 |---|---|---|
@@ -59,7 +59,7 @@ i18n:
 | `https://demo.example.com/restaurant/` | `/restaurant/` | RESTaurant（4インスタンス、ラウンドロビン） |
 | `https://demo.example.com/health` | `/health` | ヘルスチェック（nginx直接） |
 
-### F5 XC ヘッダーインジェクションの検証
+### F5 XC ヘッダーインジェクションの確認
 
 whoamiエンドポイントを使用して、F5 XCがオリジンに到達するリクエストにインジェクトするヘッダーを確認します：
 
@@ -69,43 +69,43 @@ LB_DOMAIN="demo.example.com"
 curl -sk "https://${LB_DOMAIN}/whoami/"
 ```
 
-レスポンスで以下のF5 XCインジェクトヘッダーを確認してください：
+レスポンスにおいて、以下のF5 XCによってインジェクトされたヘッダーを確認してください：
 
 | ヘッダー | 意味 |
 |---|---|
-| `X-Forwarded-For` | F5 XCを経由したクライアントIPチェーン |
-| `True-Client-IP` | 元のクライアントIP |
-| `X-Forwarded-Proto` | F5 XCでTLSが終端される場合 `https` |
-| `X-Volterra-Bot-Type` | ボット分類（Bot Defense有効時） |
+| `X-Forwarded-For` | F5 XCを通じたクライアントIPチェーン |
+| `True-Client-IP` | オリジナルのクライアントIP |
+| `X-Forwarded-Proto` | F5 XCでTLSが終端される場合は `https` |
+| `X-Volterra-Bot-Type` | Bot分類（Bot Defenseが有効な場合） |
 | `X-Request-ID` | F5 XCリクエストトラッキングID |
 
-### F5 XC経由のWAFテスト
+### F5 XCを通じたWAFテスト
 
-HTTPロードバランサーにWAFポリシーをアタッチした状態で、攻撃ペイロードをテストします：
+HTTPロードバランサーにWAFポリシーを適用した状態で、攻撃ペイロードをテストします：
 
 ```bash
 LB_DOMAIN="demo.example.com"
 
-# SQLインジェクション（WAFによりブロックされるはず）
+# SQLインジェクション（WAFによってブロックされる想定）
 curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/sqli/?id=%27+OR+1%3D1--&Submit=Submit"
 
-# XSS（WAFによりブロックされるはず）
+# XSS（WAFによってブロックされる想定）
 curl -sk "https://${LB_DOMAIN}/juice-shop/rest/products/search?q=<script>alert(1)</script>"
 
-# コマンドインジェクション（WAFによりブロックされるはず）
+# コマンドインジェクション（WAFによってブロックされる想定）
 curl -sk "https://${LB_DOMAIN}/dvwa/vulnerabilities/exec/" \
   -d "ip=127.0.0.1;cat+/etc/passwd&Submit=Submit"
 
-# 通常のリクエスト（通過するはず）
+# 通常リクエスト（通過する想定）
 curl -sk "https://${LB_DOMAIN}/httpbin/get" | jq .
 ```
 
-### APIセキュリティテスト
+### API セキュリティテスト
 
-HTTPロードバランサーでAPI Discoveryを有効にして、VAmPIのAPIエンドポイントをマッピングします：
+HTTPロードバランサーのAPI Discoveryを有効化して、VAmPIのAPIエンドポイントをマッピングします：
 
 ```bash
-# これらのリクエストによりF5 XCでAPIインベントリが構築されます
+# これらのリクエストがF5 XCのAPIインベントリを構築します
 curl -sk "https://${LB_DOMAIN}/vampi/users/v1"
 curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/register" \
   -H "Content-Type: application/json" \
@@ -117,54 +117,54 @@ curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
 
 ### crAPI統合（ポート8888）
 
-crAPIは専用ポート（8888）で動作します。これは、crAPIがシングルページアプリケーションであり、APIパスがハードコードされているため、パスプレフィックスの背後で提供できないためです。crAPIをF5 XCと統合するには：
+crAPIは専用ポート（8888）で動作します。これはcrAPIがシングルページアプリケーションであり、APIパスをハードコードしているため、パスプレフィックスの背後では提供できないためです。crAPIをF5 XCに統合するには：
 
 | 設定 | 値 |
 |---|---|
-| **オリジンサーバータイプ** | Public IP of Origin Server |
+| **オリジンサーバータイプ** | オリジンサーバーのパブリックIP |
 | **IPアドレス** | `<terraform output public_ip>` |
 | **ポート** | `8888` |
 | **ヘルスチェック** | HTTP、パス `/` |
 
-crAPI用にポート8888で**別のオリジンプール**を作成するか、既存のプールにポート8888の2番目のオリジンプールメンバーを追加し、ルートルールを使用してトラフィックを振り分けます：
+ポート8888のcrAPI向けに**別のオリジンプール**を作成するか、既存のプールにポート8888の2番目のオリジンプールメンバーを追加し、ルートルールを使用してトラフィックを誘導します：
 
 ```bash
-# F5 XC経由でcrAPIをテスト（構成済みの場合）
+# F5 XCを通じたcrAPIのテスト（設定済みの場合）
 curl -sk "https://${LB_DOMAIN}:8888/"
 
 # または同じLBドメインでルートルールを使用する場合：
-# HostヘッダーまたはパスプレフィックスにマッチするF5 XCルートルールを構成し、
-# crAPIオリジンプール（ポート8888）に転送します
+# HostヘッダーまたはパスプレフィックスにマッチするF5 XCルートルールを設定し
+# crAPIオリジンプール（ポート8888）にフォワードする
 ```
 
 :::note
-オリジンVMのNSGはポート8888のインバウンドトラフィックを許可しています。追加のAzureネットワーク変更は不要です。
+オリジンVM上のNSGはポート8888のインバウンドトラフィックを許可しています。追加のAzureネットワーク変更は不要です。
 :::
 
 ### スティッキーセッションの考慮事項
 
-オリジンサーバーは内部的にnginxスティッキーセッションを使用して、ステートフルなアプリケーションを一貫したバックエンドコンテナにルーティングしています。F5 XC HTTPロードバランサーを構成する際は、以下に注意してください：
+オリジンサーバーはnginxのスティッキーセッションを内部的に使用して、ステートフルなアプリケーションを一貫したバックエンドコンテナにルーティングします。F5 XC HTTPロードバランサーを設定する際は、以下の点に注意してください：
 
 | アプリケーション | スティッキー方式 | 理由 |
 |---|---|---|
-| Juice Shop | `hash $cookie_token` | Node.jsセッションステート |
-| DVWA | `hash $cookie_PHPSESSID` | PHPセッションステート |
+| Juice Shop | `hash $cookie_token` | Node.jsセッション状態 |
+| DVWA | `hash $cookie_PHPSESSID` | PHPセッション状態 |
 | VAmPI | `ip_hash` | インスタンスごとのSQLiteデータベース |
-| CSD Demo | `ip_hash` | インスタンスごとのインメモリ漏洩ログ |
+| CSD Demo | `ip_hash` | インスタンスごとのインメモリ流出ログ |
 | DVGA | `ip_hash` | インスタンスごとのSQLiteデータベース |
 | RESTaurant | ラウンドロビン | 共有PostgreSQLバックエンド |
-| crAPI | --（単一ポート8888） | 7マイクロサービス、PostgreSQL + MongoDB |
+| crAPI | -- （単一ポート8888） | 7マイクロサービス、PostgreSQL + MongoDB |
 | httpbin | ラウンドロビン | ステートレス |
 | whoami | ラウンドロビン | ステートレス |
 
-F5 XCはこれらのスティッキーセッションを複製する必要はありません -- オリジンVM上のnginxがバックエンドルーティングを処理します。F5 XCはオリジンを単一のエンドポイント（VMのパブリックIPのポート80）として扱うべきです。
+F5 XCはこれらのスティッキーセッションを複製する必要はありません。オリジンVM上のnginxがバックエンドルーティングを処理します。F5 XCはオリジンを単一のエンドポイント（VMのパブリックIP、ポート80）として扱う必要があります。
 
 ### マルチコンポーネントアーキテクチャ
 
-CDNシミュレーターと組み合わせると、完全なラボアーキテクチャは以下のようになります：
+CDN シミュレーターと組み合わせると、完全なラボアーキテクチャは以下のようになります：
 
 ```
-エンドユーザー -> CDNシミュレーター（nginxキャッシュ） -> F5 XC HTTP LB -> オリジンサーバー（このコンポーネント）
+End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this component)
 ```
 
-CDNシミュレーターはF5 XC HTTPロードバランサーのVIPをオリジンとして使用し、F5 XCロードバランサーはこのオリジンサーバーをバックエンドとして使用します。これにより、包括的なテストのための現実的な多層アーキテクチャが構築されます。
+CDN シミュレーターはF5 XC HTTPロードバランサーのVIPをオリジンとして使用し、F5 XCロードバランサーはこのオリジンサーバーをバックエンドとして使用します。これにより、包括的なテストのための現実的なマルチレイヤーアーキテクチャが構築されます。

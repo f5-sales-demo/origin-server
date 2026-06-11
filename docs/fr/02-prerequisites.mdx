@@ -1,8 +1,9 @@
 ---
 title: Prérequis
 description: >-
-  Abonnement Azure, Terraform >= 1.5, Azure CLI, paire de clés SSH et VM
-  Standard_D16s_v3 (16 vCPU, 64 Gio RAM) pour un déploiement de 41 conteneurs
+  Abonnement Azure, Terraform >= 1.5, Azure CLI, paire de clés SSH et machine
+  virtuelle Standard_D16s_v3 (16 vCPU, 64 Gio de RAM) pour un déploiement de 41
+  conteneurs
 sidebar:
   order: 2
 i18n:
@@ -10,21 +11,21 @@ i18n:
   translator: machine
 ---
 
-## Requis
+## Obligatoires
 
 ### Abonnement Azure
 
-Un abonnement Azure actif avec les permissions pour créer :
+Un abonnement Azure actif avec les autorisations nécessaires pour créer :
 
 - Des groupes de ressources
 - Des réseaux virtuels et des sous-réseaux
 - Des groupes de sécurité réseau
 - Des adresses IP publiques
-- Des machines virtuelles (Standard_D16s_v3 -- 16 vCPU, 64 Gio RAM pour les charges de travail de 41 conteneurs)
+- Des machines virtuelles (Standard_D16s_v3 -- 16 vCPU, 64 Gio de RAM pour les charges de travail de 41 conteneurs)
 
 ### Azure CLI
 
-Installez et authentifiez Azure CLI :
+Installez et authentifiez l'interface Azure CLI :
 
 ```bash
 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
@@ -42,7 +43,7 @@ Terraform >= 1.5 est requis :
 terraform version
 ```
 
-S'il n'est pas installé, utilisez le dépôt APT de HashiCorp :
+S'il n'est pas installé, utilisez le dépôt APT HashiCorp :
 
 ```bash
 wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
@@ -50,13 +51,13 @@ echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://
 sudo apt update && sudo apt install terraform
 ```
 
-### Permissions Azure AD
+### Autorisations Azure AD
 
-Votre compte Azure AD doit disposer des permissions `User.Read`. L'identifiant du déployeur (utilisé dans le nommage des ressources) est automatiquement dérivé de votre profil Azure AD. Pour l'authentification par principal de service ou identité managée, définissez explicitement la variable Terraform `deployer`.
+Votre compte Azure AD doit disposer des autorisations `User.Read`. L'identifiant du déployeur (utilisé dans la désignation des ressources) est automatiquement dérivé de votre profil Azure AD. Pour l'authentification par principal de service ou par identité gérée, définissez explicitement la variable Terraform `deployer`.
 
 ### Paire de clés SSH
 
-Une paire de clés SSH pour l'accès à la VM :
+Une paire de clés SSH pour l'accès à la machine virtuelle :
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
@@ -64,19 +65,19 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 
 ## Ressources Azure créées
 
-| Ressource | SKU |
+| Ressource | Référence |
 |---|---|
-| VM Ubuntu 24.04 | Standard_D16s_v3 (16 vCPU, 64 Gio) |
-| IP publique | Standard, Statique |
-| Disque OS | 60 Gio SSD Premium |
+| Machine virtuelle Ubuntu 24.04 | Standard_D16s_v3 (16 vCPU, 64 Gio) |
+| Adresse IP publique | Standard, Statique |
+| Disque du système d'exploitation | SSD Premium 60 Gio |
 | VNet + NSG | Par défaut |
 
-Consultez le [calculateur de tarification Azure](https://azure.microsoft.com/en-us/pricing/calculator/) pour les coûts actuels. Utilisez `terraform destroy` lorsque le lab n'est pas utilisé pour arrêter les frais. Voir [Démontage](../07-teardown/) pour la procédure.
+Consultez la [calculatrice de prix Azure](https://azure.microsoft.com/en-us/pricing/calculator/) pour connaître les coûts actuels. Utilisez `terraform destroy` lorsque le laboratoire n'est pas utilisé afin d'arrêter la facturation. Consultez la section [Démontage](../07-teardown/) pour la procédure.
 
 :::note
-Standard_D16s_v3 (64 Gio RAM) est requis pour le déploiement de 41 conteneurs. Allocation mémoire des conteneurs : 4 instances Juice Shop à 1 Gio chacune (4 Gio), 4 VAmPI à 512 Mio chacune (2 Gio), 4 DVWA-FPM + MariaDB (1,8 Gio), 4 httpbin à 256 Mio (1 Gio), 4 CSD Demo à 256 Mio (1 Gio), 4 whoami à 64 Mio (256 Mio), 4 DVGA à 256 Mio chacune (1 Gio), 4 RESTaurant + PostgreSQL (1,5 Gio), crAPI 7 microservices (2 Gio), plus nginx, OS et cache tampon. L'allocation totale des conteneurs est d'environ 14,5 Gio (22,7 % de 64 Gio).
+Standard_D16s_v3 (64 Gio de RAM) est requis pour le déploiement de 41 conteneurs. Allocation mémoire des conteneurs : 4 instances Juice Shop à 1 Gio chacune (4 Gio), 4 VAmPI à 512 Mio chacune (2 Gio), 4 DVWA-FPM + MariaDB (1,8 Gio), 4 httpbin à 256 Mio (1 Gio), 4 CSD Demo à 256 Mio (1 Gio), 4 whoami à 64 Mio (256 Mio), 4 DVGA à 256 Mio chacune (1 Gio), 4 RESTaurant + PostgreSQL (1,5 Gio), crAPI 7 microservices (2 Gio), ainsi que nginx, le système d'exploitation et le cache tampon. L'allocation totale des conteneurs est d'environ 14,5 Gio (22,7 % de 64 Gio).
 :::
 
 :::note
-Le NSG autorise le trafic entrant sur les ports 80 (HTTP) et 8888 (crAPI). Le port 8888 est requis car crAPI est une application monopage qui code en dur ses chemins d'API et ne peut pas être servie derrière un préfixe de chemin.
+Le NSG autorise le trafic entrant sur les ports 80 (HTTP) et 8888 (crAPI). Le port 8888 est nécessaire car crAPI est une application monopage qui code en dur ses chemins d'API et ne peut pas être servie derrière un préfixe de chemin.
 :::

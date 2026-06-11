@@ -1,9 +1,9 @@
 ---
-title: Limpieza
+title: Desmontaje
 description: >-
   terraform destroy para eliminar todos los recursos de Azure, verificar la
-  limpieza con az CLI, limpiar archivos de estado local y eliminar el origin
-  pool y HTTP load balancer asociados de F5 XC
+  limpieza con az CLI, limpiar los archivos de estado locales y eliminar el
+  grupo de origen y el balanceador de carga HTTP de F5 XC asociados
 sidebar:
   order: 7
 i18n:
@@ -11,9 +11,9 @@ i18n:
   translator: machine
 ---
 
-Cuando la sesión del laboratorio esté completa, destruye todos los recursos de Azure para detener la facturación.
+Cuando la sesión de laboratorio haya concluido, destruya todos los recursos de Azure para detener la facturación.
 
-## Destrucción con Terraform
+## Terraform Destroy
 
 Desde el directorio que contiene la configuración de Terraform:
 
@@ -23,11 +23,11 @@ terraform plan -destroy
 terraform destroy
 ```
 
-Terraform solicitará confirmación. Escribe `yes` para proceder.
+Terraform solicitará confirmación. Escriba `yes` para continuar.
 
-## Verificar la Limpieza
+## Verificar la limpieza
 
-Confirma que todos los recursos han sido eliminados:
+Confirme que todos los recursos han sido eliminados:
 
 ```bash
 az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
@@ -36,9 +36,9 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
   || echo "Resource group still exists"
 ```
 
-## Limpiar el Estado Local
+## Limpiar el estado local
 
-Elimina el estado de Terraform y los archivos en caché:
+Elimine el estado de Terraform y los archivos en caché:
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
@@ -46,8 +46,8 @@ rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 
 ## Limpieza de F5 XC
 
-Si creaste recursos de F5 XC apuntando a este servidor de origen, elimínalos:
+Si creó recursos de F5 XC que apuntan a este Servidor de origen, elimínelos:
 
-1. Elimina el HTTP load balancer
-2. Elimina el origin pool
-3. Elimina cualquier política WAF creada para pruebas
+1. Elimine el balanceador de carga HTTP
+2. Elimine el grupo de origen
+3. Elimine cualquier política WAF creada para pruebas

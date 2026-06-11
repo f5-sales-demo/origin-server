@@ -1,9 +1,9 @@
 ---
 title: Abbau
 description: >-
-  terraform destroy zum Entfernen aller Azure-Ressourcen, Bereinigung mit az CLI
-  überprüfen, lokale State-Dateien bereinigen und zugehörigen F5 XC Origin Pool
-  sowie HTTP Load Balancer entfernen
+  terraform destroy zum Entfernen aller Azure-Ressourcen, Überprüfung der
+  Bereinigung mit az CLI, Bereinigung lokaler Statusdateien und Entfernen des
+  zugehörigen F5 XC Ursprungsserver-Pools und HTTP-Lastverteilers
 sidebar:
   order: 7
 i18n:
@@ -11,11 +11,11 @@ i18n:
   translator: machine
 ---
 
-Wenn die Lab-Sitzung abgeschlossen ist, zerstören Sie alle Azure-Ressourcen, um die Abrechnung zu stoppen.
+Wenn die Labsitzung abgeschlossen ist, löschen Sie alle Azure-Ressourcen, um die Abrechnung zu stoppen.
 
 ## Terraform Destroy
 
-Führen Sie aus dem Verzeichnis mit der Terraform-Konfiguration folgende Befehle aus:
+Aus dem Verzeichnis, das die Terraform-Konfiguration enthält:
 
 ```bash
 terraform plan -destroy
@@ -23,7 +23,7 @@ terraform plan -destroy
 terraform destroy
 ```
 
-Terraform wird eine Bestätigung anfordern. Geben Sie `yes` ein, um fortzufahren.
+Terraform fordert zur Bestätigung auf. Geben Sie `yes` ein, um fortzufahren.
 
 ## Bereinigung überprüfen
 
@@ -36,9 +36,9 @@ az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
   || echo "Resource group still exists"
 ```
 
-## Lokalen State bereinigen
+## Lokalen Status bereinigen
 
-Entfernen Sie Terraform-State- und Cache-Dateien:
+Entfernen Sie den Terraform-Status und zwischengespeicherte Dateien:
 
 ```bash
 rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
@@ -46,8 +46,8 @@ rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 
 ## F5 XC Bereinigung
 
-Falls Sie F5 XC-Ressourcen erstellt haben, die auf diesen Origin-Server verweisen, entfernen Sie diese:
+Wenn Sie F5 XC-Ressourcen erstellt haben, die auf diesen Ursprungsserver verweisen, entfernen Sie diese:
 
-1. Löschen Sie den HTTP Load Balancer
-2. Löschen Sie den Origin Pool
-3. Löschen Sie alle WAF-Richtlinien, die zum Testen erstellt wurden
+1. Löschen Sie den HTTP-Lastverteiler
+2. Löschen Sie den Ursprungsserver-Pool
+3. Löschen Sie alle WAF-Richtlinien, die zu Testzwecken erstellt wurden

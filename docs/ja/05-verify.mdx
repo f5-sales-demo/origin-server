@@ -1,7 +1,7 @@
 ---
-title: 検証
+title: 確認
 description: >-
-  9つのアプリケーションエンドポイントすべてに対するcurlスモークテスト、Dockerコンテナのヘルスチェック、nginxステータスの検証、cloud-initログの確認、および一般的なトラブルシューティング手順
+  全9つのアプリケーションエンドポイントのcurlスモークテスト、Dockerコンテナのヘルスチェック、nginxステータスの確認、cloud-initログの検査、および一般的なトラブルシューティング手順
 sidebar:
   order: 5
 i18n:
@@ -11,7 +11,7 @@ i18n:
 
 ## スモークテスト
 
-cloud-initの完了まで5〜10分待ってから、以下のチェックを実行してください。
+cloud-initが完了するまで5〜10分待ってから、これらのチェックを実行してください。
 
 ### ヘルスエンドポイント
 
@@ -21,7 +21,7 @@ ORIGIN_IP=$(terraform output -raw public_ip)
 curl -sf "http://${ORIGIN_IP}/health" | jq .
 ```
 
-期待される出力:
+期待される結果:
 
 ```json
 {
@@ -34,7 +34,7 @@ curl -sf "http://${ORIGIN_IP}/health" | jq .
 ### アプリケーションエンドポイント
 
 ```bash
-# Default landing page
+# デフォルトランディングページ
 curl -sf "http://${ORIGIN_IP}/" -o /dev/null -w "Landing: %{http_code}\n"
 
 # Juice Shop
@@ -58,11 +58,11 @@ curl -sf "http://${ORIGIN_IP}/dvga/" -o /dev/null -w "DVGA: %{http_code}\n"
 # RESTaurant
 curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{http_code}\n"
 
-# crAPI (port 8888)
+# crAPI (ポート8888)
 curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ```
 
-すべて `200` を返すはずです（DVWAはログインページへの `302` リダイレクトを返します）。
+すべて `200` を返すはずです（DVWAはログインへの `302` リダイレクトを返します）。
 
 ### 自動スモークテスト
 
@@ -72,17 +72,17 @@ curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
 ./tests/smoke-test.sh ${ORIGIN_IP}
 ```
 
-これにより、9つのアプリケーションすべて、ヘルスエンドポイント、VAmPIの登録/ログイン、CSD Demoのデータ流出ラウンドトリップ、DVGA GraphQL、RESTaurant Swagger、ポート8888のcrAPI、nginx gzip、およびバージョン非表示が検証されます。
+これにより、全9つのアプリケーション、ヘルスエンドポイント、VAmPIの登録/ログイン、CSD Demoの情報漏洩ラウンドトリップ、DVGAのGraphQL、RESTaurantのSwagger、ポート8888上のcrAPI、nginxのgzip、およびバージョン非表示が検証されます。
 
 ### Dockerコンテナのステータス
 
-VMにSSH接続し、41個すべてのコンテナが実行中であることを確認します:
+VMにSSH接続して、41個のコンテナがすべて実行中であることを確認します:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
 ```
 
-期待される出力（41コンテナ）:
+期待される出力（41個のコンテナ）:
 
 ```
 NAMES              STATUS         PORTS
@@ -137,28 +137,28 @@ ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pa
 
 ## トラブルシューティング
 
-### cloud-initがまだ実行中
+### cloud-initが実行中の場合
 
-エンドポイントが502または接続拒否を返す場合、cloud-initがまだプロビジョニング中の可能性があります:
+エンドポイントが502またはconnection refusedを返す場合、cloud-initがまだプロビジョニング中の可能性があります:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "cloud-init status"
 ```
 
-- `status: running` -- まだプロビジョニング中です。数分お待ちください
-- `status: done` -- プロビジョニング完了です。Dockerコンテナを確認してください
+- `status: running` -- まだプロビジョニング中です。数分待ってください
+- `status: done` -- プロビジョニングが完了しています。Dockerコンテナを確認してください
 - `status: error` -- 以下のログを確認してください
 
-### cloud-initのログ
+### cloud-initログ
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
 ```
 
-### コンテナが起動しない
+### コンテナが起動しない場合
 
 ```bash
-# Check container logs (each app has 4 instances: -1 through -4)
+# コンテナログを確認する（各アプリには4つのインスタンスがあります: -1〜-4）
 ssh azureuser@${ORIGIN_IP} "sudo docker logs juice-shop-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs dvwa-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs vampi-1 2>&1 | tail -20"
@@ -169,24 +169,24 @@ ssh azureuser@${ORIGIN_IP} "sudo docker logs restaurant-1 2>&1 | tail -20"
 ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
 ```
 
-### nginxが502を返す
+### nginxが502を返す場合
 
-アップストリームのコンテナが準備できていないか、クラッシュしています:
+アップストリームコンテナの準備ができていないか、クラッシュしています:
 
 ```bash
-# Check nginx error log
+# nginxエラーログを確認する
 ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
 
-# Restart all instances of a specific app
+# 特定のアプリのすべてのインスタンスを再起動する
 ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
 
-# Rebuild and restart all containers
+# すべてのコンテナを再ビルドして再起動する
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
 ```
 
 ### ディスク容量
 
-Dockerイメージは約4.7 GiBを消費します。CDN負荷テスト時のディスク枯渇を防ぐため、アクセスログは無効になっています。多層防御としてlogrotateが設定されています（500 MiB上限）。ディスク使用量を確認してください:
+Dockerイメージは約4.7 GiBを消費します。CDN負荷テスト時のディスク枯渇を防ぐため、アクセスログは無効になっています。Logrotateは多層防御として設定されています（500 MiBの上限）。ディスク使用状況を確認します:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
@@ -194,13 +194,13 @@ ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
 
 ### コンテナのメモリ
 
-メモリ上限に近づいているコンテナがないか確認します（OOMリスク）:
+メモリ制限に近づいているコンテナを確認します（OOMリスク）:
 
 ```bash
 ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
 ```
 
-### すべてを再起動
+### すべてを再起動する
 
 必要に応じて、すべてのサービスを再ビルドして再起動します:
 
