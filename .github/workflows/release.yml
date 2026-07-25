@@ -22,12 +22,10 @@ on:
       - ".github/workflows/release.yml"
   workflow_dispatch:
 
-# Read-only: none of these scopes had a GITHUB_TOKEN consumer. semantic-release
-# performs every write — creating the release and uploading manifest.json via
-# @semantic-release/github, and commenting on linked issues and PRs — while
-# authenticated as RELEASE_TOKEN, not the workflow token. @semantic-release/git is
-# installed but absent from the plugins array in release.config.js, so nothing
-# pushes to the repository either.
+# Read-only by default; the release job raises contents to write (see below).
+# `issues: write` and `pull-requests: write` stay dropped: @semantic-release/github
+# creates the release, uploads manifest.json and comments on linked issues and PRs
+# while authenticated as RELEASE_TOKEN, not the workflow token.
 permissions:
   contents: read
 
@@ -50,6 +48,14 @@ jobs:
     name: Semantic Release
     needs: validate
     runs-on: ubuntu-latest
+    # semantic-release's verifyConditions runs `git push --dry-run` before doing
+    # anything, and it pushes with the credential actions/checkout persisted — the
+    # workflow GITHUB_TOKEN, since no `token:` or `persist-credentials: false` is set
+    # here. That check runs whether or not @semantic-release/git is configured, so
+    # this scope is required even though no plugin pushes. Dropping it in #404 broke
+    # every release run with EGITNOPERMISSION (#409).
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
