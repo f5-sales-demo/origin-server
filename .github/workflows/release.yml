@@ -22,10 +22,14 @@ on:
       - ".github/workflows/release.yml"
   workflow_dispatch:
 
+# Read-only: none of these scopes had a GITHUB_TOKEN consumer. semantic-release
+# performs every write — creating the release and uploading manifest.json via
+# @semantic-release/github, and commenting on linked issues and PRs — while
+# authenticated as RELEASE_TOKEN, not the workflow token. @semantic-release/git is
+# installed but absent from the plugins array in release.config.js, so nothing
+# pushes to the repository either.
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: release
