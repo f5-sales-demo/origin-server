@@ -21,7 +21,6 @@
 
 Ubuntu 24.04 origin server with vulnerable web applications for F5 XC demo environments
 
-
 ## Documentation
 
 Full documentation is available at **[https://f5-sales-demo.github.io/origin-server/](https://f5-sales-demo.github.io/origin-server/)**.
