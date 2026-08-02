@@ -69,7 +69,12 @@ The terraform directory contains 9 files following the Demo Resource Standard:
 
 ### Outputs
 
-`outputs.tf` exposes 25 outputs following the Demo Resource Standard — 15 standard outputs shared by all demo resources (`deployer`, `public_ip`, `private_ip`, `ssh_command`, `resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`, `environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) plus 10 component-specific application URLs (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`, `httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
+`outputs.tf` exposes 25 outputs following the Demo Resource Standard — 15 standard outputs shared
+by all demo resources (`deployer`, `public_ip`, `private_ip`, `ssh_command`,
+`resource_group_name`, `vm_name`, `nsg_name`, `vnet_name`, `subnet_id`, `component`,
+`environment`, `resource_group_id`, `vm_id`, `nsg_id`, `location`) plus 10 component-specific
+application URLs (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`, `vampi_url`,
+`httpbin_url`, `whoami_url`, `dvga_url`, `restaurant_url`, `crapi_url`):
 
 ```hcl file=../_data/outputs.tf
 ```
@@ -147,7 +152,7 @@ EOF
 ```
 
 | Output | Downstream Component | Input Variable |
-|---|---|---|
+| --- | --- | --- |
 | `public_ip` | CDN Simulator | `origin_server` (with `http://` prefix) |
 | `public_ip` | CDN Simulator | `origin_host` (with `:80` suffix, no scheme) |
 | `public_ip` | F5 XC Origin Pool | Origin server address |

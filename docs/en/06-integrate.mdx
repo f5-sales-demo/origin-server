@@ -11,7 +11,7 @@ This origin server is designed to be used as an **origin pool member** behind an
 
 ### Architecture
 
-```
+```text
 End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker apps)
 ```
 
@@ -20,7 +20,7 @@ End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker
 Create an F5 XC origin pool pointing to this VM's public IP:
 
 | Setting | Value |
-|---|---|
+| --- | --- |
 | **Origin Server Type** | Public IP of Origin Server |
 | **IP Address** | `<terraform output public_ip>` |
 | **Port** | `80` |
@@ -31,7 +31,7 @@ Create an F5 XC origin pool pointing to this VM's public IP:
 Create an HTTP load balancer with the origin pool:
 
 | Setting | Value |
-|---|---|
+| --- | --- |
 | **Domains** | Your demo domain (e.g., `demo.example.com`) |
 | **Origin Pool** | The pool created above |
 | **WAF** | Attach your WAF policy |
@@ -43,7 +43,7 @@ Create an HTTP load balancer with the origin pool:
 Each application is accessible via its path prefix through the load balancer:
 
 | F5 XC LB URL | Origin Path | Application |
-|---|---|---|
+| --- | --- | --- |
 | `https://demo.example.com/juice-shop/` | `/juice-shop/` | Juice Shop (4 instances, cookie sticky) |
 | `https://demo.example.com/dvwa/` | `/dvwa/` | DVWA (4 instances + MariaDB, cookie sticky) |
 | `https://demo.example.com/vampi/` | `/vampi/` | VAmPI (4 instances, ip_hash sticky) |
@@ -67,7 +67,7 @@ curl -sk "https://${LB_DOMAIN}/whoami/"
 Look for these F5 XC injected headers in the response:
 
 | Header | Meaning |
-|---|---|
+| --- | --- |
 | `X-Forwarded-For` | Client IP chain through F5 XC |
 | `True-Client-IP` | Original client IP |
 | `X-Forwarded-Proto` | `https` if TLS terminates at F5 XC |
@@ -115,7 +115,7 @@ curl -sk -X POST "https://${LB_DOMAIN}/vampi/users/v1/login" \
 crAPI runs on a dedicated port (8888) because it is a single-page application that hardcodes its API paths and cannot be served behind a path prefix. To integrate crAPI with F5 XC:
 
 | Setting | Value |
-|---|---|
+| --- | --- |
 | **Origin Server Type** | Public IP of Origin Server |
 | **IP Address** | `<terraform output public_ip>` |
 | **Port** | `8888` |
@@ -141,7 +141,7 @@ The NSG on the origin VM allows inbound traffic on port 8888. No additional Azur
 The origin server uses nginx sticky sessions internally to route stateful applications to consistent backend containers. When configuring the F5 XC HTTP load balancer, be aware:
 
 | Application | Sticky Method | Why |
-|---|---|---|
+| --- | --- | --- |
 | Juice Shop | `hash $cookie_token` | Node.js session state |
 | DVWA | `hash $cookie_PHPSESSID` | PHP session state |
 | VAmPI | `ip_hash` | SQLite database per instance |
@@ -158,7 +158,7 @@ F5 XC does not need to replicate these sticky sessions -- nginx on the origin VM
 
 When combined with the CDN Simulator, the full lab architecture is:
 
-```
+```text
 End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this component)
 ```
 

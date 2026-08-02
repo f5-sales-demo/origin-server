@@ -14,7 +14,7 @@ Replace `<ORIGIN>` with `http://<PUBLIC_IP>` in all examples below. After deploy
 ## Quick Reference -- All URL Paths
 
 | Path | Application | HTTP Method | Expected Response |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `/` | Landing page | GET | 200 HTML with links to all apps |
 | `/health` | Health check | GET | 200 JSON `{"status":"healthy","component":"origin-server",...}` |
 | `/juice-shop/` | Juice Shop | GET | 200 HTML (Angular SPA, ~75 KB) |
@@ -47,7 +47,7 @@ Replace `<ORIGIN>` with `http://<PUBLIC_IP>` in all examples below. After deploy
 ## OWASP Juice Shop
 
 | | |
-|---|---|
+| --- | --- |
 | **Path** | `/juice-shop/` |
 | **Image** | `bkimminich/juice-shop:latest` |
 | **Instances** | 4 (ports 3001-3004), sticky via `hash $cookie_token`, proxy cache (60 s TTL) |
@@ -57,10 +57,10 @@ Replace `<ORIGIN>` with `http://<PUBLIC_IP>` in all examples below. After deploy
 
 OWASP Juice Shop is the most modern and actively maintained vulnerable web application. It covers the entire OWASP Top 10 with 100+ challenges in a realistic e-commerce application.
 
-### Demo Scenarios
+### Juice Shop demo scenarios
 
 | Scenario | Category | Attack Vector |
-|---|---|---|
+| --- | --- | --- |
 | SQL Injection login bypass | WAF | `' OR 1=1--` in the login email field |
 | Reflected XSS | WAF, CSD | Script injection via search parameter |
 | DOM-based XSS | CSD | Payload in URL fragment |
@@ -78,7 +78,7 @@ curl -s "http://<PUBLIC_IP>/juice-shop/" -o /dev/null -w "%{http_code}"
 ## DVWA (Damn Vulnerable Web Application)
 
 | | |
-|---|---|
+| --- | --- |
 | **Path** | `/dvwa/` |
 | **Image** | Custom `dvwa-fpm:latest` (php-fpm + nginx, built from `ghcr.io/digininja/dvwa:latest`) |
 | **Instances** | 4 (ports 8101-8104), sticky via `hash $cookie_PHPSESSID` |
@@ -89,10 +89,10 @@ curl -s "http://<PUBLIC_IP>/juice-shop/" -o /dev/null -w "%{http_code}"
 
 DVWA is the industry standard for WAF testing. It has adjustable security levels (Low, Medium, High, Impossible) that progressively add input validation and output encoding.
 
-### Demo Scenarios
+### DVWA demo scenarios
 
 | Scenario | Category | Security Level |
-|---|---|---|
+| --- | --- | --- |
 | SQL Injection | WAF | Low: trivial `' OR 1=1#`, High: blind SQLi |
 | Command Injection | WAF | Low: `; ls`, High: filtered characters |
 | File Inclusion | WAF | Low: direct path traversal, High: sanitized |
@@ -121,7 +121,7 @@ DVWA requires a one-time database setup after first deployment:
 ## VAmPI (Vulnerable API)
 
 | | |
-|---|---|
+| --- | --- |
 | **Path** | `/vampi/` |
 | **Image** | `erev0s/vampi:latest` with gunicorn entrypoint (4 workers) |
 | **Instances** | 4 (ports 5101-5104), sticky via `ip_hash` (SQLite per instance) |
@@ -131,10 +131,10 @@ DVWA requires a one-time database setup after first deployment:
 
 VAmPI is purpose-built for testing the OWASP API Security Top 10. It provides a realistic REST API with deliberate vulnerabilities. Each instance runs gunicorn with 4 workers and its own SQLite database. The `ip_hash` sticky session ensures registration and login from the same client IP always hit the same instance.
 
-### Demo Scenarios
+### VAmPI demo scenarios
 
 | Scenario | OWASP API Top 10 | Method |
-|---|---|---|
+| --- | --- | --- |
 | Broken Object Level Authorization (BOLA) | API1 | Access other users' data by manipulating IDs |
 | Broken Authentication | API2 | Weak token handling, no rate limiting |
 | Excessive Data Exposure | API3 | API returns more data than the client needs |
@@ -162,7 +162,7 @@ curl "http://<PUBLIC_IP>/vampi/users/v1"
 ## httpbin
 
 | | |
-|---|---|
+| --- | --- |
 | **Path** | `/httpbin/` |
 | **Image** | `kennethreitz/httpbin:latest` with gunicorn CMD override (`-w 4 -k gevent --timeout 30`) |
 | **Instances** | 4 (ports 8201-8204), round-robin (stateless) |
@@ -175,7 +175,7 @@ httpbin is a simple HTTP request/response service useful for basic API demos, te
 ### Useful Endpoints
 
 | Endpoint | Purpose |
-|---|---|
+| --- | --- |
 | `/httpbin/get` | Returns GET request data (headers, args, origin) |
 | `/httpbin/post` | Returns POST request data (body, form, JSON) |
 | `/httpbin/headers` | Returns request headers |
@@ -185,7 +185,7 @@ httpbin is a simple HTTP request/response service useful for basic API demos, te
 | `/httpbin/delay/:seconds` | Delays response by N seconds |
 | `/httpbin/anything` | Returns anything passed in request |
 
-### Example
+### httpbin example
 
 ```bash
 # Check what headers the origin sees (useful for verifying F5 XC header injection)
@@ -198,7 +198,7 @@ curl -s -o /dev/null -w "%{http_code}" "http://<PUBLIC_IP>/httpbin/status/403"
 ## whoami (Request Diagnostics)
 
 | | |
-|---|---|
+| --- | --- |
 | **Path** | `/whoami/` |
 | **Image** | `traefik/whoami:latest` |
 | **Instances** | 4 (ports 8082-8085), round-robin (stateless) |
@@ -211,14 +211,14 @@ whoami is Traefik's lightweight request echo server. It displays every detail of
 ### Key Use Cases
 
 | Use Case | What to Look For |
-|---|---|
+| --- | --- |
 | Verify F5 XC header injection | `X-Forwarded-For`, `True-Client-IP`, `X-Volterra-*` headers |
 | Confirm client IP visibility | `X-Real-IP` vs `RemoteAddr` |
 | Debug WAF false positives | Compare request headers before/after F5 XC |
 | Validate bot defense tagging | `X-Volterra-Bot-Type`, `X-Volterra-Bot-Verified` headers |
 | Check TLS termination | `X-Forwarded-Proto` shows `https` when TLS terminates at F5 XC |
 
-### Example
+### whoami example
 
 ```bash
 # Basic request -- see what the origin receives
@@ -233,7 +233,7 @@ curl "http://<PUBLIC_IP>/whoami/" \
 
 Example output:
 
-```
+```text
 Hostname: 534c5084e169
 IP: 127.0.0.1
 RemoteAddr: 172.17.0.1:55118
@@ -250,7 +250,7 @@ X-Real-Ip: 104.219.105.84
 ## DVGA (Damn Vulnerable GraphQL Application)
 
 | | |
-|---|---|
+| --- | --- |
 | **Path** | `/dvga/` |
 | **Image** | `dolevf/dvga:latest` |
 | **Instances** | 4 (ports 5201-5204), sticky via `ip_hash` (SQLite per instance) |
@@ -260,17 +260,17 @@ X-Real-Ip: 104.219.105.84
 
 DVGA is purpose-built for testing GraphQL-specific vulnerabilities. It provides a GraphiQL IDE at `/dvga/` for interactive query exploration and a GraphQL API endpoint at `/dvga/graphql`. Each instance uses its own SQLite database, so `ip_hash` sticky sessions ensure consistent state.
 
-### Demo Scenarios
+### DVGA demo scenarios
 
 | Scenario | Category | Attack Vector |
-|---|---|---|
+| --- | --- | --- |
 | GraphQL Injection | API Security | Malicious queries via string interpolation |
 | Denial of Service | API Security | Deeply nested queries, batch queries, resource exhaustion |
 | Authorization Bypass | API Security | Accessing unauthorized data through GraphQL |
 | Information Disclosure | API Security | Introspection queries revealing schema details |
 | Batching Attack | API Security | Multiple operations in a single request |
 
-### Key Endpoints
+### DVGA key endpoints
 
 ```bash
 # GraphiQL UI (interactive IDE)
@@ -295,7 +295,7 @@ curl -s "http://<PUBLIC_IP>/dvga/graphql" \
 ## RESTaurant (Damn Vulnerable RESTaurant API Game)
 
 | | |
-|---|---|
+| --- | --- |
 | **Path** | `/restaurant/` |
 | **Image** | Custom build from `theowni/Damn-Vulnerable-RESTaurant-API-Game` |
 | **Instances** | 4 (ports 8301-8304), round-robin (shared PostgreSQL) |
@@ -307,10 +307,10 @@ curl -s "http://<PUBLIC_IP>/dvga/graphql" \
 
 RESTaurant is a gamified vulnerable REST API covering the OWASP API Security Top 10 2023. It uses FastAPI with automatic Swagger UI documentation at `/restaurant/docs`. All 4 instances share a single PostgreSQL database, so round-robin load balancing works without sticky sessions.
 
-### Demo Scenarios
+### RESTaurant demo scenarios
 
 | Scenario | OWASP API Top 10 2023 | Method |
-|---|---|---|
+| --- | --- | --- |
 | Broken Object Level Authorization (BOLA) | API1 | Access other users' orders by manipulating IDs |
 | Broken Authentication | API2 | Weak token handling, credential stuffing |
 | Broken Object Property Level Authorization | API3 | Mass assignment on user profile fields |
@@ -319,7 +319,7 @@ RESTaurant is a gamified vulnerable REST API covering the OWASP API Security Top
 | Server Side Request Forgery (SSRF) | API7 | Manipulate server-side URL requests |
 | Security Misconfiguration | API8 | Verbose error messages, default credentials |
 
-### Key Endpoints
+### RESTaurant key endpoints
 
 ```bash
 # Swagger UI
@@ -341,7 +341,7 @@ curl -s -X POST "http://<PUBLIC_IP>/restaurant/admin/users" \
 ## crAPI (OWASP Completely Ridiculous API)
 
 | | |
-|---|---|
+| --- | --- |
 | **Port** | `8888` (dedicated -- not path-prefixed) |
 | **Images** | `crapi/crapi-web`, `crapi/crapi-identity`, `crapi/crapi-community`, `crapi/crapi-workshop`, PostgreSQL, MongoDB, MailHog |
 | **Instances** | 7 microservices (single instance each) |
@@ -356,7 +356,7 @@ MailHog captures all emails sent by crAPI (account verification, password reset)
 ### Challenge Categories
 
 | Category | Vulnerabilities |
-|---|---|
+| --- | --- |
 | BOLA (Broken Object Level Authorization) | Access other users' vehicles, orders, and reports |
 | BFLA (Broken Function Level Authorization) | Escalate to admin, access restricted endpoints |
 | Mass Assignment | Modify protected fields (role, balance) via API |
@@ -388,7 +388,7 @@ curl -s -X POST "http://<PUBLIC_IP>:8888/identity/api/auth/login" \
 
 ### crAPI Architecture
 
-```
+```text
 Port 8888 -> crapi-web (React SPA + nginx)
              -> crapi-identity (Java, user auth, JWT)
              -> crapi-community (Go, forums, posts)
@@ -401,7 +401,7 @@ Port 8888 -> crapi-web (React SPA + nginx)
 ## Application Coverage Matrix
 
 | Demo Use Case | Primary App | Secondary App |
-|---|---|---|
+| --- | --- | --- |
 | WAF -- SQL Injection | DVWA | Juice Shop |
 | WAF -- XSS | DVWA | Juice Shop |
 | WAF -- Command Injection | DVWA | -- |
