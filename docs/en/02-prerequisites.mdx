@@ -60,7 +60,7 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 ## Azure Resources Created
 
 | Resource | SKU |
-|---|---|
+| --- | --- |
 | Ubuntu 24.04 VM | Standard_D16s_v3 (16 vCPU, 64 GiB) |
 | Public IP | Standard, Static |
 | OS Disk | 60 GiB Premium SSD |
@@ -69,7 +69,12 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 See the [Azure pricing calculator](https://azure.microsoft.com/en-us/pricing/calculator/) for current costs. Use `terraform destroy` when the lab is not in use to stop charges. See [Teardown](../07-teardown/) for the procedure.
 
 :::note
-Standard_D16s_v3 (64 GiB RAM) is required for the 41-container deployment. Container memory allocation: 4 Juice Shop instances at 1 GiB each (4 GiB), 4 VAmPI at 512 MiB each (2 GiB), 4 DVWA-FPM + MariaDB (1.8 GiB), 4 httpbin at 256 MiB (1 GiB), 4 CSD Demo at 256 MiB (1 GiB), 4 whoami at 64 MiB (256 MiB), 4 DVGA at 256 MiB each (1 GiB), 4 RESTaurant + PostgreSQL (1.5 GiB), crAPI 7 microservices (2 GiB), plus nginx, OS, and buffer cache. Total container allocation is approximately 14.5 GiB (22.7% of 64 GiB).
+Standard_D16s_v3 (64 GiB RAM) is required for the 41-container deployment. Container memory
+allocation: 4 Juice Shop instances at 1 GiB each (4 GiB), 4 VAmPI at 512 MiB each (2 GiB), 4
+DVWA-FPM + MariaDB (1.8 GiB), 4 httpbin at 256 MiB (1 GiB), 4 CSD Demo at 256 MiB (1 GiB), 4
+whoami at 64 MiB (256 MiB), 4 DVGA at 256 MiB each (1 GiB), 4 RESTaurant + PostgreSQL (1.5 GiB),
+crAPI 7 microservices (2 GiB), plus nginx, OS, and buffer cache. Total container allocation is
+approximately 14.5 GiB (22.7% of 64 GiB).
 :::
 
 :::note

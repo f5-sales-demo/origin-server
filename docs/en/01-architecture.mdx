@@ -11,7 +11,7 @@ This component provides a single origin server hosting multiple vulnerable web a
 
 In production architectures:
 
-```
+```text
 End User -> F5 XC HTTP LB (WAF/Bot/API Security) -> Origin Server -> Application
 ```
 
@@ -52,7 +52,7 @@ The nginx reverse proxy:
 ## Application Mapping
 
 | Path | Upstream | Instances | Ports | Sticky Session | Purpose |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `/` | nginx | -- | -- | -- | Landing page with links to all apps |
 | `/health` | nginx | -- | -- | -- | JSON health endpoint (9 apps listed) |
 | `/juice-shop/` | juice_shop | 4 | 3001-3004 | `hash $cookie_token` | Modern web app security (XSS, injection, CSRF) |
@@ -78,7 +78,7 @@ The human operator adds components one at a time. Each component's documentation
 ## Why These Applications
 
 | Application | Why Selected |
-|---|---|
+| --- | --- |
 | **Juice Shop** | OWASP flagship project; modern Node.js SPA with 100+ challenges covering the OWASP Top 10; actively maintained; 4 instances with proxy cache |
 | **DVWA** | Industry standard for WAF testing; adjustable security levels (low/medium/high/impossible); custom php-fpm + nginx build for performance; shared MariaDB 10.11 backend |
 | **VAmPI** | Purpose-built for OWASP API Security Top 10; REST API with known vulnerabilities; gunicorn with 4 workers per instance; ip_hash sticky for SQLite consistency |
