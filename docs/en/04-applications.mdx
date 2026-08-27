@@ -148,7 +148,7 @@ VAmPI is purpose-built for testing the OWASP API Security Top 10. It provides a 
 # Register a new user
 curl -X POST "http://<PUBLIC_IP>/vampi/users/v1/register" \
   -H "Content-Type: application/json" \
-  -d '{"username":"test","password":"test123","email":"test@test.com"}'
+  -d '{"username":"test","password":"test123","email":"admin@example.com"}'
 
 # Login
 curl -X POST "http://<PUBLIC_IP>/vampi/users/v1/login" \
@@ -428,5 +428,3 @@ Port 8888 -> crapi-web (React SPA + nginx)
 | Basic connectivity testing | httpbin | -- |
 | Request diagnostics | whoami | httpbin |
 | Header injection verification | whoami | -- |
-
-<!-- Linked-issue verification marker: #640. -->
