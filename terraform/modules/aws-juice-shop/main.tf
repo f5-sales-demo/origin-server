@@ -137,6 +137,7 @@ check "alb_subnet_placement" {
 resource "aws_lb" "this" {
   # checkov:skip=CKV_AWS_150:Deletion protection is intentionally disabled so this ephemeral authorized demo origin can be destroyed immediately after use.
   # checkov:skip=CKV2_AWS_28:F5 Distributed Cloud CSD and edge security are the enforcement point; an AWS WAF would duplicate controls on this dedicated origin.
+  # checkov:skip=CKV2_AWS_20:F5 Distributed Cloud owns the HTTPS redirect; this CIDR-scoped origin ALB intentionally forwards HTTP.
   name                       = var.name
   internal                   = !var.public_exposure
   load_balancer_type         = "application"
@@ -177,7 +178,6 @@ resource "aws_lb_target_group" "this" {
 
 resource "aws_lb_listener" "http" {
   # checkov:skip=CKV_AWS_2:F5 Distributed Cloud terminates public TLS and uses this CIDR-scoped HTTP listener only as the demo origin hop.
-  # checkov:skip=CKV2_AWS_20:F5 Distributed Cloud owns the HTTPS redirect; this origin listener accepts only configured CIDRs.
   # checkov:skip=CKV_AWS_103:F5 Distributed Cloud owns public TLS; this listener is a CIDR-scoped HTTP origin hop.
   load_balancer_arn = aws_lb.this.arn
   port              = 80
