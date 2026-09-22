@@ -12,9 +12,25 @@ SSH access, credentials, VPC, NAT gateway, KMS key, S3 bucket, or Terraform stat
 
 `public_exposure` defaults to `false`, producing an internal ALB. Internet-facing exposure requires
 `public_exposure = true`. Even then, restrict `allowed_ingress_cidrs` to approved source networks.
-`0.0.0.0/0` is accepted only with explicit public exposure and is not recommended. The ALB listener
-intentionally uses HTTP because F5 Distributed Cloud is the public TLS termination point and this
-listener is the CIDR-scoped origin hop.
+`0.0.0.0/0` is accepted only with explicit public exposure and is not recommended.
+
+## Trust boundary
+
+F5 Distributed Cloud is the public HTTPS termination and security enforcement point for this
+origin design. Client-Side Defense and other configured edge controls run there; the module does
+not create an AWS WAF because that would duplicate the enforcement point and expand the reusable
+origin module's responsibility.
+
+Traffic from F5 Distributed Cloud to the ALB intentionally uses HTTP. The ALB security group limits
+port 80 ingress to `allowed_ingress_cidrs`, which operators must set to the approved F5 Distributed
+Cloud egress or connected-network CIDRs. This hop is not encrypted, so its routing domain must be
+trusted and protected from interception; use a different origin design if that trust cannot be
+established.
+
+The Juice Shop target natively serves HTTP. Fargate tasks have no public IP address and run in
+caller-managed private subnets. Their security group accepts the container port only from the ALB
+security group, so neither F5 Distributed Cloud nor arbitrary VPC sources connect directly to a
+task. These controls are part of the exception rationale and must not be relaxed.
 
 Deletion protection is intentionally disabled: this is ephemeral authorized demo infrastructure and must support prompt Terraform teardown after use.
 
