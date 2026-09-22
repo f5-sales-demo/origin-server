@@ -11,7 +11,7 @@ variables {
 }
 
 override_data {
-  target = data.aws_subnet.alb["subnet-0123456789abcdef0"]
+  target = data.aws_subnet.alb["0"]
   values = {
     vpc_id            = "vpc-0123456789abcdef0"
     availability_zone = "us-east-1a"
@@ -19,7 +19,7 @@ override_data {
 }
 
 override_data {
-  target = data.aws_subnet.alb["subnet-0123456789abcdef1"]
+  target = data.aws_subnet.alb["1"]
   values = {
     vpc_id            = "vpc-0123456789abcdef0"
     availability_zone = "us-east-1b"
@@ -27,14 +27,14 @@ override_data {
 }
 
 override_data {
-  target = data.aws_subnet.task["subnet-0123456789abcdef2"]
+  target = data.aws_subnet.task["0"]
   values = {
     vpc_id = "vpc-0123456789abcdef0"
   }
 }
 
 override_data {
-  target = data.aws_subnet.task["subnet-0123456789abcdef3"]
+  target = data.aws_subnet.task["1"]
   values = {
     vpc_id = "vpc-0123456789abcdef0"
   }
@@ -44,7 +44,7 @@ run "private_least_privilege_contract" {
   command = plan
 
   override_data {
-    target = data.aws_subnet.alb["subnet-0123456789abcdef0"]
+    target = data.aws_subnet.alb["0"]
     values = {
       vpc_id            = "vpc-0123456789abcdef0"
       availability_zone = "us-east-1a"
@@ -52,7 +52,7 @@ run "private_least_privilege_contract" {
   }
 
   override_data {
-    target = data.aws_subnet.alb["subnet-0123456789abcdef1"]
+    target = data.aws_subnet.alb["1"]
     values = {
       vpc_id            = "vpc-0123456789abcdef0"
       availability_zone = "us-east-1b"
@@ -131,12 +131,12 @@ run "public_exposure_is_explicit" {
   }
 
   override_data {
-    target = data.aws_subnet.alb["subnet-0123456789abcdef0"]
+    target = data.aws_subnet.alb["0"]
     values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1a" }
   }
 
   override_data {
-    target = data.aws_subnet.alb["subnet-0123456789abcdef1"]
+    target = data.aws_subnet.alb["1"]
     values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1b" }
   }
 
@@ -160,11 +160,11 @@ run "allow_world_open_only_when_public" {
   }
 
   override_data {
-    target = data.aws_subnet.alb["subnet-0123456789abcdef0"]
+    target = data.aws_subnet.alb["0"]
     values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1a" }
   }
   override_data {
-    target = data.aws_subnet.alb["subnet-0123456789abcdef1"]
+    target = data.aws_subnet.alb["1"]
     values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1b" }
   }
 }
@@ -172,11 +172,11 @@ run "allow_world_open_only_when_public" {
 run "reject_alb_subnets_in_different_vpc" {
   command = plan
   override_data {
-    target = data.aws_subnet.alb["subnet-0123456789abcdef0"]
+    target = data.aws_subnet.alb["0"]
     values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1a" }
   }
   override_data {
-    target = data.aws_subnet.alb["subnet-0123456789abcdef1"]
+    target = data.aws_subnet.alb["1"]
     values = { vpc_id = "vpc-fedcba98765432100", availability_zone = "us-east-1b" }
   }
   expect_failures = [check.alb_subnet_placement]
@@ -185,11 +185,11 @@ run "reject_alb_subnets_in_different_vpc" {
 run "reject_alb_subnets_in_one_az" {
   command = plan
   override_data {
-    target = data.aws_subnet.alb["subnet-0123456789abcdef0"]
+    target = data.aws_subnet.alb["0"]
     values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1a" }
   }
   override_data {
-    target = data.aws_subnet.alb["subnet-0123456789abcdef1"]
+    target = data.aws_subnet.alb["1"]
     values = { vpc_id = "vpc-0123456789abcdef0", availability_zone = "us-east-1a" }
   }
   expect_failures = [check.alb_subnet_placement]
@@ -199,7 +199,7 @@ run "reject_task_subnet_in_different_vpc" {
   command = plan
 
   override_data {
-    target = data.aws_subnet.task["subnet-0123456789abcdef3"]
+    target = data.aws_subnet.task["1"]
     values = { vpc_id = "vpc-fedcba98765432100" }
   }
 
