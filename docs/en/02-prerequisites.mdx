@@ -1,13 +1,23 @@
 ---
 title: Prerequisites
-description: "Azure subscription, Terraform >= 1.5, Azure CLI, SSH key pair, and Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM) for 41-container deployment"
+description: "Choose the Azure full-origin deployment or the distinct AWS Juice Shop module, then prepare the cloud-specific prerequisites."
 sidebar:
   order: 2
 ---
 
-## Required
+This repository provides two supported sibling offerings. They do not share a runtime and do not
+provide feature parity:
 
-### Azure Subscription
+- **Azure full-origin** deploys nine applications in 41 containers behind nginx on an Azure VM from
+  `terraform/`.
+- **AWS Juice Shop** deploys Juice Shop only on private Fargate tasks behind an Application Load
+  Balancer (ALB) from `terraform/modules/aws-juice-shop/`.
+
+Choose one offering and follow only its prerequisites and deployment procedure.
+
+## Azure full-origin prerequisites
+
+### Azure subscription
 
 An active Azure subscription with permission to create:
 
@@ -45,19 +55,21 @@ echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://
 sudo apt update && sudo apt install terraform
 ```
 
-### Azure AD Permissions
+### Azure AD permissions
 
-Your Azure AD account must have `User.Read` permissions. The deployer identifier (used in resource naming) is automatically derived from your Azure AD profile. For service principal or managed identity authentication, set the `deployer` Terraform variable explicitly.
+Your Azure AD account must have `User.Read` permissions. The deployer identifier (used in resource
+naming) is automatically derived from your Azure AD profile. For service principal or managed
+identity authentication, set the `deployer` Terraform variable explicitly.
 
-### SSH Key Pair
+### SSH key pair
 
-An SSH key pair for VM access:
+Create an SSH key pair for VM access:
 
 ```bash
 ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 ```
 
-## Azure Resources Created
+### Azure resources created
 
 | Resource | SKU |
 | --- | --- |
@@ -66,7 +78,9 @@ ssh-keygen -t ed25519 -f ~/.ssh/origin-server-key -N ""
 | OS Disk | 60 GiB Premium SSD |
 | VNet + NSG | Default |
 
-See the [Azure pricing calculator](https://azure.microsoft.com/en-us/pricing/calculator/) for current costs. Use `terraform destroy` when the lab is not in use to stop charges. See [Teardown](../07-teardown/) for the procedure.
+See the [Azure pricing calculator](https://azure.microsoft.com/en-us/pricing/calculator/) for current
+costs. Use `terraform destroy` when the lab is not in use to stop charges. See
+[Teardown](../07-teardown/) for the procedure.
 
 :::note
 Standard_D16s_v3 (64 GiB RAM) is required for the 41-container deployment. Container memory
@@ -78,5 +92,49 @@ approximately 14.5 GiB (22.7% of 64 GiB).
 :::
 
 :::note
-The NSG allows inbound traffic on ports 80 (HTTP) and 8888 (crAPI). Port 8888 is required because crAPI is a single-page application that hardcodes its API paths and cannot be served behind a path prefix.
+The NSG allows inbound traffic on ports 80 (HTTP) and 8888 (crAPI). Port 8888 is required because
+crAPI is a single-page application that hardcodes its API paths and cannot be served behind a path
+prefix.
 :::
+
+## AWS Juice Shop prerequisites
+
+The AWS module requires Terraform >= 1.7 and `hashicorp/aws` >= 6.0 and < 7.0. Configure AWS
+provider authentication and a Terraform backend outside the module. Keep credentials, local variable
+files, state, saved plans, and plan exports out of version control.
+
+The deploying principal needs permission to create and manage the module-owned ALB, listener, target
+group, ECS cluster/service/task definition, security groups and rules, task execution IAM role and
+inline policy, and CloudWatch log group. It also needs read access to validate the caller-provided VPC
+and subnets and permission to use the supplied KMS key and S3 access-log destination as required by
+their policies.
+
+### Caller-owned infrastructure
+
+Prepare these resources before using the module:
+
+- A VPC and routing appropriate to the selected exposure mode.
+- At least two ALB subnets in that VPC, spanning two distinct Availability Zones.
+- At least one private task subnet in that VPC. Fargate tasks never receive public IP addresses.
+- NAT or an approved proxy for task egress to Docker Hub and AWS Logs, or equivalent private
+  endpoints plus controlled image-registry egress.
+- A caller-managed symmetric KMS key whose policy permits the regional CloudWatch Logs service.
+- A caller-managed S3 bucket whose regional Elastic Load Balancing delivery policy permits ALB
+  access logs. The caller also owns its encryption, lifecycle, and public-access controls.
+
+Use separate `alb_subnet_ids` and `task_subnet_ids` values. The module does not create or manage the
+VPC, subnets, route tables, NAT gateway, proxy, endpoints, KMS key, S3 bucket or bucket policy, AWS
+provider authentication, Terraform backend, or state.
+
+### Exposure and trust boundary
+
+The ALB is internal by default. Internal mode requires routed access from F5 Distributed Cloud or
+another authorized connected network. Public exposure is an explicit choice using
+`public_exposure = true`; restrict `allowed_ingress_cidrs` to approved sources. Do not use
+`0.0.0.0/0` for routine deployment.
+
+F5 Distributed Cloud terminates public HTTPS and applies the configured edge controls. The hop from
+F5 Distributed Cloud to the ALB is intentionally HTTP inside the caller-selected trusted routing
+domain. The ALB security group restricts port 80, and the private task security group accepts the
+container port only from the ALB security group. If that routing domain cannot be trusted and
+protected from interception, use a different origin design.

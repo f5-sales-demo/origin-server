@@ -1,11 +1,23 @@
 ---
 title: Deploy
-description: "Terraform IaC deployment following the Demo Resource Standard — 9 terraform files with Azure AD deployer auto-resolution, 25 outputs, and hardened cloud-init provisioning 41 Docker containers across 9 applications."
+description: "Deploy either the Azure nine-application full-origin or the distinct AWS Juice Shop-only module with reviewed Terraform plans."
 sidebar:
   order: 3
 ---
 
-All Terraform files are in the [`terraform/`](https://github.com/f5-sales-demo/origin-server/tree/main/terraform) directory. Clone the repository and deploy directly:
+This repository contains two separate supported offerings:
+
+- **Azure full-origin:** nine applications, nginx, and 41 containers on an Azure VM from
+  `terraform/`.
+- **AWS Juice Shop:** Juice Shop only, on private Fargate tasks behind an ALB, from
+  `terraform/modules/aws-juice-shop/`.
+
+The procedures are independent. Do not use Azure outputs or runtime expectations to operate the AWS
+module, and do not assume feature parity.
+
+## Deploy the Azure full-origin
+
+Clone the repository and use the root Terraform configuration:
 
 ```bash
 git clone https://github.com/f5-sales-demo/origin-server.git
@@ -14,11 +26,9 @@ cp terraform.tfvars.example terraform.tfvars
 # Edit terraform.tfvars with your Azure subscription ID and SSH key path
 ```
 
-## Terraform Configuration
+### Azure Terraform configuration
 
-### Terraform File Structure
-
-The terraform directory contains 9 files following the Demo Resource Standard:
+The Terraform directory contains 9 files following the Demo Resource Standard:
 
 - `versions.tf` — Terraform and provider version constraints (azurerm ~> 4.0, azuread ~> 3.0)
 - `providers.tf` — Azure RM and Azure AD provider configuration
@@ -35,39 +45,47 @@ The terraform directory contains 9 files following the Demo Resource Standard:
 ```hcl file=../_data/main.tf
 ```
 
-`variables.tf` defines all configurable parameters. The `deployer` identifier is auto-resolved from your Azure AD account — you only need to set `subscription_id`. The `vm_size` default is `Standard_D16s_v3` (16 vCPU, 64 GiB RAM) sized for 41 Docker containers:
+`variables.tf` defines all configurable parameters. The `deployer` identifier is auto-resolved from
+your Azure AD account — you only need to set `subscription_id`. The `vm_size` default is
+`Standard_D16s_v3` (16 vCPU, 64 GiB RAM) sized for 41 Docker containers:
 
 ```hcl file=../_data/variables.tf
 ```
 
-### Network Infrastructure
+### Azure network infrastructure
 
-`network.tf` creates the VNet, subnet, public IP, NSG (ports 22/80/443/8888), and NIC. Port 8888 is required for crAPI which runs on a dedicated port:
+`network.tf` creates the VNet, subnet, public IP, NSG (ports 22/80/443/8888), and NIC. Port 8888 is
+required for crAPI which runs on a dedicated port:
 
 ```hcl file=../_data/network.tf
 ```
 
-### Virtual Machine with Cloud-Init
+### Azure virtual machine and provisioning
 
-`vm.tf` creates the Ubuntu 24.04 VM and passes the cloud-init provisioning script. The 60 GiB Premium SSD provides sufficient space for Docker images and container volumes:
+`vm.tf` creates the Ubuntu 24.04 VM and passes the cloud-init provisioning script. The 60 GiB
+Premium SSD provides sufficient space for Docker images and container volumes:
 
 ```hcl file=../_data/vm.tf
 ```
 
-### Cloud-Init Provisioning
-
-`cloud-init.yaml` provisions the VM with a hardened configuration. A shared helper library (`/usr/local/lib/cloud-init-helpers.sh`) provides retry logic on all network operations and progress logging to `/var/log/cloud-init-progress.log`. Active health-check polling replaces fixed-duration sleep for container readiness. It provisions:
+`cloud-init.yaml` provisions the VM with a hardened configuration. A shared helper library
+(`/usr/local/lib/cloud-init-helpers.sh`) provides retry logic on all network operations and progress
+logging to `/var/log/cloud-init-progress.log`. Active health-check polling replaces fixed-duration
+sleep for container readiness. It provisions:
 
 - **Kernel tuning**: TCP keepalive, TIME_WAIT reuse, 2M tw_buckets, 64K somaxconn
-- **nginx**: 8 upstream blocks with sticky sessions (ip_hash, cookie hash), keepalive pools (64--128), proxy cache for Juice Shop, error_log crit level
+- **nginx**: 8 upstream blocks with sticky sessions (ip_hash, cookie hash), keepalive pools
+  (64--128), proxy cache for Juice Shop, error_log crit level
 - **Docker Compose**: 41 containers across 9 applications with per-container CPU/memory limits
-- **Custom builds**: DVWA-FPM (php-fpm with pm.max_requests=200), CSD Demo (Flask + gunicorn), RESTaurant (cloned from GitHub)
-- **Worker recycling**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200 (DVWA-FPM) to prevent memory leaks under sustained load
+- **Custom builds**: DVWA-FPM (php-fpm with pm.max_requests=200), CSD Demo (Flask + gunicorn),
+  RESTaurant (cloned from GitHub)
+- **Worker recycling**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200
+  (DVWA-FPM) to prevent memory leaks under sustained load
 
 ```yaml file=../_data/cloud-init.yaml
 ```
 
-### Outputs
+### Azure outputs
 
 `outputs.tf` exposes 25 outputs following the Demo Resource Standard — 15 standard outputs shared
 by all demo resources (`deployer`, `public_ip`, `private_ip`, `ssh_command`,
@@ -79,33 +97,25 @@ application URLs (`origin_url`, `health_check_url`, `juice_shop_url`, `dvwa_url`
 ```hcl file=../_data/outputs.tf
 ```
 
-### Example Variables File
-
-Copy `terraform.tfvars.example` to `terraform.tfvars` and fill in your values. The `.gitignore` excludes `terraform.tfvars` to prevent committing credentials:
+Copy `terraform.tfvars.example` to `terraform.tfvars` and fill in your values. The `.gitignore`
+excludes `terraform.tfvars`:
 
 ```hcl file=../_data/terraform.tfvars.example
 ```
 
-## Deploy
+Create and review a saved plan before applying it:
 
 ```bash
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars with your Azure subscription ID and SSH key path
-
 terraform init
-
-terraform plan
-
-terraform apply
+install -d -m 700 .artifacts
+terraform plan -out=.artifacts/tfplan
+terraform show .artifacts/tfplan
+# Apply only after reviewing the saved plan
+terraform apply .artifacts/tfplan
 ```
 
-Terraform outputs the public IP, SSH command, and application URLs after successful deployment.
-
-## Post-Deploy
-
-After `terraform apply` completes, allow 5--10 minutes for cloud-init to finish installing Docker, pulling container images, and configuring nginx. The Docker image pulls are the bottleneck -- Juice Shop alone is ~400 MiB.
-
-Verify the health endpoint:
+Terraform outputs the public IP, SSH command, and application URLs. Allow 5--10 minutes for
+cloud-init to install Docker, pull images, and configure nginx, then verify the health endpoint:
 
 ```bash
 curl -s "http://$(terraform output -raw public_ip)/health" | jq .
@@ -121,17 +131,143 @@ Expected response:
 }
 ```
 
-### DVWA Database Setup
+DVWA requires one-time database initialization at `http://<PUBLIC_IP>/dvwa/setup.php`. Select
+**Create / Reset Database**. Default credentials are `admin` / `password`. VAmPI initializes its
+SQLite database automatically.
 
-DVWA requires a one-time database initialization. Open `http://<PUBLIC_IP>/dvwa/setup.php` in a browser and click **Create / Reset Database**. Default credentials are `admin` / `password`.
+## Deploy AWS Juice Shop
 
-:::note
-VAmPI's SQLite database is automatically initialized by its gunicorn entrypoint script. Each container runs `db.create_all()` on startup, so no manual intervention is needed.
-:::
+The AWS module requires Terraform >= 1.7 and AWS provider 6.x. It creates Juice Shop only; it does
+not create the Azure full-origin applications, nginx host, or VM.
 
-## Wiring to Downstream Components
+### Pin the module source
 
-After deployment, other components use the origin server's outputs as their inputs:
+Until a later release is proven to contain both the module and computed-subnet support, consume the
+module from canonical commit `d6384bb0621c4c1eceb38d55a6b63e7b9cc7083a`:
+
+```hcl
+module "juice_shop" {
+  source = "git::https://github.com/f5-sales-demo/origin-server.git//terraform/modules/aws-juice-shop?ref=d6384bb0621c4c1eceb38d55a6b63e7b9cc7083a"
+
+  name                        = "juice-demo"
+  vpc_id                      = module.network.vpc_id
+  alb_subnet_ids              = [module.network.alb_subnet_a_id, module.network.alb_subnet_b_id]
+  task_subnet_ids             = [module.network.task_subnet_a_id, module.network.task_subnet_b_id]
+  cloudwatch_logs_kms_key_arn = module.logging.cloudwatch_logs_kms_key_arn
+  alb_access_logs_bucket      = module.logging.alb_access_logs_bucket
+
+  public_exposure       = false
+  allowed_ingress_cidrs = var.approved_origin_cidrs
+}
+
+output "origin_url" {
+  description = "HTTP URL exported by the Juice Shop origin module."
+  value       = module.juice_shop.origin_url
+}
+```
+
+Release `v1.7.88` predates the AWS module and must not be cited or used as a release containing it.
+Do not replace the commit with a floating branch or an unproven placeholder release.
+
+The subnet IDs in this example may be unknown until apply. Their **list length is plan-known** because
+each element is written explicitly. Preserve that fixed collection cardinality: provide at least two
+ALB subnet elements that resolve to distinct Availability Zones and at least one private task-subnet
+element. Do not derive these lists by filtering a collection whose size is unknown during planning.
+
+### Confirm the caller boundary
+
+Before planning, confirm that the caller-managed VPC, subnet routing, KMS key, S3 bucket and ALB
+log-delivery policy exist. The caller also owns AWS provider authentication, Terraform backend and
+state, and the decision to use an internal or public ALB. Private Fargate task subnets need controlled
+egress for the digest-pinned Docker Hub image and AWS Logs, or equivalent endpoints and egress.
+The module validates subnet VPC membership and distinct ALB Availability Zones, but it does not
+inspect or validate route tables.
+
+The default internal ALB requires implemented private F5 Distributed Cloud origin connectivity into
+the VPC, such as a Customer Edge path with the required routes, or another authorized private
+connection. VPN or Direct Connect alone does not make the ALB usable by F5 Distributed Cloud unless
+that private origin path is actually configured end-to-end. If an internal hostname is unreachable,
+repair the private connectivity instead of making the ALB public.
+
+For an internet-facing ALB, set `public_exposure = true`, place the ALB in subnets whose route tables
+send internet-bound traffic to an Internet Gateway, and set `allowed_ingress_cidrs` to explicit
+approved source networks. World-open ingress is not recommended.
+
+F5 Distributed Cloud terminates public HTTPS. Its HTTP connection to the ALB is a documented
+trusted-routing-domain exception, constrained by the ALB ingress CIDRs and task security-group
+relationship. Do not use this design where that path can be intercepted.
+
+### Module source reference
+
+These fences render the canonical module, minimal caller, and test sources staged by the
+documentation build:
+
+```hcl file=../_data/aws-juice-shop/versions.tf
+```
+
+```hcl file=../_data/aws-juice-shop/variables.tf
+```
+
+```hcl file=../_data/aws-juice-shop/main.tf
+```
+
+```hcl file=../_data/aws-juice-shop/outputs.tf
+```
+
+```hcl file=../_data/aws-juice-shop/examples/minimal/main.tf
+```
+
+```hcl file=../_data/aws-juice-shop/examples/minimal/variables.tf
+```
+
+```hcl file=../_data/aws-juice-shop/tests/module.tftest.hcl
+```
+
+### Plan, review, and apply
+
+Run these commands from the caller's root configuration, not from the reusable module directory:
+
+```bash
+terraform init
+terraform validate
+install -d -m 700 .artifacts
+terraform plan -out=.artifacts/tfplan
+terraform show .artifacts/tfplan
+# Apply only the exact reviewed plan
+terraform apply .artifacts/tfplan
+terraform output origin_url
+```
+
+Saved plans can contain sensitive state-derived values. Keep `.artifacts/` private, ignored, and out
+of logs or plan-JSON exports; remove saved plans when no longer needed.
+
+### Verify and recover
+
+After apply:
+
+1. Confirm the ECS service reaches steady state and its desired and running task counts match.
+2. Confirm the target group reports healthy targets.
+3. Confirm the CloudWatch log group receives container logs and ALB access logs arrive in S3.
+4. Test `origin_url` from a network permitted by the selected exposure mode and confirm an
+   unapproved source cannot reach it.
+5. Run `terraform plan` again; a stable deployment should report no changes.
+
+If tasks cannot start, inspect ECS service events and CloudWatch logs, then verify private-subnet DNS
+and egress to Docker Hub and AWS Logs. If targets remain unhealthy, confirm the container port and
+that task ingress comes only from the ALB security group. If an internal hostname is unreachable,
+repair the connected route instead of making the ALB public. For a failed image change, retain the
+previous digest and rely on the ECS deployment circuit breaker rollback, then plan the corrected
+immutable digest.
+
+AWS cost drivers include ALB hours/capacity, Fargate compute, Container Insights, CloudWatch Logs
+storage and KMS requests, S3 access-log storage, data transfer, and caller-managed NAT or endpoints.
+For teardown, create and review a saved destroy plan before applying it. Module destruction leaves
+caller-owned VPC, subnets, routes, NAT/proxy/endpoints, KMS key, S3 bucket and policy, provider
+configuration, backend, and state intact.
+
+## Wiring to downstream components
+
+For the Azure full-origin, downstream components use the Azure outputs:
 
 ```bash
 # CDN Simulator — pass origin-server's public IP as its upstream
@@ -143,7 +279,7 @@ origin_server   = "http://${origin_ip}"
 origin_host     = "${origin_ip}:80"
 EOF
 
-# Traffic Generator — pass the F5 XC load balancer FQDN (not the origin IP directly)
+# Traffic Generator — pass the F5 XC load balancer FQDN, not the origin IP directly
 cd ../traffic-generator/terraform
 cat > terraform.tfvars <<EOF
 subscription_id = "your-subscription-id"
@@ -151,10 +287,14 @@ target_fqdn     = "your-xc-load-balancer.example.com"
 EOF
 ```
 
-| Output | Downstream Component | Input Variable |
+| Azure output | Downstream component | Input variable |
 | --- | --- | --- |
 | `public_ip` | CDN Simulator | `origin_server` (with `http://` prefix) |
 | `public_ip` | CDN Simulator | `origin_host` (with `:80` suffix, no scheme) |
 | `public_ip` | F5 XC Origin Pool | Origin server address |
 
-Proceed to [Applications](../04-applications/) for usage guides or [Verify](../05-verify/) for smoke tests.
+For AWS Juice Shop, use `origin_hostname` as the origin address and `listener_port` as the port. An
+internal ALB requires F5 Distributed Cloud to have an authorized routed path into the VPC.
+
+Proceed to [Applications](../04-applications/) for usage guides or [Verify](../05-verify/) for smoke
+tests.

@@ -1,23 +1,24 @@
 ---
 title: Architecture
-description: "41-container deployment on Standard_D16s_v3 (16 vCPU, 64 GiB): nginx reverse proxy with reuseport, sticky sessions, and proxy cache routing to load-balanced instances of Juice Shop, DVWA-FPM, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI on Ubuntu 24.04"
+description: "Comparison and architecture guidance for the Azure full-origin nine-application stack and the separate AWS Juice Shop-only Fargate deployment"
 sidebar:
   order: 1
 ---
 
 ## Purpose
 
-This component provides a single origin server hosting multiple vulnerable web applications for security testing demos. It represents the "origin" in a typical load balancer architecture -- the backend content server that an F5 XC HTTP load balancer protects.
+This repository provides two separate origin offerings for authorized F5 Distributed Cloud security demos. Choose the deployment that matches the required application scope and cloud runtime.
 
-In production architectures:
+| Offering | Application scope | Runtime | Ingress | Terraform source |
+| --- | --- | --- | --- | --- |
+| **Azure full-origin** | Nine applications across 41 containers | nginx and Docker on an Ubuntu 24.04 Azure VM | nginx on the VM | [`terraform/`](https://github.com/f5-sales-demo/origin-server/tree/main/terraform) |
+| **AWS Juice Shop** | OWASP Juice Shop only | Private AWS Fargate tasks | Application Load Balancer, internal by default | [`terraform/modules/aws-juice-shop/`](https://github.com/f5-sales-demo/origin-server/tree/d6384bb0621c4c1eceb38d55a6b63e7b9cc7083a/terraform/modules/aws-juice-shop) |
 
-```text
-End User -> F5 XC HTTP LB (WAF/Bot/API Security) -> Origin Server -> Application
-```
+The AWS offering is not a cloud-equivalent version of the Azure nine-application stack. It does not deploy nginx, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, or crAPI.
 
-This component replaces a real production application server with a purpose-built VM running well-known vulnerable applications that trigger WAF rules, API security policies, and bot detection.
+In both designs, F5 Distributed Cloud can provide the public HTTP load balancer and configured edge security controls in front of the origin.
 
-## Architecture
+## Azure Full-Origin Architecture
 
 ```mermaid
 graph LR
@@ -49,7 +50,7 @@ The nginx reverse proxy:
 - **Passes client headers** (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`) for origin visibility
 - **Kernel tuning** via sysctl: `somaxconn=65535`, `tcp_tw_reuse=1`, `ip_local_port_range=1024-65535`
 
-## Application Mapping
+## Azure Application Mapping
 
 | Path | Upstream | Instances | Ports | Sticky Session | Purpose |
 | --- | --- | --- | --- | --- | --- |
@@ -65,17 +66,52 @@ The nginx reverse proxy:
 | `/restaurant/` | restaurant | 4 + PostgreSQL | 8301-8304 | -- | REST API security (OWASP API Top 10 2023) |
 | `:8888` | crapi | 7 microservices | 8888 | -- | OWASP crAPI (BOLA, BFLA, mass assignment, SSRF, JWT) |
 
+## AWS Juice Shop Architecture
+
+The AWS module deploys only OWASP Juice Shop. It creates an ECS cluster, service, task definition, security groups, an Application Load Balancer, and supporting observability and execution-role resources in caller-managed networking.
+
+```mermaid
+graph LR
+    Client[Client Browser] -->|HTTPS| XCHLB[F5 XC HTTP LB<br/>TLS and configured edge controls]
+    XCHLB -->|HTTP from approved CIDRs| ALB[Application Load Balancer<br/>internal by default]
+    ALB -->|Container port<br/>security-group reference| ECS[Private Fargate task<br/>Juice Shop only]
+    ECS --> LOGS[CloudWatch Logs<br/>KMS encrypted · 365+ days]
+    ALB --> S3[Caller-managed S3 bucket<br/>ALB access logs]
+```
+
+### Trust Boundary and Exposure
+
+F5 Distributed Cloud is the public HTTPS termination and configured security-enforcement point in this design. The F5 Distributed Cloud-to-ALB hop intentionally uses HTTP and is acceptable only as a documented trusted-routing-domain exception. Restrict ALB port 80 ingress through `allowed_ingress_cidrs` to approved F5 Distributed Cloud egress or connected-network CIDRs.
+If that routing domain cannot be trusted and protected from interception, use a different origin design.
+
+The ALB is internal by default (`public_exposure = false`). Internet-facing exposure requires the explicit `public_exposure = true` setting and approved CIDR restrictions; `0.0.0.0/0` is accepted only with that explicit mode and is not recommended.
+
+Fargate tasks run in caller-managed private subnets with no public IP address. Their security group accepts the application port only from the ALB security group. The module creates no SSH ingress or direct public path to a task.
+
+### Security and Operational Controls
+
+- The default Juice Shop image is pinned by immutable SHA-256 digest; upgrades require selecting and reviewing a new digest rather than using a mutable tag.
+- CloudWatch container logs use a caller-managed KMS key and enforce at least 365 days of retention.
+- ALB access logging is enabled to a caller-managed S3 bucket; the caller owns bucket encryption, lifecycle, public-access blocking, and the regional log-delivery policy.
+- ECS Container Insights is enabled.
+- The task execution role is scoped to creating log streams and writing log events for this deployment's CloudWatch log group.
+- The ECS deployment circuit breaker is enabled with automatic rollback.
+- The caller owns the VPC, subnets, routes, egress, KMS key, S3 bucket, AWS provider authentication, and Terraform state.
+
+For the pinned inputs, prerequisites, deployment contract, and verification guidance, see the [AWS Juice Shop module documentation](https://github.com/f5-sales-demo/origin-server/tree/d6384bb0621c4c1eceb38d55a6b63e7b9cc7083a/terraform/modules/aws-juice-shop).
+
 ## Modular Component Design
 
 This is one piece of a larger lab environment. Each component is self-contained and deployed independently:
 
-- **This component** provides the origin server (nginx + Docker containers on Azure VM)
+- **Azure full-origin** provides nginx and 41 Docker containers on an Azure VM.
+- **AWS Juice Shop** independently provides Juice Shop on private Fargate tasks behind an ALB.
 - **CDN Simulator** provides the CDN edge layer (nginx caching on Azure VM)
 - **Other components** provide the F5 XC configuration, DNS, WAF policies, API security, etc.
 
 The human operator adds components one at a time. Each component's documentation is written so an AI assistant can read it and deploy the infrastructure autonomously.
 
-## Why These Applications
+## Why the Azure Full-Origin Uses These Applications
 
 | Application | Why Selected |
 | --- | --- |

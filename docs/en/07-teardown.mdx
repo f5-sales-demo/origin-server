@@ -1,47 +1,96 @@
 ---
 title: Teardown
-description: "terraform destroy to remove all Azure resources, verify cleanup with az CLI, clean local state files, and remove associated F5 XC origin pool and HTTP load balancer"
+description: "Safely upgrade, recover, or destroy the AWS Juice Shop offering and tear down the Azure full-origin offering while preserving caller-owned infrastructure"
 sidebar:
   order: 7
 ---
 
-When the lab session is complete, destroy all Azure resources to stop billing.
+Choose the procedure for the deployed provider. Azure full-origin and AWS Juice Shop have different Terraform roots and ownership boundaries.
 
-## Terraform Destroy
+## Azure Full-Origin Teardown
 
-From the directory containing the Terraform configuration:
+When the Azure lab session is complete, destroy the Azure full-origin resources to stop billing.
 
-```bash
-terraform plan -destroy
+### Review and Destroy
 
-terraform destroy
-```
-
-Terraform will prompt for confirmation. Type `yes` to proceed.
-
-## Verify Cleanup
-
-Confirm all resources have been removed:
+From the Azure Terraform directory, capture the resource group name while Terraform state is still available, create a saved destroy plan, inspect it, and apply that exact plan:
 
 ```bash
-az group show --name "$(terraform output -raw resource_group_name)" 2>&1 \
-  | grep -q "ResourceGroupNotFound" \
-  && echo "Resource group deleted" \
-  || echo "Resource group still exists"
+resource_group_name="$(terraform output -raw resource_group_name)"
+test -n "$resource_group_name"
+
+install -d -m 700 .artifacts
+terraform plan -destroy -out=.artifacts/destroy.tfplan
+terraform show .artifacts/destroy.tfplan
+terraform apply .artifacts/destroy.tfplan
 ```
 
-## Clean Up Local State
+Confirm that the saved plan targets only the Azure full-origin deployment before applying it. Keep `.artifacts/` private and out of logs or plan-JSON exports because saved plans can contain sensitive configuration and state-derived values.
 
-Remove Terraform state and cached files:
+### Verify Azure Cleanup
+
+Use the resource group name captured before the destroy. `ResourceGroupNotFound` confirms successful removal; an existing resource group or any other Azure CLI failure is an error:
 
 ```bash
-rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+verification_error="$(mktemp)"
+trap 'rm -f "$verification_error"' EXIT
+
+if az group show --name "$resource_group_name" --only-show-errors > /dev/null 2>"$verification_error"; then
+  printf 'ERROR: resource group still exists: %s\n' "$resource_group_name" >&2
+  exit 1
+elif grep -q 'ResourceGroupNotFound' "$verification_error"; then
+  printf 'Resource group deleted: %s\n' "$resource_group_name"
+else
+  printf 'ERROR: unable to verify resource group deletion\n' >&2
+  cat "$verification_error" >&2
+  exit 1
+fi
 ```
+
+### Clean Up Azure Local State
+
+Only when this configuration uses local state, remove its local Terraform state and cached provider directory after the deployment is destroyed and the state is not required for recovery. Never delete a remote or shared state backend:
+
+```bash
+rm -rf .terraform terraform.tfstate terraform.tfstate.backup
+rm -f .artifacts/destroy.tfplan
+```
+
+Preserve `.terraform.lock.hcl`; it records the reviewed provider selections and checksums so later initialization uses the same dependency decisions.
+
+## AWS Juice Shop Lifecycle
+
+Run these commands from the Terraform configuration that calls `terraform/modules/aws-juice-shop/`. Do not run the Azure procedure against the AWS deployment.
+
+### Upgrade and Recovery
+
+For an image upgrade, resolve and review an immutable Juice Shop image digest, update
+`container_image`, create a saved plan, review it, and apply that exact plan. Never replace the
+digest with a mutable tag such as `latest`. The ECS deployment circuit breaker rolls back a failed
+service deployment; after recovery, verify ECS steady state, healthy ALB targets, CloudWatch logs,
+and reachability from an approved source.
+
+If an internal ALB becomes unreachable, repair the VPC, VPN, Direct Connect, or other authorized private routing. Do not make the ALB public solely to bypass missing connectivity.
+
+### AWS Costs and Reviewed Destroy
+
+The caller pays for ALB hourly and capacity usage, Fargate compute, Container Insights metrics, CloudWatch Logs storage and KMS requests, S3 access-log storage, data transfer, and any caller-managed NAT gateways or endpoints. Destroy the module-managed resources when the demo is finished:
+
+```bash
+install -d -m 700 .artifacts
+terraform plan -destroy -out=.artifacts/destroy.tfplan
+terraform apply .artifacts/destroy.tfplan
+```
+
+Inspect the saved destroy plan before applying it. Keep `.artifacts/` private and out of logs or plan-JSON exports because saved plans can contain sensitive configuration and state-derived values.
+
+The AWS module destroys only resources it manages, including the ALB, listener, target group, ECS resources, security groups, execution role, and CloudWatch log group. It does **not** destroy caller-owned VPCs, subnets, routes, NAT gateways, proxies, endpoints, KMS keys, S3 buckets, provider authentication, or Terraform state backends.
+Verify those shared resources remain before removing local state.
 
 ## F5 XC Cleanup
 
-If you created F5 XC resources pointing to this origin server, remove them:
+After the selected origin is destroyed, remove only the F5 XC resources created for that offering:
 
-1. Delete the HTTP load balancer
-2. Delete the origin pool
-3. Delete any WAF policies created for testing
+1. Delete the HTTP load balancer or detach the provider-specific origin pool.
+2. Delete the matching origin pool: Azure `public_ip` or AWS `public_name`.
+3. Delete testing policies only when they are not shared with another load balancer or demo.

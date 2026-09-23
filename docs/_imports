@@ -7,3 +7,12 @@ terraform/vm.tf
 terraform/outputs.tf
 terraform/cloud-init.yaml
 terraform/terraform.tfvars.example
+
+# AWS Juice Shop module sources use explicit destinations to avoid basename collisions.
+terraform/modules/aws-juice-shop/main.tf -> aws-juice-shop/main.tf
+terraform/modules/aws-juice-shop/variables.tf -> aws-juice-shop/variables.tf
+terraform/modules/aws-juice-shop/outputs.tf -> aws-juice-shop/outputs.tf
+terraform/modules/aws-juice-shop/versions.tf -> aws-juice-shop/versions.tf
+terraform/modules/aws-juice-shop/tests/module.tftest.hcl -> aws-juice-shop/tests/module.tftest.hcl
+terraform/modules/aws-juice-shop/examples/minimal/main.tf -> aws-juice-shop/examples/minimal/main.tf
+terraform/modules/aws-juice-shop/examples/minimal/variables.tf -> aws-juice-shop/examples/minimal/variables.tf

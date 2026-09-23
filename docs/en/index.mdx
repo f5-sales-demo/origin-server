@@ -1,19 +1,19 @@
 ---
 title: Origin Server
-description: "Ubuntu 24.04 Azure VM running nginx reverse proxy to Docker containers: Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI for WAF, API security, bot defense, and client-side defense testing with F5 Distributed Cloud"
+description: "Two supported origin offerings for F5 Distributed Cloud demos: an Azure full-origin nine-application stack and a separate AWS Juice Shop-only Fargate module"
 template: splash
 sidebar:
   hidden: true
 hero:
-  tagline: Deploy a multi-app origin server in Azure for WAF, API security, bot defense, and client-side defense testing with F5 Distributed Cloud.
+  tagline: Choose the Azure full-origin stack or the separate AWS Juice Shop deployment for authorized F5 Distributed Cloud demos.
   image:
     html: '<div style="font-size:4rem;">&#128421;</div>'
   actions:
-    - text: Get Started
+    - text: Compare Deployments
       link: 01-architecture/
       icon: right-arrow
       variant: primary
-    - text: Deploy Now
+    - text: Deploy Azure Full-Origin
       link: 03-deploy/
       icon: rocket
       variant: minimal
@@ -24,20 +24,27 @@ import LinkCard from '@f5-sales-demo/docs-theme/components/LinkCard.astro';
 
 ## What This Provides
 
+These are sibling deployments, not equivalent cloud implementations of the same stack.
+
+| Offering | Applications | Runtime and ingress | Source |
+| --- | --- | --- | --- |
+| **Azure full-origin** | Nine applications in 41 containers | nginx on an Ubuntu 24.04 Azure VM | [`terraform/`](https://github.com/f5-sales-demo/origin-server/tree/main/terraform) |
+| **AWS Juice Shop** | Juice Shop only | Private Fargate tasks behind an internal-by-default ALB | [`terraform/modules/aws-juice-shop/`](https://github.com/f5-sales-demo/origin-server/tree/d6384bb0621c4c1eceb38d55a6b63e7b9cc7083a/terraform/modules/aws-juice-shop) |
+
 <CardGrid>
   <LinkCard
-    title="Multi-App Origin"
-    description="One Ubuntu 24.04 VM (16 vCPU, 64 GiB) running nginx as a reverse proxy to 41 Docker containers: Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI."
-    href="01-architecture/"
+    title="Azure Full-Origin"
+    description="Nine applications across 41 containers on one Ubuntu 24.04 Azure VM, with nginx path routing and the complete Azure infrastructure in terraform/."
+    href="01-architecture/#azure-full-origin-architecture"
   />
   <LinkCard
-    title="Terraform Deployment"
-    description="Complete Azure infrastructure as code: VNet, PIP, NSG, and Standard_D16s_v3 VM with Docker + nginx cloud-init provisioning. 60 GiB disk, logrotate, and journald caps included."
-    href="03-deploy/"
+    title="AWS Juice Shop"
+    description="Juice Shop only on private AWS Fargate tasks behind a CIDR-restricted ALB. This module is not the Azure nine-application stack."
+    href="01-architecture/#aws-juice-shop-architecture"
   />
   <LinkCard
-    title="Vulnerable Applications"
-    description="Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI covering WAF, API security, bot defense, client-side defense, GraphQL security, and request diagnostics."
+    title="Azure Vulnerable Applications"
+    description="The nine applications in the Azure full-origin stack: Juice Shop, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, and crAPI."
     href="04-applications/"
   />
   <LinkCard
