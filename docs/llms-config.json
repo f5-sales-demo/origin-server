@@ -1,21 +1,26 @@
 {
   "customSets": [
     {
-      "label": "Deployment",
-      "description": "Origin Server Terraform deployment — requires only subscription_id, outputs public_ip for CDN simulator and F5 XC origin pool",
-      "paths": ["02-prerequisites*", "03-deploy*", "07-teardown*"]
+      "label": "Azure Full-Origin Deployment",
+      "description": "Azure VM deployment from terraform/: nine applications across 41 containers behind nginx; requires subscription_id and outputs the VM public_ip",
+      "paths": ["02-prerequisites*", "03-deploy*", "05-verify*", "07-teardown*"]
+    },
+    {
+      "label": "AWS Juice Shop Module",
+      "description": "Separate Juice Shop-only offering from terraform/modules/aws-juice-shop/: private Fargate tasks behind an internal-by-default ALB in caller-managed networking",
+      "paths": ["01-architecture*", "02-prerequisites*", "03-deploy*", "05-verify*", "06-integrate*", "07-teardown*"]
     },
     {
       "label": "Applications",
-      "description": "Vulnerable web application architecture, configuration, and API testing",
-      "paths": ["01-architecture*", "04-applications*", "05-verify*", "08-api-testing-guide*"]
+      "description": "Application scope and API testing; the nine-application catalog belongs to Azure full-origin, while AWS provides Juice Shop only",
+      "paths": ["04-applications*", "08-api-testing-guide*"]
     },
     {
       "label": "Integration",
-      "description": "Integration with F5 XC HTTP load balancers and WAF policies",
+      "description": "Provider-specific F5 Distributed Cloud origin-pool integration for the Azure VM public IP or AWS ALB DNS hostname",
       "paths": ["06-integrate*"]
     }
   ],
-  "promote": ["index*", "01-architecture*", "03-deploy*", "08-api-testing-guide*"],
+  "promote": ["index*", "01-architecture*", "02-prerequisites*", "03-deploy*", "06-integrate*"],
   "demote": ["07-teardown*"]
 }

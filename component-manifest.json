@@ -1,10 +1,10 @@
 {
   "schema_version": "2",
   "name": "origin-server",
-  "display_name": "Origin Server",
-  "role": "Origin server with vulnerable web applications",
+  "display_name": "Origin Server — Azure Full-Origin",
+  "role": "Azure full-origin server with nine vulnerable web applications",
   "category": "lab-infrastructure",
-  "summary": "Ubuntu 24.04 Azure VM running nginx reverse proxy to 41 Docker containers across 9 vulnerable applications for WAF, API security, bot defense, and client-side defense testing with F5 Distributed Cloud",
+  "summary": "Azure full-origin deployment: Ubuntu 24.04 Azure VM running nginx reverse proxy to 41 Docker containers across 9 vulnerable applications for WAF, API security, bot defense, and client-side defense testing with F5 Distributed Cloud. The Terraform contract describes terraform/ only; the separate AWS Juice Shop module has its own inputs and outputs.",
 
   "provides": [
     "vulnerable-web-apps",
@@ -83,9 +83,9 @@
       "environment"
     ],
     "component_outputs": {
-      "origin_url": { "type": "string", "description": "Base HTTP URL of the origin server" },
-      "health_check_url": { "type": "string", "description": "Health check endpoint" },
-      "juice_shop_url": { "type": "string", "description": "OWASP Juice Shop URL" },
+      "origin_url": { "type": "string", "description": "Base HTTP URL of the Azure full-origin server" },
+      "health_check_url": { "type": "string", "description": "Azure full-origin health check endpoint" },
+      "juice_shop_url": { "type": "string", "description": "OWASP Juice Shop URL on the Azure full-origin server" },
       "dvwa_url": { "type": "string", "description": "DVWA URL" },
       "vampi_url": { "type": "string", "description": "VAmPI URL" },
       "httpbin_url": { "type": "string", "description": "httpbin URL" },

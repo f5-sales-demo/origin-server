@@ -1,28 +1,37 @@
 ---
 title: Integrate
-description: "Configure the VM as an F5 XC origin pool member with WAF, Bot Defense, API Discovery, and Client-Side Defense policies; path-based routing through HTTP load balancer; header injection verification via /whoami"
+description: "Configure provider-specific F5 XC origin pools for the Azure full-origin VM or the AWS Juice Shop ALB without mixing endpoint or connectivity models"
 sidebar:
   order: 6
 ---
 
-## F5 XC Origin Pool Integration
+## Choose the Origin Offering
 
-This origin server is designed to be used as an **origin pool member** behind an F5 Distributed Cloud HTTP load balancer. The F5 XC platform provides WAF, Bot Defense, API Security, and Client-Side Defense in front of this origin.
+The two supported offerings use different endpoint and connectivity models:
+
+- **Azure full-origin:** nine applications and 41 containers behind nginx on an Azure VM. Configure the F5 XC origin with the VM `public_ip`.
+- **AWS Juice Shop:** Juice Shop only, running on private Fargate tasks behind an Application Load Balancer (ALB). Configure the F5 XC origin with the ALB DNS hostname as `public_name`.
+
+Do not substitute one provider's endpoint type, application paths, or teardown procedure for the other.
+
+## Azure Full-Origin Integration
+
+The Azure origin server is designed to be used as an **origin pool member** behind an F5 Distributed Cloud HTTP load balancer. The F5 XC platform provides WAF, Bot Defense, API Security, and Client-Side Defense in front of this origin.
 
 ### Architecture
 
 ```text
-End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Origin Server VM (nginx -> Docker apps)
+End User -> F5 XC HTTP LB (WAF/Bot/API/CSD) -> Azure VM public IP (nginx -> Docker apps)
 ```
 
 ### Origin Pool Configuration
 
-Create an F5 XC origin pool pointing to this VM's public IP:
+Create an F5 XC origin pool pointing to the Azure VM's public IP:
 
 | Setting | Value |
 | --- | --- |
 | **Origin Server Type** | Public IP of Origin Server |
-| **IP Address** | `<terraform output public_ip>` |
+| **IP Address (`public_ip`)** | `<terraform output -raw public_ip>` |
 | **Port** | `80` |
 | **Health Check** | HTTP, path `/health` |
 
@@ -163,3 +172,27 @@ End User -> CDN Simulator (nginx cache) -> F5 XC HTTP LB -> Origin Server (this 
 ```
 
 The CDN Simulator uses the F5 XC HTTP load balancer VIP as its origin, and the F5 XC load balancer uses this origin server as its backend. This creates a realistic multi-layer architecture for comprehensive testing.
+
+## AWS Juice Shop Integration
+
+The AWS module provides only Juice Shop. It places private Fargate tasks behind an ALB and exposes the ALB hostname with the `origin_hostname` output.
+
+```text
+End User -> F5 XC HTTP LB -> AWS ALB -> Private Fargate Juice Shop task
+```
+
+Configure a separate F5 XC origin pool for the AWS offering:
+
+| Setting | Value |
+| --- | --- |
+| **Origin Server Type** | Public DNS Name of Origin Server |
+| **DNS Name (`public_name`)** | `<terraform output -raw origin_hostname>` |
+| **Port** | `80` |
+| **Health Check** | HTTP, path `/` |
+
+The ALB is **internal by default**. Its hostname is not reachable from F5 XC Regional Edges merely because it is entered as `public_name`. Before using an internal ALB, provide private connectivity and routing between the selected F5 XC origin-reachability location and the VPC, such as an authorized connected network.
+The ALB security group must allow port 80 only from the approved F5 XC egress or connected-network CIDRs through `allowed_ingress_cidrs`.
+
+If private connectivity is unavailable and the demo explicitly requires an internet-facing ALB, set `public_exposure = true` and restrict `allowed_ingress_cidrs` to the approved F5 XC source CIDRs. Do not use `0.0.0.0/0` as a convenience workaround.
+
+Traffic from F5 XC to the ALB uses HTTP as a documented trusted-routing-domain exception. Use this design only where the routed domain is controlled and protected from interception; otherwise choose an origin design that encrypts the hop. F5 XC never connects directly to the private Fargate tasks.

@@ -5,9 +5,14 @@ sidebar:
   order: 8
 ---
 
-## Overview
 
-This guide catalogs every API endpoint, intentional vulnerability, and attack payload across the three API security testing applications. Use it to build traffic generation patterns for F5 XC API protection profile development.
+## Scope
+
+This guide covers DVGA, RESTaurant, and crAPI in the **Azure full-origin** deployment. Those applications and their path-based routes are not deployed by `terraform/modules/aws-juice-shop`; all non-Juice-Shop APIs require Azure full-origin.
+
+The AWS offering contains only Juice Shop on private Fargate behind an ALB and serves it at the module `origin_url` root (`/`). For a Juice Shop API smoke test on AWS, expose `module.juice_shop.origin_url`, then run `curl -sf "${ORIGIN}/rest/products/search?q="`. Do not use the `/juice-shop/` prefix on AWS.
+
+This guide catalogs every API endpoint, intentional vulnerability, and attack payload across the three Azure API security testing applications. Use it to build traffic generation patterns for F5 XC API protection profile development.
 
 | Application | Protocol | Path | Port | Auth | Vulnerabilities |
 | --- | --- | --- | --- | --- | --- |
@@ -15,11 +20,11 @@ This guide catalogs every API endpoint, intentional vulnerability, and attack pa
 | **RESTaurant** | REST (FastAPI) | `/restaurant/` | 80 | JWT (form-encoded) | 7 OWASP API 2023 categories |
 | **crAPI** | REST (microservices) | `/` | 8888 | JWT (Bearer) | 18+ challenges |
 
-### Environment Variables
+### Azure Environment Variables
 
 ```bash
-ORIGIN="http://<ORIGIN_IP>"
-CRAPI="http://<ORIGIN_IP>:8888"
+ORIGIN=$(terraform -chdir=terraform output -raw origin_url)
+CRAPI=$(terraform -chdir=terraform output -raw crapi_url)
 ```
 
 ---

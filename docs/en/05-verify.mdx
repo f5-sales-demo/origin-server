@@ -1,11 +1,13 @@
 ---
 title: Verify
-description: "curl smoke tests for all nine application endpoints, Docker container health checks, nginx status verification, cloud-init log inspection, and common troubleshooting steps"
+description: "Provider-specific verification for the Azure nine-application VM origin and AWS Juice Shop on private Fargate behind an ALB"
 sidebar:
   order: 5
 ---
 
-## Smoke Tests
+The Azure and AWS offerings have different runtimes and verification paths. Use SSH, Docker, nginx, and cloud-init checks only for the Azure full-origin. The AWS offering has no SSH-accessible host and must be verified through ECS, ELB, CloudWatch, S3, network reachability, and Terraform.
+
+## Azure Full-Origin Verification
 
 Run these checks after allowing 5--10 minutes for cloud-init to complete.
 
@@ -80,7 +82,7 @@ ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status
 
 Expected output (41 containers):
 
-```
+```text
 NAMES              STATUS         PORTS
 crapi-community    Up X minutes
 crapi-identity     Up X minutes
@@ -131,7 +133,99 @@ whoami-4           Up X minutes   127.0.0.1:8085->80/tcp
 ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pager"
 ```
 
-## Troubleshooting
+## AWS Juice Shop Verification
+
+Run these checks from the Terraform root that consumes `terraform/modules/aws-juice-shop`. Expose the module outputs from that root, then capture them:
+
+```hcl
+output "origin_url" {
+  value = module.juice_shop.origin_url
+}
+
+output "ecs_cluster_id" {
+  value = module.juice_shop.ecs_cluster_id
+}
+
+output "ecs_service_id" {
+  value = module.juice_shop.ecs_service_id
+}
+
+output "target_group_arn" {
+  value = module.juice_shop.target_group_arn
+}
+```
+
+```bash
+ORIGIN=$(terraform output -raw origin_url)
+ECS_CLUSTER=$(terraform output -raw ecs_cluster_id)
+ECS_SERVICE=$(terraform output -raw ecs_service_id)
+TARGET_GROUP_ARN=$(terraform output -raw target_group_arn)
+```
+
+The AWS origin serves Juice Shop at `${ORIGIN}/`; `/juice-shop/`, DVGA, RESTaurant, crAPI, and every other non-Juice-Shop endpoint in this documentation require the Azure full-origin.
+
+### Choose the HTTP execution location
+
+Before running any AWS `curl` command, choose an execution location that can reach the configured ALB:
+
+- **Internal ALB (default):** run from a host or runner with private DNS resolution and an implemented route into the VPC, such as VPN, Direct Connect, peering, or an F5 Distributed Cloud connected network. If F5 Distributed Cloud is the caller, its private origin connectivity must already be implemented and verified.
+- **Internet-facing ALB:** run from a source included in `allowed_ingress_cidrs`. The ALB subnets must have routes to an Internet Gateway; selecting subnets in the correct VPC and Availability Zones does not make them public.
+
+The module validates VPC and Availability Zone placement only. It does not create or validate subnet routes, gateways, VPNs, Direct Connect, peering, or F5 Distributed Cloud private connectivity.
+
+### ECS steady state and target health
+
+```bash
+aws ecs wait services-stable --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}"
+aws ecs describe-services --cluster "${ECS_CLUSTER}" --services "${ECS_SERVICE}" \
+  --query 'services[0].{desired:desiredCount,running:runningCount,pending:pendingCount,deployments:deployments[*].rolloutState}'
+aws elbv2 describe-target-health --target-group-arn "${TARGET_GROUP_ARN}" \
+  --query 'TargetHealthDescriptions[].TargetHealth.{state:State,reason:Reason,description:Description}'
+```
+
+The service must reach steady state with the desired task count running and every registered target reporting `healthy`.
+
+### CloudWatch container logs
+
+The module log group is `/ecs/<module-name>`, where `<module-name>` is the module's `name` input.
+
+```bash
+AWS_LOG_GROUP="/ecs/<module-name>"
+aws logs tail "${AWS_LOG_GROUP}" --since 10m
+```
+
+Confirm recent `juice-shop` stream events exist and that there are no repeated startup failures. Do not use SSH or Docker commands: Fargate does not provide the Azure VM's container-host access model.
+
+### ALB access logs
+
+The caller supplies the S3 bucket and optional prefix. From the execution location selected above, generate one authorized request, then confirm that ELB log objects arrive under the regional `AWSLogs/<account-id>/elasticloadbalancing/` hierarchy beneath that prefix:
+
+```bash
+curl -sf "${ORIGIN}/" -o /dev/null -w "Juice Shop: %{http_code}\n"
+aws s3api list-objects-v2 \
+  --bucket "<caller-managed-alb-log-bucket>" \
+  --prefix "<configured-prefix>/AWSLogs/" \
+  --query 'reverse(sort_by(Contents,&LastModified))[:5].[Key,LastModified,Size]'
+```
+
+Delivery is asynchronous; retry after several minutes before treating an empty result as a failure.
+
+### Authorized-source reachability
+
+From the applicable execution location described above, test `${ORIGIN}/` from an address included in `allowed_ingress_cidrs`; expect HTTP `200`. Test from a controlled address outside those CIDRs; the connection must fail.
+
+Do not make the ALB public to work around missing routing. If `public_exposure = true` is an explicit requirement, restrict `allowed_ingress_cidrs` to approved sources and verify that each selected ALB subnet routes through an Internet Gateway.
+The F5 Distributed Cloud-to-ALB HTTP hop is acceptable only inside the documented trusted routing domain; use a different origin design if interception protection cannot be established.
+
+### No-drift plan
+
+```bash
+terraform plan -detailed-exitcode
+```
+
+Exit code `0` confirms no changes. Exit code `2` means drift or unapplied configuration and must be reviewed; exit code `1` is an error.
+
+## Azure Full-Origin Troubleshooting
 
 ### Cloud-init still running
 
@@ -203,3 +297,12 @@ If needed, rebuild and restart all services:
 ```bash
 ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"
 ```
+
+## AWS Troubleshooting
+
+- **ECS does not stabilize:** inspect `aws ecs describe-services` events. Verify private task-subnet DNS and HTTPS egress to Docker Hub and AWS Logs through caller-managed NAT, proxy, or equivalent endpoints.
+- **Targets remain unhealthy:** inspect `describe-target-health`, ECS events, and CloudWatch logs. Confirm the image listens on `container_port`, the target-group health check reaches `/`, and the task security group allows that port only from the ALB security group.
+- **CloudWatch logs are absent:** verify task egress or private endpoints, the regional Logs service principal permissions in the caller-managed KMS key policy, and the execution role's log-stream permissions.
+- **ALB logs are absent:** verify the caller-managed bucket is in a supported region and its bucket policy permits regional Elastic Load Balancing log delivery to the configured prefix.
+- **Internal URL is unreachable:** verify DNS, routes, and source authorization from the approved connected network. Keep the ALB internal unless public exposure is a deliberate, reviewed requirement.
+- **Terraform reports changes:** review the plan against caller-managed VPC, routes, KMS, S3, provider authentication, and state. Do not apply until the ownership boundary and proposed changes are understood.

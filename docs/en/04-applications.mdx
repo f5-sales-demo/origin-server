@@ -5,13 +5,18 @@ sidebar:
   order: 4
 ---
 
-## Application Overview
 
-Each application runs as 4 load-balanced Docker containers behind nginx upstream pools, accessible through the nginx reverse proxy on the VM. Sticky sessions ensure stateful applications (Juice Shop, DVWA, VAmPI, CSD Demo) route consistently. All applications are intentionally vulnerable and designed for security testing.
+## Supported Offerings
 
-Replace `<ORIGIN>` with `http://<PUBLIC_IP>` in all examples below. After deploying via Terraform, get the IP with `terraform output -raw public_ip`.
+This repository provides two distinct origins; they are not feature-equivalent:
 
-## Quick Reference -- All URL Paths
+- **Azure full-origin:** a VM running nginx in front of 41 containers for all nine applications and the path-based URLs documented below. Set `ORIGIN` from `terraform output -raw origin_url` in `terraform/`.
+- **AWS Juice Shop:** private Fargate tasks behind an Application Load Balancer (ALB). It serves Juice Shop directly at the ALB root (`/`), not at `/juice-shop/`. Set `ORIGIN` from the consuming configuration's module output, for example `terraform output -raw origin_url`.
+  The ALB is internal by default, so that URL resolves and responds only from an authorized routed network unless public exposure was explicitly configured.
+
+The AWS module does not deploy nginx, a container host, or the other eight applications. Every path in the quick reference below, including non-Juice-Shop APIs, requires the Azure full-origin unless stated otherwise.
+
+## Azure Full-Origin URL Reference
 
 | Path | Application | HTTP Method | Expected Response |
 | --- | --- | --- | --- |
@@ -46,16 +51,33 @@ Replace `<ORIGIN>` with `http://<PUBLIC_IP>` in all examples below. After deploy
 
 ## OWASP Juice Shop
 
-| | |
-| --- | --- |
-| **Path** | `/juice-shop/` |
-| **Image** | `bkimminich/juice-shop:latest` |
-| **Instances** | 4 (ports 3001-3004), sticky via `hash $cookie_token`, proxy cache (60 s TTL) |
-| **Resources** | 2 CPU / 1 GiB RAM per instance |
-| **Framework** | Node.js / Angular |
-| **Project** | [owasp.org/www-project-juice-shop](https://owasp.org/www-project-juice-shop/) |
-
 OWASP Juice Shop is the most modern and actively maintained vulnerable web application. It covers the entire OWASP Top 10 with 100+ challenges in a realistic e-commerce application.
+
+| Offering | URL behavior | Runtime |
+| --- | --- | --- |
+| Azure full-origin | `${ORIGIN}/juice-shop/` | Four Docker containers behind nginx with sticky routing and a 60-second proxy-cache TTL |
+| AWS Juice Shop | `${ORIGIN}/` | Private Fargate task or tasks behind an ALB; no nginx or host SSH |
+
+For Azure, obtain `ORIGIN` from the root configuration:
+
+```bash
+ORIGIN=$(terraform -chdir=terraform output -raw origin_url)
+curl -sf "${ORIGIN}/juice-shop/" -o /dev/null -w "%{http_code}\n"
+```
+
+For AWS, expose the module's `origin_url` from the consuming root configuration and use it without a `/juice-shop/` prefix:
+
+```hcl
+output "origin_url" {
+  value = module.juice_shop.origin_url
+}
+```
+
+```bash
+ORIGIN=$(terraform output -raw origin_url)
+curl -sf "${ORIGIN}/" -o /dev/null -w "%{http_code}\n"
+curl -sf "${ORIGIN}/rest/products/search?q=" | jq .
+```
 
 ### Juice Shop demo scenarios
 
@@ -68,12 +90,6 @@ OWASP Juice Shop is the most modern and actively maintained vulnerable web appli
 | API abuse | API Security | Unauthorized access to `/api/` endpoints |
 | Sensitive data exposure | API Security | Accessing user data without authorization |
 | CSRF | WAF | Cross-site request forgery on profile changes |
-
-### Access
-
-```bash
-curl -s "http://<PUBLIC_IP>/juice-shop/" -o /dev/null -w "%{http_code}"
-```
 
 ## DVWA (Damn Vulnerable Web Application)
 
@@ -234,17 +250,17 @@ curl "http://<PUBLIC_IP>/whoami/" \
 Example output:
 
 ```text
-Hostname: 534c5084e169
-IP: 127.0.0.1
-RemoteAddr: 172.17.0.1:55118
+Hostname: <container-hostname>
+IP: <container-loopback-ip>
+RemoteAddr: <immediate-peer-ip>:<ephemeral-port>
 GET / HTTP/1.1
-Host: 20.12.78.159
-User-Agent: curl/8.5.0
+Host: <origin-hostname-or-ip>
+User-Agent: curl/<version>
 Accept: */*
-True-Client-Ip: 203.0.113.50
-X-Forwarded-For: 203.0.113.50, 10.0.0.1
+True-Client-Ip: <simulated-client-ip>
+X-Forwarded-For: <simulated-client-ip>, <trusted-proxy-ip>
 X-Forwarded-Proto: https
-X-Real-Ip: 104.219.105.84
+X-Real-Ip: <observed-client-ip>
 ```
 
 ## DVGA (Damn Vulnerable GraphQL Application)
