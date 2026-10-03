@@ -28,18 +28,36 @@ const browser = await chromium.launch({
 const context = await browser.newContext({ extraHTTPHeaders: { 'X-MUD-User': 'waap-workflow-benign' } });
 const page = await context.newPage();
 const pending = new Set();
-page.on('request', (request) => pending.add(request));
-page.on('requestfinished', (request) => pending.delete(request));
-page.on('requestfailed', (request) => pending.delete(request));
+let lastRequestChange = Date.now();
+page.on('request', (request) => {
+  pending.add(request);
+  lastRequestChange = Date.now();
+});
+page.on('requestfinished', (request) => {
+  pending.delete(request);
+  lastRequestChange = Date.now();
+});
+page.on('requestfailed', (request) => {
+  pending.delete(request);
+  lastRequestChange = Date.now();
+});
 async function settled() {
   const deadline = Date.now() + 15000;
-  while (pending.size && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 50));
-  if (pending.size) throw new Error('Application requests did not complete before navigation');
+  while (Date.now() < deadline) {
+    if (!pending.size && Date.now() - lastRequestChange >= 1000) return;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error('Application requests did not complete before navigation');
 }
 
 page.on('pageerror', () => receipt.errors.push({ kind: 'browser-error' }));
 page.on('requestfailed', (request) =>
-  receipt.errors.push({ kind: 'transport-failure', path: new URL(request.url()).pathname }),
+  receipt.errors.push({
+    kind: 'transport-failure',
+    path: new URL(request.url()).pathname,
+    error: request.failure()?.errorText,
+    main_frame: request.frame() === page.mainFrame(),
+  }),
 );
 page.on('response', (response) => {
   if (response.status() >= 400)
