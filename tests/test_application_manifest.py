@@ -3,6 +3,8 @@
 import copy
 import importlib.util
 import json
+import re
+import sys
 import unittest
 from pathlib import Path
 
@@ -10,6 +12,8 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from render_origin import render  # noqa: E402 - source scripts under test
 
 
 class ManifestTests(unittest.TestCase):
@@ -101,3 +105,15 @@ def test_direct_and_proxy_clients_have_stable_nonempty_juice_affinity():
     assert "map $http_x_forwarded_for $juice_affinity" in nginx
     assert '"" $remote_addr;' in nginx
     assert "hash $juice_affinity consistent;" in nginx
+
+
+def test_forwarded_application_redirect_is_not_prefixed_twice():
+    site = next(
+        item["content"]
+        for item in render(ROOT)
+        if item["path"] == "/etc/nginx/sites-available/origin-server"
+    )
+    assert "proxy_redirect ~^/(?!dvwa(?:/|$))(.*)$ /dvwa/$1;" in site
+    pattern = r"^/(?!dvwa(?:/|$))(.*)$"
+    assert re.match(pattern, "/security.php")
+    assert not re.match(pattern, "/dvwa/security.php")

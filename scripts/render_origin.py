@@ -54,7 +54,7 @@ def render(root: Path) -> list[dict]:
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-Prefix {prefix};
-        proxy_redirect ~^(/.*)$ {prefix}$1;
+        proxy_redirect ~^/(?!{app["id"]}(?:/|$))(.*)$ {prefix}/$1;
         proxy_cookie_path / {app["prefix"]};
     }}""")
     site = by_path["/etc/nginx/sites-available/origin-server"]["content"]
