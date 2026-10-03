@@ -1,6 +1,7 @@
 """Join current-source workflow evidence without accepting partial browser or HTTP slices."""
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -225,8 +226,16 @@ def browser_observations(
             if (directory / "receipt.json").is_file():
                 receipt = json.loads((directory / "receipt.json").read_text())
                 runtime = json.loads((directory / "runtime-receipt.json").read_text())
-                assertions = browser_assertions(
-                    kind, receipt, runtime, provenance, base
+                verifier = Path(
+                    "/opt/origin-server/browser-runtime/verify_"
+                    + ("juice" if kind == "juice" else kind)
+                    + "_browser.mjs"
+                )
+                digest = hashlib.sha256(verifier.read_bytes()).hexdigest()
+                assertions = (
+                    browser_assertions(kind, receipt, runtime, provenance, base)
+                    if runtime.get("verifier_sha256") == digest
+                    else set()
                 )
                 observations.append(
                     {
