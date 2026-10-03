@@ -88,6 +88,7 @@ try {
           failed_requests: [],
           bad_responses: [],
           prefix_escapes: [],
+          mutation_links: [],
         };
         page.on('pageerror', (error) => result.console_errors.push(String(error)));
         page.on('console', (message) => {
@@ -142,6 +143,8 @@ try {
             const target = new URL(url);
             if (target.origin !== new URL(base).origin) continue;
             if (!target.pathname.startsWith(app.prefix)) result.prefix_escapes.push(url);
+            else if ((app.mutation_paths ?? []).some((mutation) => target.pathname === app.prefix + mutation))
+              result.mutation_links.push(url);
             else if (navigation.includes(url) && !target.href.includes('#')) queue.push({ url });
           }
           result.screenshot = `${app.id}-${crypto.createHash('sha256').update(item.url).digest('hex').slice(0, 16)}.png`;
