@@ -53,6 +53,15 @@ try {
   await page.getByPlaceholder('Phone No.').fill(fixture.number);
   await page.getByPlaceholder('Password', { exact: true }).fill('Synthetic!123');
   await page.getByPlaceholder('Re-enter Password').fill('Synthetic!123');
+  const finishedSignup = page
+    .waitForEvent('requestfinished', {
+      predicate: (request) => new URL(request.url()).pathname === '/crapi/identity/api/auth/signup',
+      timeout: 15000,
+    })
+    .then(
+      () => true,
+      () => false,
+    );
   const responsePromise = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === '/crapi/identity/api/auth/signup' && response.request().method() === 'POST',
@@ -76,6 +85,7 @@ try {
   });
   await page.screenshot({ path: path.join(output, 'signup-success.png'), fullPage: true });
   fs.chmodSync(path.join(output, 'signup-success.png'), 0o600);
+  if (!(await finishedSignup)) throw new Error('Signup request completion failed');
   receipt.checks.push({ name: 'signup-submit', passed: true, screenshot: 'signup-success.png' });
   let messages = [];
   for (let attempt = 0; attempt < 15; attempt++) {
