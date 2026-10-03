@@ -86,7 +86,8 @@ def main() -> int:
     """Retain timeout and tool failures without leaving Chromium running."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "kind", choices=("content", "crapi", "juice", "dvwa", "dvga", "csd")
+        "kind",
+        choices=("content", "crapi", "juice", "dvwa", "dvga", "csd", "restaurant"),
     )
     parser.add_argument("--base", required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -108,6 +109,7 @@ def main() -> int:
         "dvwa": "verify_dvwa_browser.mjs",
         "dvga": "verify_dvga_browser.mjs",
         "csd": "verify_csd_browser.mjs",
+        "restaurant": "verify_restaurant_browser.mjs",
     }[args.kind]
     arguments = (
         ["--manifest", "/manifest.json", "--base", args.base, "--output", "/evidence"]

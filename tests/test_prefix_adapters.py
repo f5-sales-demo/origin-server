@@ -97,3 +97,13 @@ def test_csd_templates_and_completion_derive_native_and_published_routes():
     )
     assert "url_for('checkout')" in application
     assert "fixture_id" in application
+
+
+def test_restaurant_redoc_disables_external_google_font_loading():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    adapter = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("adapt-restaurant.py")
+    )
+    assert "with_google_fonts=False" in adapter
