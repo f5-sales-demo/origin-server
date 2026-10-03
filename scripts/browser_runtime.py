@@ -88,7 +88,10 @@ def main() -> int:
     parser.add_argument("kind", choices=("content", "crapi", "juice", "dvwa"))
     parser.add_argument("--base", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--native", action="store_true")
     args = parser.parse_args()
+    if args.native and args.kind != "dvwa":
+        parser.error("native browser routing is currently supported only for DVWA")
     output = evidence_directory(args.output)
     retain_evidence(output.parent, output)
     marker = uuid.uuid4().hex
@@ -105,6 +108,8 @@ def main() -> int:
         if args.kind == "content"
         else [args.base, "/evidence"]
     )
+    if args.native:
+        arguments.append("/")
     command = [
         "/usr/bin/docker",
         "run",
@@ -138,6 +143,7 @@ def main() -> int:
         "status": "running",
         "cleanup": False,
         "source_commit": provenance.get("source_commit"),
+        "native": args.native,
         "archive_sha256": provenance.get("archive_sha256"),
     }
     code = 1

@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
-const [base, output] = process.argv.slice(2);
+const [base, output, prefix = '/dvwa/'] = process.argv.slice(2);
+if (!['/', '/dvwa/'].includes(prefix)) throw new Error('Declared DVWA prefix required');
 if (!base || !output) throw new Error('Application origin and private output required');
 const origin = new URL(base);
 fs.mkdirSync(output, { recursive: true, mode: 0o700 });
@@ -46,7 +47,7 @@ async function checked(name, terms) {
   receipt.checks.push({ name, passed: images, screenshot });
 }
 try {
-  await page.goto(new URL('/dvwa/login.php', origin).href);
+  await page.goto(new URL(`${prefix}login.php`, origin).href);
   await page.locator('input[name=username]').fill('admin');
   await page.locator('input[name=password]').fill('password');
   await Promise.all([
@@ -54,15 +55,15 @@ try {
     page.locator('input[name=Login]').click(),
   ]);
   await checked('authenticated-home', ['DVWA', 'Logout']);
-  await page.goto(new URL('/dvwa/security.php', origin).href);
+  await page.goto(new URL(`${prefix}security.php`, origin).href);
   await page.locator('select[name=security]').selectOption('low');
   await Promise.all([page.waitForNavigation(), page.locator('input[type=submit]').click()]);
   await checked('security-form', ['Security Level', 'low']);
-  await page.goto(new URL('/dvwa/vulnerabilities/sqli/', origin).href);
+  await page.goto(new URL(`${prefix}vulnerabilities/sqli/`, origin).href);
   await page.locator('input[name=id]').fill('1');
   await Promise.all([page.waitForNavigation(), page.locator('input[name=Submit]').click()]);
   await checked('seeded-sql-page', ['First name', 'Surname']);
-  await page.goto(new URL('/dvwa/vulnerabilities/xss_r/', origin).href);
+  await page.goto(new URL(`${prefix}vulnerabilities/xss_r/`, origin).href);
   await page.locator('input[name=name]').fill('Synthetic Workflow');
   await Promise.all([page.waitForNavigation(), page.locator('input[type=submit]').click()]);
   await checked('reflected-form', ['Hello Synthetic Workflow']);
