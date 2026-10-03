@@ -131,3 +131,14 @@ def test_restaurant_native_prefix_adapter_strips_only_its_declared_route():
     )
     assert "scope['path'].startswith('/restaurant/')" in adapter
     assert "scope['path'][len('/restaurant'):]" in adapter
+
+
+def test_crapi_vehicle_image_adapter_preserves_published_asset_base():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    adapter = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("crapi-frontend/adapt.mjs")
+    )
+    assert "vehicle.model.vehicle_img" in adapter
+    assert "new URL(vehicle.model.vehicle_img" in adapter

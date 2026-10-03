@@ -56,6 +56,10 @@ async function settled() {
     if (!pending.size && Date.now() - lastRequestChange >= 1000) return;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
+  receipt.errors.push({
+    kind: 'pending-application-paths',
+    paths: [...pending].map((request) => new URL(request.url()).pathname),
+  });
   throw new Error('Application requests did not complete before navigation');
 }
 
@@ -102,6 +106,17 @@ try {
   await page.getByPlaceholder('Password', { exact: true }).fill('adam007!123');
   await page.locator('#basic').getByRole('button', { name: 'Login', exact: true }).click();
   await rendered('vehicle', '/crapi/dashboard', '.vehicle-card', ['VIN:', 'Hyundai', 'Creta']);
+  await page
+    .locator('button')
+    .filter({ hasText: /Contact Mechanic/ })
+    .click();
+  await rendered('workshop-form', '/crapi/contact-mechanic', 'main', [
+    'Contact Mechanic',
+    'Service Request Form',
+    'Select Mechanic',
+  ]);
+  await page.getByRole('menuitem', { name: 'Dashboard', exact: true }).click();
+  await rendered('vehicle-return', '/crapi', '.vehicle-card', ['VIN:']);
   for (const [label, route, selector, terms] of [
     ['Community', '/crapi/forum', 'main', ['Forum', 'New Post', 'POSTED BY']],
     ['Shop', '/crapi/shop', 'main', ['Shop', 'Wheel', 'Seat']],
@@ -111,14 +126,14 @@ try {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await rendered(`${label}-refresh`, route, selector, terms);
   }
-} catch {
-  receipt.errors.push({ kind: 'workflow-assertion-failure' });
+} catch (error) {
+  receipt.errors.push({ kind: 'workflow-assertion-failure', detail: String(error) });
 } finally {
   await settled().catch(() => receipt.errors.push({ kind: 'pending-request-cleanup' }));
   await browser.close();
   receipt.browser_closed = true;
   receipt.passed =
-    receipt.checks.length === 5 && receipt.checks.every((check) => check.passed) && !receipt.errors.length;
+    receipt.checks.length === 7 && receipt.checks.every((check) => check.passed) && !receipt.errors.length;
   receipt.claim = 'native login and seeded read-only views; remaining workflows and serving layers unverified';
   fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2), { mode: 0o600 });
 }
