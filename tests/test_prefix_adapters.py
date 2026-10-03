@@ -1,14 +1,19 @@
 """Exercise adapter transformations on synthetic upstream source fixtures."""
 
+import ast
 import base64
+import enum
 import json
 import shutil
 import subprocess
 import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -227,3 +232,59 @@ def test_juice_local_font_adapter_is_repeatable(tmp_path):
     assert (
         native / "frontend/assets/public/fonts/VT323-Regular.ttf"
     ).read_bytes() == base64.b64decode(font)
+
+
+def test_restaurant_invalid_role_is_rejected_before_database_mutation():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    adapter = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("adapt-restaurant.py")
+    )
+    tree = ast.parse(adapter)
+    expression = next(
+        node.value
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "new"
+            for target in node.targets
+        )
+    )
+    inserted = (
+        ast.literal_eval(expression.left)
+        + "    db_user = get_user_by_username(db, current_user.username)\n"
+    )
+
+    class Role(enum.StrEnum):
+        CHEF = "Chef"
+        CUSTOMER = "Customer"
+        EMPLOYEE = "Employee"
+
+    class RejectionError(Exception):
+        def __init__(self, status_code, detail):
+            self.status_code = status_code
+            super().__init__(detail)
+
+    called = []
+    namespace = {"get_user_by_username": lambda *_: called.append(True)}
+    exec("def mutate(user, db=None, current_user=None):\n" + inserted, namespace)  # noqa: S102 - repository adapter transformation on a synthetic fixture
+    with patch.dict(
+        sys.modules,
+        {
+            "db.models": types.SimpleNamespace(UserRole=Role),
+            "fastapi": types.SimpleNamespace(HTTPException=RejectionError),
+        },
+    ):
+        for role in ("Admin", "Manager"):
+            with pytest.raises(RejectionError, match="Unsupported role") as caught:
+                namespace["mutate"](
+                    types.SimpleNamespace(dict=lambda role=role: {"role": role})
+                )
+            assert caught.value.status_code == 422
+        assert not called
+        namespace["mutate"](
+            types.SimpleNamespace(dict=lambda: {"role": "Chef"}),
+            current_user=types.SimpleNamespace(username="synthetic"),
+        )
+        assert called == [True]
