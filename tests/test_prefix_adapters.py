@@ -225,5 +225,5 @@ def test_juice_local_font_adapter_is_repeatable(tmp_path):
     assert "fonts.googleapis.com" not in html
     assert html.count("data-origin-local-font") == 1
     assert (
-        native / "assets/public/fonts/VT323-Regular.ttf"
+        native / "frontend/assets/public/fonts/VT323-Regular.ttf"
     ).read_bytes() == base64.b64decode(font)
