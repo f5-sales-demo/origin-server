@@ -86,6 +86,13 @@ def main() -> int:
             "content": (source / "scripts/verify_workflows.py").read_text(),
         }
     )
+    files.append(
+        {
+            "path": "/usr/local/bin/origin-verify-crapi-browser.mjs",
+            "permissions": "0755",
+            "content": (source / "scripts/verify_crapi_browser.mjs").read_text(),
+        }
+    )
     receipt = {
         "started": time.time(),
         "status": "installing",
