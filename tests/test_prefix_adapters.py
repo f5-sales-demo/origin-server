@@ -82,3 +82,18 @@ def test_browser_tracking_header_is_scoped_to_application_origin():
     source = (ROOT / "scripts/verify_crapi_browser.mjs").read_text()
     assert "new URL(request.url()).origin === origin.origin" in source
     assert "newContext({ extraHTTPHeaders" not in source
+
+
+def test_csd_templates_and_completion_derive_native_and_published_routes():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    for item in files:
+        if "/csd-demo/templates/" in item["path"]:
+            assert "/csd-demo/" not in item["content"].replace(
+                "// checkout.js — EXTERNAL checkout script, served by app.py at /csd-demo/checkout.js and",
+                "",
+            )
+    application = next(
+        item["content"] for item in files if item["path"].endswith("csd-demo/app.py")
+    )
+    assert "url_for('checkout')" in application
+    assert "fixture_id" in application
