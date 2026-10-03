@@ -6,9 +6,12 @@ import json
 import re
 import subprocess
 import time
+import uuid
 from pathlib import Path
+from urllib.request import Request, urlopen
 
 DOMAIN_COUNT = 2
+HTTP_SUCCESS = 200
 SHA256_LENGTH = 64
 
 BROWSER_WORKFLOWS = {
@@ -259,6 +262,68 @@ def browser_observations(
     return observations
 
 
+def csd_replica_state(layers: list) -> list[dict]:
+    """A tagged receiver mutation must be visible and removable on every serving layer."""
+    marker = "replica-" + uuid.uuid4().hex
+    targets = [
+        ("native-" + str(port), "http://127.0.0.1:" + str(port), "")
+        for port in range(5001, 5005)
+    ]
+    targets.extend((layer, base, "/csd-demo") for layer, base in layers)
+
+    def request(
+        base: str, prefix: str, path: str, body: dict | None = None
+    ) -> dict | list:
+        data = json.dumps(body).encode() if body is not None else None
+        req = Request(  # noqa: S310 - explicit owned HTTP serving layers
+            base + prefix + path,
+            data=data,
+            headers={
+                "Content-Type": "application/json",
+                "X-Demo-Fixture": marker,
+                "X-MUD-User": "benign-" + uuid.uuid4().hex,
+            },
+        )
+        with urlopen(req, timeout=20) as response:  # noqa: S310 - owned serving-layer targets
+            if response.status != HTTP_SUCCESS:
+                message = "unexpected replica-state status"
+                raise ValueError(message)
+            return json.load(response)
+
+    observed = []
+    passed = False
+    before = request("http://127.0.0.1:5001", "", "/exfil/log")
+    try:
+        result = request("http://127.0.0.1:5001", "", "/exfil", {"demo_id": marker})
+        if not isinstance(result, dict) or result.get("status") != "received":
+            message = "replica receiver failed"
+            raise ValueError(message)
+        for _, base, prefix in targets:
+            entries = request(base, prefix, "/exfil/log")
+            observed.append(
+                any(
+                    entry.get("fixture_id") == marker
+                    and entry.get("payload", {}).get("demo_id") == marker
+                    for entry in entries
+                )
+            )
+    finally:
+        cleared = request("http://127.0.0.1:5001", "", "/exfil/clear", {})
+        after = request("http://127.0.0.1:5001", "", "/exfil/log")
+        passed = (
+            isinstance(cleared, dict)
+            and cleared.get("status") == "cleared"
+            and not any(entry.get("fixture_id") == marker for entry in after)
+            and all(entry in after for entry in before)
+        )
+    if not passed or not all(observed) or len(observed) != len(targets):
+        return []
+    return [
+        {"application": "csd-demo", "layer": layer, "assertions": ["replica-state"]}
+        for layer, _, _ in targets
+    ]
+
+
 def main() -> int:
     """Run each serving layer and report missing declared workflow evidence."""
     parser = argparse.ArgumentParser()
@@ -293,6 +358,7 @@ def main() -> int:
         for label, domain in zip(("www", "api"), args.domain, strict=True)
     )
     observations.extend(http_observations(output, fixture, layers))
+    observations.extend(csd_replica_state(layers))
     observations.extend(browser_observations(output, manifest, layers, provenance))
     matrix = coverage_matrix(manifest, observations)
     matrix.update(

@@ -58,6 +58,7 @@ class Client:
     def __init__(self, base: str) -> None:
         """Create application-local authentication state."""
         self.base = base.rstrip("/")
+        self.extra_headers: dict[str, str] = {}
         self.cookies = http.cookiejar.CookieJar()
         self.opener = build_opener(HTTPCookieProcessor(self.cookies))
 
@@ -69,7 +70,7 @@ class Client:
         form: bool = False,
     ) -> tuple[str, str]:
         """Read successful responses with identity and content-type assertions at callers."""
-        headers = {"X-MUD-User": "waap-workflow-benign"}
+        headers = {"X-MUD-User": "waap-workflow-benign", **self.extra_headers}
         payload = None
         if data is not None:
             payload = urlencode(data).encode() if form else json.dumps(data).encode()
@@ -284,7 +285,18 @@ def verify_whoami(client: Client) -> list[str]:
             "whoami proxy headers missing",
         )
     else:
-        return ["diagnostic-content"]
+        client.extra_headers = {
+            "X-Forwarded-For": "192.0.2.10",
+            "X-Forwarded-Proto": "https",
+            "X-Forwarded-Prefix": "/whoami",
+        }
+        _, echoed = client.request("/")
+        require(
+            "X-Forwarded-For: 192.0.2.10" in echoed
+            and "X-Forwarded-Proto: https" in echoed
+            and "X-Forwarded-Prefix: /whoami" in echoed,
+            "native diagnostic forwarding echo failed",
+        )
     return ["diagnostic-content", "proxy-headers"]
 
 
