@@ -77,6 +77,29 @@ class FixtureResponse(addinfourl):
 class OriginTests(unittest.TestCase):
     """Verify origin guest contracts without reaching deployed applications."""
 
+    def test_csd_readiness_restores_its_own_receiver_fixture(self) -> None:
+        g = guest()
+        calls = []
+
+        def request(port, path, data=None, **kwargs):
+            calls.append((port, path, data, kwargs))
+            if path == "/":
+                return "checkout.js"
+            if path == "/checkout.js":
+                return "function updateCount() {}"
+            if path == "/exfil":
+                return '{"status":"received"}'
+            if path == "/exfil/clear":
+                return '{"status":"cleared"}'
+            return "[]"
+
+        with patch.object(g, "http", side_effect=request):
+            g.replica("csd-demo", 5001)
+        ensure(any(call[1] == "/exfil/clear" for call in calls))
+        mutations = [call for call in calls if call[1] in ("/exfil", "/exfil/clear")]
+        ensure_equal(len(mutations), 2)
+        ensure(mutations[0][3]["fixture"] == mutations[1][3]["fixture"])
+
     def test_juice_directory_listings_use_final_body_framing(self) -> None:
         """Verify final response framing survives source adaptation."""
         files = embedded_files()
