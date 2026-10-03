@@ -46,3 +46,15 @@ class AdapterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_crapi_adapter_preserves_seeded_backend_role_navigation():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    source = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("crapi-frontend/adapt.mjs")
+    )
+    assert 'userRole === "ROLE_PREDEFINE"' in source
+    assert "Pinned crAPI role guard changed" in source
+    assert "componentRole === roleTypes.ROLE_USER" in source
