@@ -112,7 +112,11 @@ try {
   for (const [id, value] of Object.entries(fields)) await page.locator(`#${id}`).fill(value);
   await Promise.all([page.waitForURL(url('checkout-complete')), page.locator('button[type=submit]').click()]);
   await checked('checkout-complete', ['Synthetic checkout complete']);
-  await page.locator(`a[href="${prefix}"]`).click();
+  await Promise.all([page.waitForURL(url('')), page.locator(`a[href="${prefix}"]`).click()]);
+  await page.waitForLoadState('load');
+  await page.waitForFunction(() => typeof updateCount === 'function');
+  await page.evaluate(() => updateCount());
+  await page.waitForFunction(() => document.querySelector('#exfilCount').innerText.includes('captured'));
   await page.locator(`a[href="${prefix}dashboard"]`).evaluate((link) => link.removeAttribute('target'));
   await page.locator(`a[href="${prefix}dashboard"]`).click();
   await checked('dashboard', ['Captured Data', 'synthetic demo data']);
