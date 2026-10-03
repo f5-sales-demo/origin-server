@@ -30,13 +30,20 @@ def issued_token(value: dict, key: str) -> str:
     return token
 
 
-def complete_report(report: dict, expected: set[str]) -> bool:
+def complete_report(report: dict, expected: set[str] | dict[str, set[str]]) -> bool:
     """Require every declared application and every workflow result."""
     checks = report.get("checks", [])
     return (
         bool(checks)
-        and {check["application"] for check in checks} == expected
+        and {check["application"] for check in checks} == set(expected)
         and all(check["passed"] for check in checks)
+        and (
+            not isinstance(expected, dict)
+            or all(
+                expected[check["application"]] <= set(check.get("assertions", []))
+                for check in checks
+            )
+        )
     )
 
 
@@ -314,6 +321,9 @@ def main() -> int:
     fixtures = json.loads(args.fixtures.read_text())
     checks = []
     supported = {app["id"] for app in manifest["applications"]}
+    expected_workflows = {
+        app["id"]: set(app["workflows"]) for app in manifest["applications"]
+    }
     for app in manifest["applications"]:
         if app["id"] not in supported:
             continue
@@ -356,6 +366,18 @@ def main() -> int:
         "complete_application_acceptance": False,
     }
     report["supported_workflows_passed"] = complete_report(report, supported)
+    report["declared_workflows_passed"] = complete_report(report, expected_workflows)
+    report["missing_workflows"] = [
+        {
+            "application": check["application"],
+            "layer": check["layer"],
+            "missing": sorted(
+                expected_workflows[check["application"]]
+                - set(check.get("assertions", []))
+            ),
+        }
+        for check in checks
+    ]
     args.output.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2))
     args.output.chmod(0o600)

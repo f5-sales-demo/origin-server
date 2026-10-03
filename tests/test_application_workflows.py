@@ -95,3 +95,16 @@ def test_csrf_fixture_seeds_dedicated_account_without_admin_mutation():
     assert "COALESCE(MAX(u.user_id),0)+1" in source
     assert 'result["dvwa_csrf_sessions"]' in source
     assert 'dvwa_sessions("tgen_csrf")' in source
+
+
+def test_complete_report_rejects_missing_declared_workflow_assertions():
+    verifier = module()
+    expected = {"dvwa": {"authentication", "security-settings"}}
+    partial = {
+        "checks": [
+            {"application": "dvwa", "passed": True, "assertions": ["authentication"]}
+        ]
+    }
+    assert not verifier.complete_report(partial, expected)
+    partial["checks"][0]["assertions"].append("security-settings")
+    assert verifier.complete_report(partial, expected)
