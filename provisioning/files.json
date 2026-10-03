@@ -143,7 +143,7 @@
   },
   {
     "path": "/opt/origin-server/crapi-frontend/Dockerfile",
-    "content": "FROM node@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS build\nWORKDIR /app\nCOPY services/web/ .\nCOPY adapt.mjs /tmp/adapt.mjs\nRUN node /tmp/adapt.mjs && npm ci --legacy-peer-deps\nRUN PUBLIC_URL=/crapi NODE_OPTIONS=--max_old_space_size=4096 npm run build\nFROM crapi/crapi-web@sha256:b27d246c646bd33898e7d1d2095b6e7576c0993a7b81a73aa7386929493d7151\nCOPY --from=build /app/build /usr/share/nginx/html\n"
+    "content": "FROM node@sha256:ba849c60be29959425b8734d57b8b4b7d56f98edd9504c9af091d5281095a71e AS build\nWORKDIR /app\nCOPY services/web/ .\nCOPY adapt.mjs /tmp/adapt.mjs\nRUN node /tmp/adapt.mjs && npm ci --legacy-peer-deps\nRUN PUBLIC_URL=/crapi NODE_OPTIONS=--max_old_space_size=4096 npm run build\nFROM crapi/crapi-web@sha256:b27d246c646bd33898e7d1d2095b6e7576c0993a7b81a73aa7386929493d7151\nCOPY --from=build /app/build /usr/share/nginx/html\nRUN sed -i '/server {/a\\\\  location /crapi/ { rewrite ^/crapi/(.*)$ /$1 last; }' /etc/nginx/conf.d/*.template\n"
   },
   {
     "path": "/opt/origin-server/crapi-frontend/adapt.mjs",

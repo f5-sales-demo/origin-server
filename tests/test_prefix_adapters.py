@@ -164,3 +164,13 @@ def test_juice_native_prefix_routes_api_assets_before_spa_fallback():
     )
     assert "request.url.startsWith('/juice-shop/')" in adapter
     assert "request.url.slice('/juice-shop'.length)" in adapter
+
+
+def test_crapi_native_frontend_strips_published_prefix_before_dispatch():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    dockerfile = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("crapi-frontend/Dockerfile")
+    )
+    assert "rewrite ^/crapi/(.*)$ /$1 last" in dockerfile
