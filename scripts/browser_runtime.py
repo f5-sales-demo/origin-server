@@ -10,6 +10,8 @@ import time
 import uuid
 from pathlib import Path
 
+from crapi_signup_cleanup import recover_signup
+
 
 def evidence_directory(path: Path) -> Path:
     """Reject symlink evidence destinations before resolving them."""
@@ -121,6 +123,7 @@ def main() -> int:
         "csd": "verify_csd_browser.mjs",
         "restaurant": "verify_restaurant_browser.mjs",
         "httpbin": "verify_httpbin_browser.mjs",
+        "crapi-signup": "verify_crapi_signup.mjs",
     }[args.kind]
     arguments = (
         ["--manifest", "/manifest.json", "--base", args.base, "--output", "/evidence"]
@@ -193,6 +196,16 @@ def main() -> int:
         receipt.update(status="failed", reason="browser-timeout", exit_code=code)
     finally:
         cleanup_container(name, marker)
+        if args.kind == "crapi-signup":
+            try:
+                receipt["fixture_recovery"] = recover_signup(output)
+                if not receipt["fixture_recovery"]["passed"]:
+                    code = 1
+            except (OSError, ValueError, subprocess.SubprocessError):
+                receipt["fixture_recovery"] = {"passed": False}
+                code = 1
+            receipt["exit_code"] = code
+            receipt["status"] = "completed" if code == 0 else "failed"
         receipt.update(completed=time.time(), cleanup=True)
         path = output / "runtime-receipt.json"
         path.write_text(json.dumps(receipt))

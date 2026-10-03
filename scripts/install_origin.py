@@ -103,6 +103,12 @@ def main() -> int:
     )
     files.append(
         {
+            "path": "/usr/local/bin/crapi_signup_cleanup.py",
+            "content": (source / "scripts/crapi_signup_cleanup.py").read_text(),
+        }
+    )
+    files.append(
+        {
             "path": "/usr/local/bin/application_receipts.py",
             "content": (source / "scripts/application_receipts.py").read_text(),
         }
@@ -137,6 +143,7 @@ def main() -> int:
         "verify_csd_browser.mjs",
         "verify_restaurant_browser.mjs",
         "verify_httpbin_browser.mjs",
+        "verify_crapi_signup.mjs",
     ):
         files.append(
             {
