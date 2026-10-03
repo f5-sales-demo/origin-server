@@ -2,10 +2,12 @@
 
 import copy
 import importlib.util
+import json
 import unittest
 from pathlib import Path
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -52,6 +54,21 @@ class ManifestTests(unittest.TestCase):
         bad["applications"][0]["pages"][0]["path"] = "../static/app.js"
         with pytest.raises(ValueError, match="escapes its application"):
             module.validate_manifest(bad)
+
+    def test_serving_replicas_do_not_exit_after_request_quota(self):
+        """Continuous benign traffic must not synchronize application restarts."""
+
+        files = json.loads((ROOT / "provisioning/files.json").read_text())
+        compose = yaml.safe_load(
+            next(
+                item["content"]
+                for item in files
+                if item["path"].endswith("docker-compose.yml")
+            )
+        )
+        for name, service in compose["services"].items():
+            if name.startswith("restaurant-") and name != "restaurant-db":
+                assert "--limit-max-requests" not in service["command"]
 
     def test_content_identity_and_type_fail_closed(self):
         """Verify the declared contract against a synthetic fixture."""
