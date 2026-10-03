@@ -2,6 +2,7 @@
 """Run locked browser verification with private evidence and owned container cleanup."""
 
 import argparse
+import hashlib
 import json
 import shutil
 import subprocess
@@ -164,6 +165,9 @@ def main() -> int:
         "cleanup": False,
         "source_commit": provenance.get("source_commit"),
         "native": args.native,
+        "verifier_sha256": hashlib.sha256(
+            Path(source, script).read_bytes()
+        ).hexdigest(),
         "archive_sha256": provenance.get("archive_sha256"),
     }
     code = 1
