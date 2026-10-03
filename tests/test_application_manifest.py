@@ -91,3 +91,13 @@ class ManifestTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_direct_and_proxy_clients_have_stable_nonempty_juice_affinity():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    nginx = next(
+        item["content"] for item in files if item["path"] == "/etc/nginx/nginx.conf"
+    )
+    assert "map $http_x_forwarded_for $juice_affinity" in nginx
+    assert '"" $remote_addr;' in nginx
+    assert "hash $juice_affinity consistent;" in nginx
