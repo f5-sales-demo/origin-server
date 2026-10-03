@@ -94,7 +94,6 @@ def main() -> int:
         *arguments,
     ]
     provenance = json.loads(Path("/opt/origin-server/install-receipt.json").read_text())
-    provenance = json.loads(Path("/opt/origin-server/install-receipt.json").read_text())
     receipt = {
         "started": time.time(),
         "status": "running",
