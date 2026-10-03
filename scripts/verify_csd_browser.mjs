@@ -127,13 +127,10 @@ try {
   const cleared = page.waitForResponse(
     (response) => response.url() === url('exfil/clear') && response.request().method() === 'POST',
   );
-  const dashboardReload = page.waitForEvent('requestfinished', {
-    predicate: (request) => request.isNavigationRequest() && request.url() === url('dashboard'),
-  });
+  const refreshBefore = await page.evaluate(() => window.dashboardRefreshComplete);
   await page.locator('button', { hasText: 'Clear All' }).click();
   const clearResponse = await cleared;
-  await dashboardReload;
-  await page.waitForLoadState('load');
+  await page.waitForFunction((before) => window.dashboardRefreshComplete > before, refreshBefore);
   const afterClear = await logs();
   if (clearResponse.status() !== 200 || afterClear.some((entry) => entry.fixture_id === fixture))
     throw new Error('Native clear button failed');
