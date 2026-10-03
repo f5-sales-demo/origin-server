@@ -76,3 +76,9 @@ def test_crapi_chatbot_routes_to_its_pinned_dependency():
         "CHATBOT_SERVICE=crapi-chatbot:5002"
         in compose["services"]["crapi-web"]["environment"]
     )
+
+
+def test_browser_tracking_header_is_scoped_to_application_origin():
+    source = (ROOT / "scripts/verify_crapi_browser.mjs").read_text()
+    assert "new URL(request.url()).origin === origin.origin" in source
+    assert "newContext({ extraHTTPHeaders" not in source

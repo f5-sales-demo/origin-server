@@ -25,7 +25,16 @@ const browser = await chromium.launch({
   headless: true,
   ...(process.env.ORIGIN_CHROMIUM_PATH ? { executablePath: process.env.ORIGIN_CHROMIUM_PATH } : {}),
 });
-const context = await browser.newContext({ extraHTTPHeaders: { 'X-MUD-User': 'waap-workflow-benign' } });
+const context = await browser.newContext();
+await context.route('**/*', async (route) => {
+  const request = route.request();
+  await route.continue({
+    headers: {
+      ...request.headers(),
+      ...(new URL(request.url()).origin === origin.origin ? { 'X-MUD-User': 'waap-workflow-benign' } : {}),
+    },
+  });
+});
 const page = await context.newPage();
 const pending = new Set();
 let lastRequestChange = Date.now();
