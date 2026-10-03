@@ -109,3 +109,31 @@ def test_csd_replica_state_requires_visibility_and_restores_tagged_entry():
         observations = csd_replica_state([("origin-nginx", "http://example.test")])
     assert len(observations) == 5
     assert entries == [{"fixture_id": "unrelated", "payload": {"demo_id": "retained"}}]
+
+
+def test_signup_browser_assertions_require_verified_fixture_recovery():
+    provenance = {"source_commit": "a" * 40, "archive_sha256": "b" * 64}
+    runtime = {
+        **provenance,
+        "base": "http://example.test",
+        "kind": "crapi-signup",
+        "exit_code": 0,
+        "cleanup": True,
+        "verifier_sha256": "d" * 64,
+    }
+    receipt = {
+        "passed": True,
+        "browser_closed": True,
+        "errors": [],
+        "checks": [
+            {"name": name, "passed": True}
+            for name in ["signup-submit", "signup-mailhog", "mailhog-render"]
+        ],
+    }
+    assert not browser_assertions(
+        "crapi-signup", receipt, runtime, provenance, "http://example.test"
+    )
+    runtime["fixture_recovery"] = {"passed": True}
+    assert browser_assertions(
+        "crapi-signup", receipt, runtime, provenance, "http://example.test"
+    ) == {"signup", "mailhog"}

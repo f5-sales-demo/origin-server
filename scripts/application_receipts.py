@@ -65,6 +65,10 @@ BROWSER_WORKFLOWS = {
         "authentication": {"profile-customer", "profile-chef"},
         "seeded-roles": {"profile-customer", "profile-chef"},
     },
+    "crapi-signup": {
+        "signup": {"signup-submit", "signup-mailhog"},
+        "mailhog": {"mailhog-render"},
+    },
     "crapi": {
         "login": {"vehicle"},
         "seeded-vehicle": {"vehicle"},
@@ -94,6 +98,8 @@ def browser_assertions(
         bool(receipt.get("checks")),
         all(check.get("passed") is True for check in receipt.get("checks", [])),
         kind not in {"dvga", "csd"} or receipt.get("fixture_restored") is True,
+        kind != "crapi-signup"
+        or runtime.get("fixture_recovery", {}).get("passed") is True,
     ]
     if not all(gates):
         return set()
@@ -262,6 +268,54 @@ def browser_observations(
     return observations
 
 
+def signup_observations(
+    output: Path, manifest: dict, layers: list, provenance: dict
+) -> list[dict]:
+    """Signup is a separate stateful browser slice with mandatory recovery."""
+    observations = []
+    crapi = next(app for app in manifest["applications"] if app["id"] == "crapi")
+    targets = [
+        ("native-" + str(port), "http://127.0.0.1:" + str(port))
+        for port in crapi["ports"]
+    ]
+    for layer, base in [*targets, *layers]:
+        directory = output / ("crapi-signup-" + layer)
+        command = [
+            "/usr/local/bin/origin-browser-verify",
+            "crapi-signup",
+            "--base",
+            base,
+            "--output",
+            str(directory),
+        ]
+        with (output / ("crapi-signup-" + layer + ".log")).open("w") as log:
+            subprocess.run(  # noqa: S603 - installed scoped signup verifier
+                command, stdout=log, stderr=subprocess.STDOUT, check=False, timeout=1000
+            )
+        if (directory / "receipt.json").exists():
+            receipt = json.loads((directory / "receipt.json").read_text())
+            runtime = json.loads((directory / "runtime-receipt.json").read_text())
+            digest = hashlib.sha256(
+                Path(
+                    "/opt/origin-server/browser-runtime/verify_crapi_signup.mjs"
+                ).read_bytes()
+            ).hexdigest()
+            assertions = (
+                browser_assertions("crapi-signup", receipt, runtime, provenance, base)
+                if runtime.get("verifier_sha256") == digest
+                else set()
+            )
+            observations.append(
+                {
+                    "application": "crapi",
+                    "layer": layer,
+                    "assertions": sorted(assertions),
+                }
+            )
+        print(json.dumps({"application": "crapi-signup", "layer": layer}), flush=True)
+    return observations
+
+
 def csd_replica_state(layers: list) -> list[dict]:
     """A tagged receiver mutation must be visible and removable on every serving layer."""
     marker = "replica-" + uuid.uuid4().hex
@@ -360,6 +414,7 @@ def main() -> int:
     observations.extend(http_observations(output, fixture, layers))
     observations.extend(csd_replica_state(layers))
     observations.extend(browser_observations(output, manifest, layers, provenance))
+    observations.extend(signup_observations(output, manifest, layers, provenance))
     matrix = coverage_matrix(manifest, observations)
     matrix.update(
         source_commit=provenance["source_commit"],
