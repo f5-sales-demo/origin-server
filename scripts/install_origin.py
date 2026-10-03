@@ -79,6 +79,13 @@ def main() -> int:
             },
         ]
     )
+    files.append(
+        {
+            "path": "/usr/local/bin/origin-verify-workflows",
+            "permissions": "0755",
+            "content": (source / "scripts/verify_workflows.py").read_text(),
+        }
+    )
     receipt = {
         "started": time.time(),
         "status": "installing",
