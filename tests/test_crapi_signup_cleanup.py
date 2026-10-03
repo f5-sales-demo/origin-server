@@ -3,6 +3,7 @@
 import json
 import sys
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -22,7 +23,7 @@ def test_foreign_signup_identity_cannot_authorize_cleanup(tmp_path):
 
 
 def test_signup_database_uses_quoted_psql_variables(tmp_path):
-    fixture = {
+    fixture: dict[str, Any] = {
         "email": "signup-" + "a" * 32 + "@example.com",
         "number": "5550000000",
         "vehicle_vin": "TESTV123456789012",
