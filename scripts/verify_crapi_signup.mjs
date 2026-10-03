@@ -61,7 +61,10 @@ try {
     responsePromise,
     page.locator('#basic').getByRole('button', { name: 'Signup', exact: true }).click(),
   ]);
-  const result = await response.json();
+  const result = await Promise.race([
+    response.json(),
+    new Promise((_resolve, reject) => setTimeout(() => reject(new Error('Signup response body timeout')), 15000)),
+  ]);
   if (response.status() !== 200 || result.status !== 200 || !result.message.includes('registered successfully'))
     throw new Error('Native signup failed');
   await page.waitForFunction(() => document.body.innerText.includes('Please Login'), undefined, { timeout: 15000 });
