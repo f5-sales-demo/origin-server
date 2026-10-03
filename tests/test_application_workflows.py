@@ -1,6 +1,7 @@
 """Authentication and fixture content cannot be replaced by successful HTTP codes."""
 
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -55,3 +56,15 @@ def test_mailhog_json_response_is_application_content():
         "text/html", {"application/json", "text/json"}
     )
     assert not verifier.json_content_type("text/json", {"application/json"})
+
+
+def test_export_includes_real_vampi_authentication():
+    """Publicly blocked setup must not leave the origin-issued API fixture absent."""
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    source = next(
+        item["content"]
+        for item in files
+        if item["path"] == "/usr/local/bin/demo-catalog-fixtures"
+    )
+    assert 'result["vampi_token"]' in source
+    assert "http://127.0.0.1:5101/users/v1/login" in source

@@ -7,6 +7,7 @@ import json
 import re
 import time
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import HTTPCookieProcessor, Request, build_opener
 
@@ -244,6 +245,61 @@ def verify_dvwa(client: Client) -> list[str]:
     ]
 
 
+def verify_httpbin(client: Client) -> list[str]:
+    """Verify real echo content, POST form processing and Swagger definition."""
+    require(
+        "swagger" in client.document("/spec.json"), "HTTPBin Swagger definition missing"
+    )
+    require("headers" in client.document("/get"), "HTTPBin echo response missing")
+    document = client.document("/post", {"demo_id": "synthetic-workflow"})
+    require(
+        document.get("json", {}).get("demo_id") == "synthetic-workflow",
+        "HTTPBin POST echo mismatch",
+    )
+    return ["specification", "request-echo", "post-echo"]
+
+
+def verify_whoami(client: Client) -> list[str]:
+    """Verify diagnostic identity and the actual forwarded request headers."""
+    content_type, body = client.request("/")
+    require(
+        content_type == "text/plain"
+        and "Hostname:" in body
+        and "GET / HTTP/1.1" in body,
+        "whoami diagnostic identity missing",
+    )
+    require("X-Mud-User: waap-workflow-benign" in body, "whoami request header missing")
+    return ["diagnostic-content", "request-headers"]
+
+
+def verify_csd(client: Client) -> list[str]:
+    """Verify synthetic checkout, dashboard and shared receiver content without clearing logs."""
+    content_type, body = client.request("/")
+    require(
+        content_type == "text/html" and "checkout.js" in body, "CSD checkout missing"
+    )
+    content_type, body = client.request("/dashboard")
+    require(
+        content_type == "text/html" and "Captured Data" in body, "CSD dashboard missing"
+    )
+    content_type, body = client.request("/exfil/log")
+    require(
+        content_type == "application/json" and isinstance(json.loads(body), list),
+        "CSD shared log mismatch",
+    )
+    return ["checkout", "dashboard", "shared-log"]
+
+
+def verify_dvga(client: Client) -> list[str]:
+    """Verify seeded paste retrieval using the application's accepted operation."""
+    document = client.document(
+        "/graphql",
+        {"query": "query getPastes {pastes(public: true, limit: 1) {id title}}"},
+    )
+    require(bool(document.get("data", {}).get("pastes")), "DVGA seeded pastes missing")
+    return ["graphql", "seeded-pastes"]
+
+
 def main() -> int:
     """Verify declared native replicas or one published application map."""
     parser = argparse.ArgumentParser()
@@ -257,7 +313,7 @@ def main() -> int:
     manifest = json.loads(args.manifest.read_text())
     fixtures = json.loads(args.fixtures.read_text())
     checks = []
-    supported = {"juice-shop", "dvwa", "vampi", "restaurant", "crapi"}
+    supported = {app["id"] for app in manifest["applications"]}
     for app in manifest["applications"]:
         if app["id"] not in supported:
             continue
@@ -272,19 +328,26 @@ def main() -> int:
                 client = Client(base)
                 if app["id"] == "juice-shop":
                     assertions = verify_juice(client, fixtures)
-                elif app["id"] == "dvwa":
-                    assertions = verify_dvwa(client)
-                elif app["id"] == "vampi":
-                    assertions = verify_vampi(client)
                 elif app["id"] == "restaurant":
                     assertions = verify_restaurant(
                         client, "customer"
                     ) + verify_restaurant(client, "chef")
                 else:
-                    assertions = verify_crapi(client)
+                    verifier = {
+                        "dvwa": verify_dvwa,
+                        "vampi": verify_vampi,
+                        "crapi": verify_crapi,
+                        "httpbin": verify_httpbin,
+                        "whoami": verify_whoami,
+                        "csd-demo": verify_csd,
+                        "dvga": verify_dvga,
+                    }[app["id"]]
+                    assertions = verifier(client)
                 check.update(passed=True, assertions=assertions)
             except (OSError, ValueError, KeyError, TypeError) as error:
                 check["error"] = type(error).__name__
+                if isinstance(error, HTTPError):
+                    check["http_status"] = error.code
             checks.append(check)
     report = {
         "schema_version": 1,
