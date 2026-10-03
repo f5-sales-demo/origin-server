@@ -5,9 +5,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
-const [base, output] = process.argv.slice(2);
+const [base, output, prefix = '/juice-shop/'] = process.argv.slice(2);
 if (!base || !output) throw new Error('Application origin and private output required');
 const origin = new URL(base);
+if (!['/', '/juice-shop/'].includes(prefix)) throw new Error('Declared Juice Shop prefix required');
 fs.mkdirSync(output, { recursive: true, mode: 0o700 });
 const receipt = {
   checks: [],
@@ -64,7 +65,7 @@ async function rendered(name, selector, terms) {
   receipt.checks.push({ name, passed: true, screenshot });
 }
 try {
-  await page.goto(new URL('/juice-shop/#/search', origin).href, { waitUntil: 'domcontentloaded' });
+  await page.goto(new URL(`${prefix}#/search`, origin).href, { waitUntil: 'domcontentloaded' });
   for (const name of ['Close Welcome Banner', 'dismiss cookie message'])
     await page
       .getByRole('button', { name })
@@ -88,19 +89,19 @@ try {
     .locator('app-product img')
     .evaluateAll((elements) => elements.map((image) => image.complete && image.naturalWidth > 0));
   receipt.checks.push({ name: 'product-images', passed: images.length > 0 && images.every(Boolean) });
-  await page.goto(new URL('/juice-shop/#/login', origin).href, { waitUntil: 'domcontentloaded' });
+  await page.goto(new URL(`${prefix}#/login`, origin).href, { waitUntil: 'domcontentloaded' });
   await rendered('login-labels', 'app-login', ['Login', 'Email', 'Password']);
   await page.locator('#email').fill('admin@juice-sh.op');
   await page.locator('#password').fill('admin123');
   const [login] = await Promise.all([
     page.waitForResponse(
       (response) =>
-        new URL(response.url()).pathname === '/juice-shop/rest/user/login' && response.request().method() === 'POST',
+        new URL(response.url()).pathname === `${prefix}rest/user/login` && response.request().method() === 'POST',
     ),
     page.locator('#loginButton').click(),
   ]);
   receipt.checks.push({ name: 'native-login', passed: login.status() === 200 });
-  await page.goto(new URL('/juice-shop/#/basket', origin).href, { waitUntil: 'domcontentloaded' });
+  await page.goto(new URL(`${prefix}#/basket`, origin).href, { waitUntil: 'domcontentloaded' });
   await rendered('seeded-basket', 'app-basket', ['admin@juice-sh.op', 'Apple Juice', 'Total Price']);
   for (const [route, selector, terms] of [
     ['about', 'app-about', ['Customer Feedback']],
@@ -109,7 +110,7 @@ try {
     ['complain', 'app-complaint', ['Complaint']],
     ['score-board', 'app-score-board', ['Hacking Challenges', 'Coding Challenges']],
   ]) {
-    await page.goto(new URL(`/juice-shop/#/${route}`, origin).href, { waitUntil: 'domcontentloaded' });
+    await page.goto(new URL(`${prefix}#/${route}`, origin).href, { waitUntil: 'domcontentloaded' });
     await rendered(route, selector, terms);
   }
 } catch {

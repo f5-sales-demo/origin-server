@@ -102,7 +102,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--native", action="store_true")
     args = parser.parse_args()
-    if args.native and args.kind not in ("dvwa", "dvga", "csd", "httpbin"):
+    if args.native and args.kind not in ("dvwa", "dvga", "csd", "httpbin", "juice"):
         parser.error(
             "native browser routing is currently supported only for DVWA, DVGA and CSD"
         )
