@@ -19,4 +19,4 @@ with tarfile.open(sys.argv[1]) as archive:
 PY
 SOURCE="$STAGE/source/origin-server-$COMMIT"
 printf '%s  %s\n' "$INSTALLER_SHA" "$SOURCE/scripts/install_origin.py" | sha256sum --check --status
-python3 "$SOURCE/scripts/install_origin.py" --provision
+ORIGIN_SOURCE_COMMIT="$COMMIT" ORIGIN_ARCHIVE_SHA256="$ARCHIVE_SHA" ORIGIN_INSTALLER_SHA256="$INSTALLER_SHA" python3 "$SOURCE/scripts/install_origin.py" --provision

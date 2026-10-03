@@ -93,7 +93,15 @@ def main() -> int:
         "/opt/origin-browser/source/" + script,
         *arguments,
     ]
-    receipt = {"started": time.time(), "status": "running", "cleanup": False}
+    provenance = json.loads(Path("/opt/origin-server/install-receipt.json").read_text())
+    provenance = json.loads(Path("/opt/origin-server/install-receipt.json").read_text())
+    receipt = {
+        "started": time.time(),
+        "status": "running",
+        "cleanup": False,
+        "source_commit": provenance.get("source_commit"),
+        "archive_sha256": provenance.get("archive_sha256"),
+    }
     code = 1
     try:
         code = subprocess.run(command, check=False, timeout=900).returncode  # noqa: S603 - exact locked runtime argv

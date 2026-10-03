@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
 import time
@@ -49,6 +50,27 @@ def require_native_root(root: Path) -> None:
     if root != Path("/") or os.geteuid() != 0:
         message = "provisioning requires the native root as root user"
         raise ValueError(message)
+
+
+def source_provenance() -> dict:
+    """Keep immutable release identity separate from staged source validation."""
+    values = {
+        "source_commit": os.environ.get("ORIGIN_SOURCE_COMMIT"),
+        "archive_sha256": os.environ.get("ORIGIN_ARCHIVE_SHA256"),
+        "installer_sha256": os.environ.get("ORIGIN_INSTALLER_SHA256"),
+    }
+    if all(value is None for value in values.values()):
+        return {"source_kind": "staged"}
+    if any(
+        not isinstance(value, str)
+        or not re.fullmatch(
+            "[a-f0-9]{" + str(40 if key == "source_commit" else 64) + "}", value
+        )
+        for key, value in values.items()
+    ):
+        message = "immutable origin source provenance missing or malformed"
+        raise ValueError(message)
+    return {"source_kind": "immutable-release", **values}
 
 
 def main() -> int:
@@ -115,6 +137,7 @@ def main() -> int:
         }
     )
     receipt = {
+        **source_provenance(),
         "started": time.time(),
         "status": "installing",
         "files_sha256": hashlib.sha256(

@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -74,3 +75,22 @@ def test_installer_provisions_locked_browser_runtime():
     )
     assert lock["packages"]["node_modules/playwright"]["version"] == "1.63.0"
     assert lock["packages"]["node_modules/playwright"]["integrity"]
+
+
+def test_origin_release_provenance_requires_all_immutable_fields():
+    module = InstallerTests().module()
+    with (
+        patch.dict("os.environ", {"ORIGIN_SOURCE_COMMIT": "a" * 40}, clear=True),
+        pytest.raises(ValueError, match="provenance"),
+    ):
+        module.source_provenance()
+    with patch.dict(
+        "os.environ",
+        {
+            "ORIGIN_SOURCE_COMMIT": "a" * 40,
+            "ORIGIN_ARCHIVE_SHA256": "b" * 64,
+            "ORIGIN_INSTALLER_SHA256": "c" * 64,
+        },
+        clear=True,
+    ):
+        assert module.source_provenance()["source_kind"] == "immutable-release"
