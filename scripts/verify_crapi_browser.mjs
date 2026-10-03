@@ -85,7 +85,9 @@ async function rendered(name, route, selector, terms) {
   );
   await page.waitForTimeout(1000);
   await settled();
-  await page.waitForFunction(() => [...document.images].every((image) => image.complete), { timeout: 15000 });
+  await page.waitForFunction(() => [...document.images].every((image) => image.complete), undefined, {
+    timeout: 15000,
+  });
   const images = await page
     .locator('img')
     .evaluateAll((elements) => elements.map((image) => ({ loaded: image.complete && image.naturalWidth > 0 })));
