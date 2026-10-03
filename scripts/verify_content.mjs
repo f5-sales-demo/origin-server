@@ -106,6 +106,18 @@ try {
         });
         try {
           const response = await page.goto(item.url, { waitUntil: 'load', timeout: 30000 });
+          await page.locator('img').evaluateAll(async (images) => {
+            await Promise.all(
+              images.map((image) => {
+                if (image.complete) return Promise.resolve();
+                return new Promise((resolve) => {
+                  image.addEventListener('load', resolve, { once: true });
+                  image.addEventListener('error', resolve, { once: true });
+                  setTimeout(resolve, 10000);
+                });
+              }),
+            );
+          });
           await page.waitForTimeout(2000);
           const body = await response.text();
           result.status = response.status();
