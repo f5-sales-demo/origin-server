@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 DOMAIN_COUNT = 2
+SHA256_LENGTH = 64
 
 BROWSER_WORKFLOWS = {
     "juice": {
@@ -79,6 +80,8 @@ def browser_assertions(
         runtime.get("archive_sha256") == provenance.get("archive_sha256"),
         runtime.get("base") == base,
         runtime.get("kind") == kind,
+        isinstance(runtime.get("verifier_sha256"), str)
+        and len(runtime["verifier_sha256"]) == SHA256_LENGTH,
         runtime.get("exit_code") == 0,
         runtime.get("cleanup") is True,
         receipt.get("passed") is True,

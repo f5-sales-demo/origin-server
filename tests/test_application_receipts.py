@@ -14,6 +14,7 @@ def test_browser_assertions_reject_foreign_sources_layers_and_partial_checks():
         **provenance,
         "base": "http://example.test",
         "kind": "dvwa",
+        "verifier_sha256": "d" * 64,
         "exit_code": 0,
         "cleanup": True,
     }
