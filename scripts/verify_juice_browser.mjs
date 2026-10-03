@@ -68,6 +68,7 @@ async function rendered(name, selector, terms) {
     const gallery = page.locator('#feedback-gallery');
     await gallery.scrollIntoViewIfNeeded();
     const next = gallery.getByRole('button', { name: 'Next', exact: true });
+    await gallery.locator('img').first().waitFor({ state: 'attached', timeout: 15000 });
     const imageCount = await gallery.locator('img').count();
     if (!imageCount) throw new Error('Feedback gallery images missing');
     for (let index = 0; index < imageCount; index++) {
