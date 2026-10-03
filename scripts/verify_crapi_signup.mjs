@@ -61,13 +61,19 @@ try {
     responsePromise,
     page.locator('#basic').getByRole('button', { name: 'Signup', exact: true }).click(),
   ]);
-  const result = await Promise.race([
-    response.json(),
-    new Promise((_resolve, reject) => setTimeout(() => reject(new Error('Signup response body timeout')), 15000)),
-  ]);
-  if (response.status() !== 200 || result.status !== 200 || !result.message.includes('registered successfully'))
-    throw new Error('Native signup failed');
-  await page.waitForFunction(() => document.body.innerText.includes('Please Login'), undefined, { timeout: 15000 });
+  receipt.response = {
+    status: response.status(),
+    headers: Object.fromEntries(
+      Object.entries(response.headers()).filter(([key]) =>
+        ['content-type', 'content-length', 'transfer-encoding'].includes(key),
+      ),
+    ),
+  };
+  if (response.status() !== 200 || !response.headers()['content-type']?.includes('application/json'))
+    throw new Error('Native signup response failed');
+  await page.waitForFunction(() => document.body.innerText.includes('User Registered Successfully!'), undefined, {
+    timeout: 15000,
+  });
   await page.screenshot({ path: path.join(output, 'signup-success.png'), fullPage: true });
   fs.chmodSync(path.join(output, 'signup-success.png'), 0o600);
   receipt.checks.push({ name: 'signup-submit', passed: true, screenshot: 'signup-success.png' });
@@ -97,6 +103,12 @@ try {
   fs.chmodSync(path.join(output, 'mailhog.png'), 0o600);
   receipt.checks.push({ name: 'mailhog-render', passed: true, screenshot: 'mailhog.png' });
 } catch (error) {
+  receipt.rendered_text = (
+    await page
+      .locator('body')
+      .innerText()
+      .catch(() => '')
+  ).slice(0, 2000);
   receipt.errors.push({ kind: 'workflow-assertion-failure', detail: String(error) });
 } finally {
   await browser.close();
