@@ -25,6 +25,11 @@ def bind_juice_adapter(by_path: dict) -> None:
     by_path["/opt/origin-server/juice-shop-framing/preload.cjs"]["content"] = adapter
     digest = hashlib.sha256(adapter.encode()).hexdigest()
     content = compose_file["content"]
+    domain_config = 'NODE_CONFIG={"application":{"domain":"example.com"}}'
+    content = content.replace(
+        "    - NODE_ENV=ctf\n",
+        "    - NODE_ENV=ctf\n    - '" + domain_config + "'\n",
+    )
     for index in range(1, 5):
         marker = f"    container_name: juice-shop-{index}\n"
         content = content.replace(

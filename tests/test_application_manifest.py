@@ -221,3 +221,23 @@ def test_synthetic_video_fixture_has_native_media_without_duplicate_repair():
     assert "lo_from_bytea(0, decode(" in seed
     assert "WHERE video IS NULL AND video_name='tgen-synthetic.mp4'" in seed
     assert "AND NOT EXISTS (SELECT 1 FROM profile_video WHERE user_id=u.id)" in seed
+
+
+def test_juice_seed_accounts_use_reserved_domain_on_every_replica():
+    files = render(ROOT)
+    compose = yaml.safe_load(
+        next(
+            item["content"]
+            for item in files
+            if item["path"].endswith("docker-compose.yml")
+        )
+    )
+    for index in range(1, 5):
+        environment = compose["services"][f"juice-shop-{index}"]["environment"]
+        overrides = [
+            value.removeprefix("NODE_CONFIG=")
+            for value in environment
+            if value.startswith("NODE_CONFIG=")
+        ]
+        assert len(overrides) == 1
+        assert json.loads(overrides[0])["application"]["domain"] == "example.com"
