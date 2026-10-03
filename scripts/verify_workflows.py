@@ -276,7 +276,16 @@ def verify_whoami(client: Client) -> list[str]:
         "whoami diagnostic identity missing",
     )
     require("X-Mud-User: waap-workflow-benign" in body, "whoami request header missing")
-    return ["diagnostic-content", "request-headers"]
+    if "/whoami" in client.base:
+        require(
+            "X-Forwarded-Proto:" in body
+            and "X-Forwarded-For:" in body
+            and "X-Forwarded-Prefix: /whoami" in body,
+            "whoami proxy headers missing",
+        )
+    else:
+        return ["diagnostic-content"]
+    return ["diagnostic-content", "proxy-headers"]
 
 
 def verify_csd(client: Client) -> list[str]:
