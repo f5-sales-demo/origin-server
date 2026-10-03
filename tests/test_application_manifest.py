@@ -184,3 +184,12 @@ def test_juice_adapter_configuration_forces_recreation_when_digest_changes():
             "org.f5.demo.adapter-sha256"
             in compose["services"][f"juice-shop-{index}"]["labels"]
         )
+
+
+def test_seeded_dvwa_sessions_survive_full_catalog_duration():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    config = next(
+        item["content"] for item in files if item["path"].endswith("dvwa-fpm/www.conf")
+    )
+    assert "php_admin_value[session.gc_maxlifetime] = 604800" in config
+    assert "php_admin_value[session.cookie_lifetime] = 604800" in config

@@ -46,7 +46,7 @@
   },
   {
     "path": "/opt/origin-server/dvwa-fpm/www.conf",
-    "content": "[www]\nuser = www-data\ngroup = www-data\nlisten = 127.0.0.1:9000\npm = dynamic\npm.max_children = 32\npm.start_servers = 8\npm.min_spare_servers = 4\npm.max_spare_servers = 16\npm.max_requests = 200\nrequest_terminate_timeout = 30\n\nphp_admin_value[session.save_path] = /var/lib/php/sessions\n"
+    "content": "[www]\nuser = www-data\ngroup = www-data\nlisten = 127.0.0.1:9000\npm = dynamic\npm.max_children = 32\npm.start_servers = 8\npm.min_spare_servers = 4\npm.max_spare_servers = 16\npm.max_requests = 200\nrequest_terminate_timeout = 30\n\nphp_admin_value[session.save_path] = /var/lib/php/sessions\nphp_admin_value[session.gc_maxlifetime] = 604800\nphp_admin_value[session.cookie_lifetime] = 604800\n"
   },
   {
     "path": "/opt/origin-server/dvwa-fpm/entrypoint.sh",
