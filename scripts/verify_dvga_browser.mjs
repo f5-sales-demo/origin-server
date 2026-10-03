@@ -66,6 +66,10 @@ async function graphql(query, variables = {}) {
     throw new Error('GraphQL response contract failed');
   return document.data;
 }
+const fixturePath = path.join(output, 'fixture-journal.json');
+function journal() {
+  fs.writeFileSync(fixturePath, JSON.stringify({ title, id, restored: receipt.fixture_restored }), { mode: 0o600 });
+}
 let id;
 let subscriber;
 async function restoreFixture() {
@@ -107,6 +111,7 @@ try {
   const response = await responsePromise;
   const document = await response.json();
   id = document.data?.createPaste?.paste?.id;
+  journal();
   if (response.status() !== 200 || document.errors || !id || document.data.createPaste.paste.title !== title)
     throw new Error('Native paste form failed');
   await checked('created-paste', ['Paste was created successfully']);
@@ -132,6 +137,7 @@ try {
   if (subscriber) await subscriber.close();
   await browser.close();
   receipt.browser_closed = true;
+  journal();
   receipt.passed =
     receipt.checks.length === 6 &&
     receipt.checks.every((check) => check.passed) &&

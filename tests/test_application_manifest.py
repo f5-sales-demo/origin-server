@@ -153,3 +153,18 @@ def test_dvga_adapter_uses_request_prefix_for_native_and_proxy_routes(tmp_path):
         assert f"fetch('{prefix}/graphql')" in rendered
         assert f"`{prefix}/graphql?" in rendered
     assert "url(../images/logo.png)" in css.read_text()
+
+
+def test_dvga_replica_affinity_binds_browser_and_api_requests():
+    files = render(ROOT)
+    nginx = next(
+        item["content"] for item in files if item["path"] == "/etc/nginx/nginx.conf"
+    )
+    site = next(
+        item["content"]
+        for item in files
+        if item["path"] == "/etc/nginx/sites-available/origin-server"
+    )
+    assert "map $cookie_dvga_replica $dvga_affinity" in nginx
+    assert "hash $dvga_affinity consistent;" in nginx
+    assert "dvga_replica=$dvga_affinity; Path=/dvga/; HttpOnly; SameSite=Lax" in site
