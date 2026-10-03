@@ -17,6 +17,31 @@ def recover_signup(output: Path) -> dict:
     ):
         message = "synthetic signup identity invalid"
         raise ValueError(message)
+    with urlopen(
+        "http://127.0.0.1:18888/mailhog/api/v2/messages?limit=1000", timeout=20
+    ) as response:
+        messages = json.load(response)["items"]
+    owned_mail = [
+        item
+        for item in messages
+        if any(
+            email in recipient
+            for recipient in item.get("Content", {}).get("Headers", {}).get("To", [])
+        )
+    ]
+    if len(owned_mail) > 1:
+        message = "ambiguous signup mail ownership"
+        raise ValueError(message)
+    if owned_mail:
+        message = owned_mail[0]
+        found = re.search(
+            r"VIN:[\s\S]*?>([A-HJ-NPR-Z0-9]{17})<", message["Content"]["Body"]
+        )
+        if not found:
+            error = "welcome vehicle ownership missing"
+            raise ValueError(error)
+        journal.update(vehicle_vin=found[1], mail_ids=[message["ID"]])
+        (output / "fixture-journal.json").write_text(json.dumps(journal))
     vin = journal.get("vehicle_vin")
     if vin is not None and not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", vin):
         message = "synthetic welcome VIN invalid"
@@ -69,6 +94,13 @@ COMMIT;"""
             if response.status not in (200, 204):
                 message = "mail recovery failed"
                 raise ValueError(message)
+    with urlopen(
+        "http://127.0.0.1:18888/mailhog/api/v2/messages?limit=1000", timeout=20
+    ) as response:
+        remaining = json.load(response)["items"]
+    if any(item["ID"] in journal.get("mail_ids", []) for item in remaining):
+        message = "signup mail remains after recovery"
+        raise ValueError(message)
     receipt = {
         "account_removed": True,
         "vehicle_identified": bool(vin),

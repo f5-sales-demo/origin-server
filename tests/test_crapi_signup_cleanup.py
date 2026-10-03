@@ -30,7 +30,11 @@ def test_signup_database_uses_quoted_psql_variables(tmp_path):
         "mail_ids": [],
     }
     (tmp_path / "fixture-journal.json").write_text(json.dumps(fixture))
-    with patch("crapi_signup_cleanup.subprocess.run") as database:
+    with (
+        patch("crapi_signup_cleanup.subprocess.run") as database,
+        patch("crapi_signup_cleanup.urlopen") as mail,
+    ):
+        mail.return_value.__enter__.return_value.read.return_value = b'{"items":[]}'
         database.return_value.stdout = "1\n0\n"
         result = recover_signup(tmp_path)
         assert not result["passed"]
