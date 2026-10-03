@@ -64,6 +64,25 @@ async function rendered(name, selector, terms) {
       timeout: 15000,
     });
   }
+  if (name === 'about') {
+    const gallery = page.locator('#feedback-gallery');
+    await gallery.scrollIntoViewIfNeeded();
+    const next = gallery.getByRole('button', { name: 'Next', exact: true });
+    const imageCount = await gallery.locator('img').count();
+    if (!imageCount) throw new Error('Feedback gallery images missing');
+    for (let index = 0; index < imageCount; index++) {
+      await page.waitForFunction(
+        () => {
+          const active = document.querySelector('#feedback-gallery .g-active-item');
+          const image = active?.querySelector('img');
+          return image?.complete && image.naturalWidth > 0 && active.getAttribute('itemstate') === 'success';
+        },
+        undefined,
+        { timeout: 15000 },
+      );
+      if (index + 1 < imageCount) await next.click();
+    }
+  }
   const images = page.locator('img');
   for (let index = 0; index < (await images.count()); index++) {
     const image = images.nth(index);
