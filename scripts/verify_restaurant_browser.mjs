@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 /** Exercise local Swagger, OAuth password flow, seeded role profiles and ReDoc. */
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -8,6 +9,7 @@ const [base, output] = process.argv.slice(2);
 if (!base || !output) throw new Error('Application origin and evidence required');
 const origin = new URL(base);
 fs.mkdirSync(output, { recursive: true, mode: 0o700 });
+const actor = `benign-${crypto.randomUUID().replaceAll('-', '')}`;
 const receipt = { checks: [], errors: [], browser_closed: false, accepted: false };
 const browser = await chromium.launch({
   headless: true,
@@ -19,7 +21,7 @@ await context.route('**/*', async (route) => {
   await route.continue({
     headers: {
       ...request.headers(),
-      ...(new URL(request.url()).origin === origin.origin ? { 'X-MUD-User': 'waap-workflow-benign' } : {}),
+      ...(new URL(request.url()).origin === origin.origin ? { 'X-MUD-User': actor } : {}),
     },
   });
 });
