@@ -1,6 +1,7 @@
 """Source-controlled installer must reject unsafe paths before writing any file."""
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -61,3 +62,15 @@ class InstallerTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_installer_provisions_locked_browser_runtime():
+    root = Path(__file__).resolve().parents[1]
+    dockerfile = (root / "provisioning/browser-runtime/Dockerfile").read_text()
+    assert "@sha256:" in dockerfile
+    assert "npm ci --ignore-scripts" in dockerfile
+    lock = json.loads(
+        (root / "provisioning/browser-runtime/package-lock.json").read_text()
+    )
+    assert lock["packages"]["node_modules/playwright"]["version"] == "1.63.0"
+    assert lock["packages"]["node_modules/playwright"]["integrity"]

@@ -93,6 +93,20 @@ def main() -> int:
             "content": (source / "scripts/verify_crapi_browser.mjs").read_text(),
         }
     )
+    for name in ("Dockerfile", "package.json", "package-lock.json"):
+        files.append(
+            {
+                "path": "/opt/origin-server/browser-runtime/" + name,
+                "content": (source / "provisioning/browser-runtime" / name).read_text(),
+            }
+        )
+    for name in ("verify_content.mjs", "verify_crapi_browser.mjs"):
+        files.append(
+            {
+                "path": "/opt/origin-server/browser-runtime/" + name,
+                "content": (source / "scripts" / name).read_text(),
+            }
+        )
     receipt = {
         "started": time.time(),
         "status": "installing",
