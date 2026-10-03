@@ -206,3 +206,12 @@ def test_costly_graphql_route_keeps_declared_timeout_local():
         "proxy_read_timeout 600s;"
         in site.split("location /dvga/ {", 1)[1].split("}", 1)[0]
     )
+
+
+def test_synthetic_video_fixture_has_native_media_without_duplicate_repair():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    seed = next(item["content"] for item in files if item["path"] == "/usr/local/bin/demo-catalog-fixtures")
+    assert "video_name, video, user_id" in seed
+    assert "lo_from_bytea(0, decode(" in seed
+    assert "WHERE video IS NULL AND video_name='tgen-synthetic.mp4'" in seed
+    assert "AND NOT EXISTS (SELECT 1 FROM profile_video WHERE user_id=u.id)" in seed
