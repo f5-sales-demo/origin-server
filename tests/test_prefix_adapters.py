@@ -142,3 +142,14 @@ def test_crapi_vehicle_image_adapter_preserves_published_asset_base():
     )
     assert "vehicle.model.vehicle_img" in adapter
     assert "new URL(vehicle.model.vehicle_img" in adapter
+
+
+def test_crapi_mechanic_adapter_uses_canonical_endpoint_without_redirect():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    adapter = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("crapi-frontend/adapt.mjs")
+    )
+    assert "GET_MECHANICS" in adapter
+    assert "api/mechanic/" in adapter
