@@ -82,3 +82,15 @@ def test_restaurant_export_declares_distinct_idempotent_bola_actors():
     assert '"restaurant_" + role' in source
     assert "verify_password" in source
     assert "user.role = role" in source
+
+
+def test_csrf_fixture_seeds_dedicated_account_without_admin_mutation():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    source = next(
+        item["content"]
+        for item in files
+        if item["path"] == "/usr/local/bin/demo-catalog-fixtures"
+    )
+    assert "WHERE user='tgen_csrf'" in source
+    assert 'result["dvwa_csrf_sessions"]' in source
+    assert 'dvwa_sessions("tgen_csrf")' in source
