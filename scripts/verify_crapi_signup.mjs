@@ -21,7 +21,7 @@ const fixture = {
 const journal = () =>
   fs.writeFileSync(path.join(output, 'fixture-journal.json'), JSON.stringify(fixture), { mode: 0o600 });
 journal();
-const receipt = { checks: [], errors: [], browser_closed: false, accepted: false };
+const receipt = { expected_negative: [], checks: [], errors: [], browser_closed: false, accepted: false };
 const browser = await chromium.launch({
   headless: true,
   ...(process.env.ORIGIN_CHROMIUM_PATH ? { executablePath: process.env.ORIGIN_CHROMIUM_PATH } : {}),
@@ -43,6 +43,14 @@ page.on('requestfailed', (request) =>
   receipt.errors.push({ kind: 'transport-failure', path: new URL(request.url()).pathname }),
 );
 page.on('response', (response) => {
+  if (new URL(response.url()).pathname === '/crapi/mailhog/api/v2/jim' && response.status() === 404) {
+    receipt.expected_negative.push({
+      path: '/crapi/mailhog/api/v2/jim',
+      status: 404,
+      reason: 'pinned MailHog chaos monkey disabled',
+    });
+    return;
+  }
   if (response.status() >= 400)
     receipt.errors.push({ kind: 'response-error', path: new URL(response.url()).pathname, status: response.status() });
 });
