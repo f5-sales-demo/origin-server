@@ -85,7 +85,7 @@ def retain_evidence(
 def main() -> int:
     """Retain timeout and tool failures without leaving Chromium running."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=("content", "crapi"))
+    parser.add_argument("kind", choices=("content", "crapi", "juice"))
     parser.add_argument("--base", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -94,9 +94,11 @@ def main() -> int:
     marker = uuid.uuid4().hex
     name = "origin-browser-" + marker
     source = "/opt/origin-server/browser-runtime"
-    script = (
-        "verify_content.mjs" if args.kind == "content" else "verify_crapi_browser.mjs"
-    )
+    script = {
+        "content": "verify_content.mjs",
+        "crapi": "verify_crapi_browser.mjs",
+        "juice": "verify_juice_browser.mjs",
+    }[args.kind]
     arguments = (
         ["--manifest", "/manifest.json", "--base", args.base, "--output", "/evidence"]
         if args.kind == "content"

@@ -122,7 +122,11 @@ def main() -> int:
                 "content": (source / "provisioning/browser-runtime" / name).read_text(),
             }
         )
-    for name in ("verify_content.mjs", "verify_crapi_browser.mjs"):
+    for name in (
+        "verify_content.mjs",
+        "verify_crapi_browser.mjs",
+        "verify_juice_browser.mjs",
+    ):
         files.append(
             {
                 "path": "/opt/origin-server/browser-runtime/" + name,
