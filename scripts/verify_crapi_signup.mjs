@@ -91,6 +91,7 @@ try {
   await page.waitForFunction(() => document.body.innerText.includes('User Registered Successfully!'), undefined, {
     timeout: 15000,
   });
+  await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(output, 'signup-success.png'), fullPage: true });
   fs.chmodSync(path.join(output, 'signup-success.png'), 0o600);
   if (!(await finishedSignup)) throw new Error('Signup request completion failed');

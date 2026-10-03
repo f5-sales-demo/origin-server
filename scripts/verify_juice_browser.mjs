@@ -58,6 +58,12 @@ async function rendered(name, selector, terms) {
     { selector, terms },
     { timeout: 15000 },
   );
+  if (name === 'score-board') {
+    await page.locator('app-score-board challenge-card').first().waitFor({ state: 'visible', timeout: 15000 });
+    await page.waitForFunction(() => !document.querySelector('app-score-board mat-spinner'), undefined, {
+      timeout: 15000,
+    });
+  }
   await page.waitForTimeout(500);
   const screenshot = `${name}.png`;
   await page.screenshot({ path: path.join(output, screenshot), fullPage: true });
