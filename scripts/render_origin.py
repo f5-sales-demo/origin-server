@@ -9,11 +9,8 @@ from pathlib import Path
 from application_manifest import load_manifest
 
 
-def render(root: Path) -> list[dict]:
-    """Reuse pinned provisioning files while deriving application declarations."""
-    manifest = load_manifest(root / "provisioning/applications.json")
-    files = json.loads((root / "provisioning/files.json").read_text())
-    by_path = {item["path"]: item for item in files}
+def bind_juice_adapter(by_path: dict) -> None:
+    """Recreate only declared Juice Shop containers when the preload changes."""
     compose_file = by_path["/opt/origin-server/docker-compose.yml"]
     adapter = by_path["/opt/origin-server/juice-shop-framing/preload.cjs"]["content"]
     digest = hashlib.sha256(adapter.encode()).hexdigest()
@@ -25,6 +22,14 @@ def render(root: Path) -> list[dict]:
             marker + "    labels:\n      org.f5.demo.adapter-sha256: " + digest + "\n",
         )
     compose_file["content"] = content
+
+
+def render(root: Path) -> list[dict]:
+    """Reuse pinned provisioning files while deriving application declarations."""
+    manifest = load_manifest(root / "provisioning/applications.json")
+    files = json.loads((root / "provisioning/files.json").read_text())
+    by_path = {item["path"]: item for item in files}
+    bind_juice_adapter(by_path)
     app_list = manifest["applications"]
     by_path["/var/www/html/index.html"]["content"] = (
         "<!doctype html><html><head><title>Origin Server</title></head>"

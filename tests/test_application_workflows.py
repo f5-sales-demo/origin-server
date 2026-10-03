@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -100,7 +101,7 @@ def test_csrf_fixture_seeds_dedicated_account_without_admin_mutation():
 def test_complete_report_rejects_missing_declared_workflow_assertions():
     verifier = module()
     expected = {"dvwa": {"authentication", "security-settings"}}
-    partial = {
+    partial: dict[str, Any] = {
         "checks": [
             {"application": "dvwa", "passed": True, "assertions": ["authentication"]}
         ]

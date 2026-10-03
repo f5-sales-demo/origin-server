@@ -3,6 +3,7 @@
 import copy
 import sys
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from application_receipts import browser_assertions, coverage_matrix
@@ -18,7 +19,7 @@ def test_browser_assertions_reject_foreign_sources_layers_and_partial_checks():
         "exit_code": 0,
         "cleanup": True,
     }
-    receipt = {
+    receipt: dict[str, Any] = {
         "passed": True,
         "browser_closed": True,
         "errors": [],
