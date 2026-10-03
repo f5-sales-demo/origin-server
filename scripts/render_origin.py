@@ -27,6 +27,14 @@ def render(root: Path) -> list[dict]:
         )
         + '</ul><a href="/health">Health Check</a></body></html>\n'
     )
+    readiness = by_path["/usr/local/bin/demo-origin-ready"]
+    source = readiness["content"]
+    start = source.index("FAMILIES = {")
+    end = source.index("\nCRAPI =", start)
+    families = {app["id"]: app["ports"][0] for app in app_list if app["id"] != "crapi"}
+    readiness["content"] = (
+        source[:start] + "FAMILIES = " + repr(families) + source[end:]
+    )
     routes = []
     for app in app_list:
         prefix = app["prefix"].rstrip("/")
