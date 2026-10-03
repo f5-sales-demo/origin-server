@@ -87,13 +87,22 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "kind",
-        choices=("content", "crapi", "juice", "dvwa", "dvga", "csd", "restaurant"),
+        choices=(
+            "content",
+            "crapi",
+            "juice",
+            "dvwa",
+            "dvga",
+            "csd",
+            "restaurant",
+            "httpbin",
+        ),
     )
     parser.add_argument("--base", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--native", action="store_true")
     args = parser.parse_args()
-    if args.native and args.kind not in ("dvwa", "dvga", "csd"):
+    if args.native and args.kind not in ("dvwa", "dvga", "csd", "httpbin"):
         parser.error(
             "native browser routing is currently supported only for DVWA, DVGA and CSD"
         )
@@ -110,6 +119,7 @@ def main() -> int:
         "dvga": "verify_dvga_browser.mjs",
         "csd": "verify_csd_browser.mjs",
         "restaurant": "verify_restaurant_browser.mjs",
+        "httpbin": "verify_httpbin_browser.mjs",
     }[args.kind]
     arguments = (
         ["--manifest", "/manifest.json", "--base", args.base, "--output", "/evidence"]

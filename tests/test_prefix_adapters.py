@@ -107,3 +107,14 @@ def test_restaurant_redoc_disables_external_google_font_loading():
         if item["path"].endswith("adapt-restaurant.py")
     )
     assert "with_google_fonts=False" in adapter
+
+
+def test_httpbin_assets_forms_and_spec_use_request_prefix():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    adapter = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("httpbin-adapter/adapt.py")
+    )
+    assert "{{ request.script_root }}" in adapter
+    assert "template['basePath'] = '/httpbin'" not in adapter

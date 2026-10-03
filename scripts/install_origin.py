@@ -130,6 +130,7 @@ def main() -> int:
         "verify_dvga_browser.mjs",
         "verify_csd_browser.mjs",
         "verify_restaurant_browser.mjs",
+        "verify_httpbin_browser.mjs",
     ):
         files.append(
             {
