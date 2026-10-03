@@ -71,6 +71,19 @@ try {
       .click({ timeout: 1500 })
       .catch(() => {});
   await rendered('products', 'app-search-result', ['All Products', 'Apple Juice']);
+  await page.locator('app-product img').evaluateAll(async (images) => {
+    await Promise.all(
+      images.map((image) =>
+        image.complete
+          ? Promise.resolve()
+          : new Promise((resolve) => {
+              image.addEventListener('load', resolve, { once: true });
+              image.addEventListener('error', resolve, { once: true });
+              setTimeout(resolve, 10000);
+            }),
+      ),
+    );
+  });
   const images = await page
     .locator('app-product img')
     .evaluateAll((elements) => elements.map((image) => image.complete && image.naturalWidth > 0));
