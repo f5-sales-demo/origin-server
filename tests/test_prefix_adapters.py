@@ -118,3 +118,5 @@ def test_httpbin_assets_forms_and_spec_use_request_prefix():
     )
     assert "{{ request.script_root }}" in adapter
     assert "template['basePath'] = '/httpbin'" not in adapter
+    assert "document['basePath'] = request.script_root" in adapter
+    assert "@app.before_request" not in adapter
