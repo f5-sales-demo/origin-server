@@ -120,3 +120,14 @@ def test_httpbin_assets_forms_and_spec_use_request_prefix():
     assert "template['basePath'] = '/httpbin'" not in adapter
     assert "document['basePath'] = request.script_root" in adapter
     assert "@app.before_request" not in adapter
+
+
+def test_restaurant_native_prefix_adapter_strips_only_its_declared_route():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    adapter = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("adapt-restaurant.py")
+    )
+    assert "scope['path'].startswith('/restaurant/')" in adapter
+    assert "scope['path'][len('/restaurant'):]" in adapter
