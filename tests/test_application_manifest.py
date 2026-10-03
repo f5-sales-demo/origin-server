@@ -70,6 +70,16 @@ class ManifestTests(unittest.TestCase):
             if name.startswith("restaurant-") and name != "restaurant-db":
                 assert "--limit-max-requests" not in service["command"]
 
+    def test_php_sessions_use_the_shared_replica_store(self):
+        """The authenticated fixture must survive routing to another replica."""
+        files = json.loads((ROOT / "provisioning/files.json").read_text())
+        config = next(
+            item["content"]
+            for item in files
+            if item["path"].endswith("dvwa-fpm/www.conf")
+        )
+        assert "php_admin_value[session.save_path] = /var/lib/php/sessions" in config
+
     def test_content_identity_and_type_fail_closed(self):
         """Verify the declared contract against a synthetic fixture."""
         module = self.module()
