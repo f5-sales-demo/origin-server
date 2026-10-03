@@ -174,3 +174,14 @@ def test_crapi_native_frontend_strips_published_prefix_before_dispatch():
         if item["path"].endswith("crapi-frontend/Dockerfile")
     )
     assert "rewrite ^/crapi/(.*)$ /$1 last" in dockerfile
+
+
+def test_crapi_signup_consumes_success_response_before_navigation():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    adapter = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("crapi-frontend/adapt.mjs")
+    )
+    assert "if (receivedResponse.ok) return response;" in adapter
+    assert "return response.json();" in adapter
