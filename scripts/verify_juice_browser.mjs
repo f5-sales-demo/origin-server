@@ -96,7 +96,8 @@ try {
   const [login] = await Promise.all([
     page.waitForResponse(
       (response) =>
-        new URL(response.url()).pathname === `${prefix}rest/user/login` && response.request().method() === 'POST',
+        ['/juice-shop/rest/user/login', '/rest/user/login'].includes(new URL(response.url()).pathname) &&
+        response.request().method() === 'POST',
     ),
     page.locator('#loginButton').click(),
   ]);
@@ -113,8 +114,8 @@ try {
     await page.goto(new URL(`${prefix}#/${route}`, origin).href, { waitUntil: 'domcontentloaded' });
     await rendered(route, selector, terms);
   }
-} catch {
-  receipt.errors.push({ kind: 'workflow-assertion-failure' });
+} catch (error) {
+  receipt.errors.push({ kind: 'workflow-assertion-failure', detail: String(error) });
 } finally {
   await browser.close();
   receipt.browser_closed = true;

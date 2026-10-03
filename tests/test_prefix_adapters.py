@@ -153,3 +153,14 @@ def test_crapi_mechanic_adapter_uses_canonical_endpoint_without_redirect():
     )
     assert "GET_MECHANICS" in adapter
     assert "api/mechanic/" in adapter
+
+
+def test_juice_native_prefix_routes_api_assets_before_spa_fallback():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    adapter = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("juice-shop-framing/preload.cjs")
+    )
+    assert "request.url.startsWith('/juice-shop/')" in adapter
+    assert "request.url.slice('/juice-shop'.length)" in adapter
