@@ -11,6 +11,7 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -251,6 +252,7 @@ def test_restaurant_invalid_role_is_rejected_before_database_mutation():
             for target in node.targets
         )
     )
+    assert isinstance(expression, ast.BinOp)
     inserted = (
         ast.literal_eval(expression.left)
         + "    db_user = get_user_by_username(db, current_user.username)\n"
@@ -267,7 +269,7 @@ def test_restaurant_invalid_role_is_rejected_before_database_mutation():
             super().__init__(detail)
 
     called = []
-    namespace = {"get_user_by_username": lambda *_: called.append(True)}
+    namespace: dict[str, Any] = {"get_user_by_username": lambda *_: called.append(True)}
     # pylint: disable=exec-used
     exec("def mutate(user, db=None, current_user=None):\n" + inserted, namespace)  # noqa: S102 - repository adapter transformation on a synthetic fixture
     with patch.dict(
