@@ -415,7 +415,12 @@ def main() -> int:
     observations.extend(csd_replica_state(layers))
     observations.extend(browser_observations(output, manifest, layers, provenance))
     observations.extend(signup_observations(output, manifest, layers, provenance))
+    final_provenance = json.loads(
+        Path("/opt/origin-server/install-receipt.json").read_text()
+    )
     matrix = coverage_matrix(manifest, observations)
+    matrix["source_stable"] = final_provenance == provenance
+    matrix["complete"] &= matrix["source_stable"]
     matrix.update(
         source_commit=provenance["source_commit"],
         archive_sha256=provenance["archive_sha256"],
