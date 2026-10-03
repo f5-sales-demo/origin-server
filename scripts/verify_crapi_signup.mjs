@@ -61,10 +61,10 @@ try {
     responsePromise,
     page.locator('#basic').getByRole('button', { name: 'Signup', exact: true }).click(),
   ]);
-  const document = await response.json();
-  if (response.status() !== 200 || document.status !== 200 || !document.message.includes('registered successfully'))
+  const result = await response.json();
+  if (response.status() !== 200 || result.status !== 200 || !result.message.includes('registered successfully'))
     throw new Error('Native signup failed');
-  await page.waitForFunction(() => document.body.innerText.includes('Please Login'));
+  await page.waitForFunction(() => document.body.innerText.includes('Please Login'), undefined, { timeout: 15000 });
   await page.screenshot({ path: path.join(output, 'signup-success.png'), fullPage: true });
   fs.chmodSync(path.join(output, 'signup-success.png'), 0o600);
   receipt.checks.push({ name: 'signup-submit', passed: true, screenshot: 'signup-success.png' });
@@ -86,7 +86,7 @@ try {
   journal();
   receipt.checks.push({ name: 'signup-mailhog', passed: true });
   await page.goto(new URL('/crapi/mailhog/', origin).href);
-  await page.waitForFunction(() => document.body.innerText.includes('MailHog'));
+  await page.waitForFunction(() => document.body.innerText.includes('MailHog'), undefined, { timeout: 15000 });
   await page.screenshot({ path: path.join(output, 'mailhog.png'), fullPage: true });
   fs.chmodSync(path.join(output, 'mailhog.png'), 0o600);
   receipt.checks.push({ name: 'mailhog-render', passed: true, screenshot: 'mailhog.png' });
