@@ -10,6 +10,7 @@ if (!base || !output || !['/', '/csd-demo/'].includes(prefix)) throw new Error('
 const origin = new URL(base);
 const fixture = crypto.randomUUID();
 fs.mkdirSync(output, { recursive: true, mode: 0o700 });
+fs.writeFileSync(path.join(output, 'fixture-journal.json'), JSON.stringify({ fixture }), { mode: 0o600 });
 const receipt = {
   checks: [],
   errors: [],
