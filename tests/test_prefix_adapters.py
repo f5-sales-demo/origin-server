@@ -268,6 +268,7 @@ def test_restaurant_invalid_role_is_rejected_before_database_mutation():
 
     called = []
     namespace = {"get_user_by_username": lambda *_: called.append(True)}
+    # pylint: disable=exec-used
     exec("def mutate(user, db=None, current_user=None):\n" + inserted, namespace)  # noqa: S102 - repository adapter transformation on a synthetic fixture
     with patch.dict(
         sys.modules,
