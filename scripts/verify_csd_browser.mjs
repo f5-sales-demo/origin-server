@@ -36,7 +36,11 @@ page.setDefaultTimeout(15000);
 context.setDefaultTimeout(15000);
 page.on('pageerror', () => receipt.errors.push({ kind: 'browser-error' }));
 page.on('requestfailed', (request) =>
-  receipt.errors.push({ kind: 'transport-failure', path: new URL(request.url()).pathname }),
+  receipt.errors.push({
+    kind: 'transport-failure',
+    path: new URL(request.url()).pathname,
+    detail: request.failure()?.errorText,
+  }),
 );
 page.on('response', (response) => {
   if (response.status() >= 400)
@@ -123,8 +127,13 @@ try {
   const cleared = page.waitForResponse(
     (response) => response.url() === url('exfil/clear') && response.request().method() === 'POST',
   );
+  const dashboardReload = page.waitForEvent('requestfinished', {
+    predicate: (request) => request.isNavigationRequest() && request.url() === url('dashboard'),
+  });
   await page.locator('button', { hasText: 'Clear All' }).click();
   const clearResponse = await cleared;
+  await dashboardReload;
+  await page.waitForLoadState('load');
   const afterClear = await logs();
   if (clearResponse.status() !== 200 || afterClear.some((entry) => entry.fixture_id === fixture))
     throw new Error('Native clear button failed');
