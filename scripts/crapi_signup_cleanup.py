@@ -3,20 +3,15 @@
 import json
 import re
 import subprocess
+from email import policy
+from email.parser import Parser
 from pathlib import Path
 from urllib.request import Request, urlopen
 
 
-def recover_signup(output: Path) -> dict:
-    """Require exact account ownership and confirmed vehicle/mail identity before removal."""
-    journal = json.loads((output / "fixture-journal.json").read_text())
+def discover_welcome(journal: dict) -> None:
+    """Find the exact welcome message and decode its MIME vehicle identity."""
     email = journal["email"]
-    number = journal["number"]
-    if not re.fullmatch(r"signup-[a-f0-9]{32}@example\.com", email) or not re.fullmatch(
-        r"555[0-9]{7}", number
-    ):
-        message = "synthetic signup identity invalid"
-        raise ValueError(message)
     with urlopen(
         "http://127.0.0.1:18888/mailhog/api/v2/messages?limit=1000", timeout=20
     ) as response:
@@ -34,14 +29,31 @@ def recover_signup(output: Path) -> dict:
         raise ValueError(message)
     if owned_mail:
         message = owned_mail[0]
-        found = re.search(
-            r"VIN:[\s\S]*?>([A-HJ-NPR-Z0-9]{17})<", message["Content"]["Body"]
-        )
+        parsed = Parser(policy=policy.default).parsestr(message["Raw"]["Data"])
+        payload = parsed.get_payload(decode=True)
+        if not isinstance(payload, bytes):
+            error = "welcome MIME payload missing"
+            raise ValueError(error)
+        body = payload.decode()
+        found = re.search(r"VIN:[\s\S]*?>([A-HJ-NPR-Z0-9]{17})<", body)
         if not found:
             error = "welcome vehicle ownership missing"
             raise ValueError(error)
         journal.update(vehicle_vin=found[1], mail_ids=[message["ID"]])
-        (output / "fixture-journal.json").write_text(json.dumps(journal))
+
+
+def recover_signup(output: Path) -> dict:
+    """Require exact account ownership and confirmed vehicle/mail identity before removal."""
+    journal = json.loads((output / "fixture-journal.json").read_text())
+    email = journal["email"]
+    number = journal["number"]
+    if not re.fullmatch(r"signup-[a-f0-9]{32}@example\.com", email) or not re.fullmatch(
+        r"555[0-9]{7}", number
+    ):
+        message = "synthetic signup identity invalid"
+        raise ValueError(message)
+    discover_welcome(journal)
+    (output / "fixture-journal.json").write_text(json.dumps(journal))
     vin = journal.get("vehicle_vin")
     if vin is not None and not re.fullmatch(r"[A-HJ-NPR-Z0-9]{17}", vin):
         message = "synthetic welcome VIN invalid"
@@ -84,7 +96,7 @@ COMMIT;"""
         message = "signup account recovery failed"
         raise ValueError(message)
     for mail_id in journal.get("mail_ids", []):
-        if not re.fullmatch(r"[A-Za-z0-9@._-]+", mail_id):
+        if not re.fullmatch(r"[A-Za-z0-9@._=+-]+", mail_id):
             message = "mail fixture identifier invalid"
             raise ValueError(message)
         request = Request(

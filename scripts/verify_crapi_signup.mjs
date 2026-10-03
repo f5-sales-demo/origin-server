@@ -79,7 +79,10 @@ try {
   }
   if (messages.length !== 1) throw new Error('Signup mail identity failed');
   fixture.mail_ids = messages.map((item) => item.ID);
-  const body = messages[0].Content.Body;
+  const raw = messages[0].Raw.Data.split('\r\n\r\n').slice(1).join('\r\n\r\n');
+  const body = raw
+    .replace(/=\r?\n/g, '')
+    .replace(/=([0-9A-F]{2})/g, (_match, hex) => String.fromCharCode(Number.parseInt(hex, 16)));
   const vin = body.match(/VIN:[\s\S]*?>([A-HJ-NPR-Z0-9]{17})</);
   if (!vin) throw new Error('Welcome vehicle fixture missing');
   fixture.vehicle_vin = vin[1];
