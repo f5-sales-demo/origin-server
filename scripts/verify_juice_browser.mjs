@@ -64,6 +64,24 @@ async function rendered(name, selector, terms) {
       timeout: 15000,
     });
   }
+  const images = page.locator('img');
+  for (let index = 0; index < (await images.count()); index++) {
+    const image = images.nth(index);
+    if (!(await image.isVisible())) continue;
+    await image.scrollIntoViewIfNeeded();
+    await image.evaluate(
+      (element) =>
+        new Promise((resolve) => {
+          if (element.complete && element.naturalWidth > 0) return resolve();
+          element.addEventListener('load', resolve, { once: true });
+          element.addEventListener('error', resolve, { once: true });
+          setTimeout(resolve, 10000);
+        }),
+    );
+    if (!(await image.evaluate((element) => element.complete && element.naturalWidth > 0)))
+      throw new Error('Rendered image did not load');
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(500);
   const screenshot = `${name}.png`;
   await page.screenshot({ path: path.join(output, screenshot), fullPage: true });
