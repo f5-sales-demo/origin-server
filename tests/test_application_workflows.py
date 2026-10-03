@@ -92,5 +92,6 @@ def test_csrf_fixture_seeds_dedicated_account_without_admin_mutation():
         if item["path"] == "/usr/local/bin/demo-catalog-fixtures"
     )
     assert "WHERE user='tgen_csrf'" in source
+    assert "COALESCE(MAX(u.user_id),0)+1" in source
     assert 'result["dvwa_csrf_sessions"]' in source
     assert 'dvwa_sessions("tgen_csrf")' in source
