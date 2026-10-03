@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import shutil
 import subprocess
 import time
 import uuid
@@ -47,6 +48,40 @@ def cleanup_container(name: str, marker: str) -> None:
     )
 
 
+def evidence_size(root: Path) -> int:
+    """Count regular private evidence while concurrent atomic writers rename files."""
+    total = 0
+    for path in root.rglob("*"):
+        try:
+            if path.is_file() and not path.is_symlink():
+                total += path.stat().st_size
+        except FileNotFoundError:
+            continue
+    return total
+
+
+def retain_evidence(
+    root: Path, active: Path, days: int = 7, max_bytes: int = 10 * 1024**3
+) -> None:
+    """Evict completed owned browser evidence without touching active or unrelated work."""
+    candidates = []
+    for directory in root.glob("private-browser-*"):
+        if directory == active or directory.is_symlink() or not directory.is_dir():
+            continue
+        try:
+            receipt = json.loads((directory / "runtime-receipt.json").read_text())
+            if receipt.get("cleanup") is True:
+                candidates.append(directory)
+        except (OSError, ValueError):
+            continue
+    total = sum(evidence_size(directory) for directory in [active, *candidates])
+    for directory in sorted(candidates, key=lambda path: path.stat().st_mtime):
+        if time.time() - directory.stat().st_mtime > days * 86400 or total > max_bytes:
+            size = evidence_size(directory)
+            shutil.rmtree(directory)
+            total -= size
+
+
 def main() -> int:
     """Retain timeout and tool failures without leaving Chromium running."""
     parser = argparse.ArgumentParser()
@@ -55,6 +90,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     output = evidence_directory(args.output)
+    retain_evidence(output.parent, output)
     marker = uuid.uuid4().hex
     name = "origin-browser-" + marker
     source = "/opt/origin-server/browser-runtime"
@@ -103,7 +139,21 @@ def main() -> int:
     }
     code = 1
     try:
-        code = subprocess.run(command, check=False, timeout=900).returncode  # noqa: S603 - exact locked runtime argv
+        with subprocess.Popen(command) as process:  # noqa: S603 - exact locked runtime argv
+            deadline = time.monotonic() + 900
+            while process.poll() is None:
+                retain_evidence(output.parent, output)
+                if evidence_size(output) > 10 * 1024**3:
+                    process.terminate()
+                    receipt.update(status="failed", reason="evidence-cap")
+                    break
+                if time.monotonic() >= deadline:
+                    process.terminate()
+                    receipt.update(status="failed", reason="browser-timeout")
+                    break
+                time.sleep(0.5)
+            code = process.wait(timeout=30)
+
         receipt.update(status="completed" if code == 0 else "failed", exit_code=code)
     except subprocess.TimeoutExpired:
         code = 124
@@ -114,6 +164,7 @@ def main() -> int:
         path = output / "runtime-receipt.json"
         path.write_text(json.dumps(receipt))
         path.chmod(0o600)
+        retain_evidence(output.parent, output)
     return code
 
 
