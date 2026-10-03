@@ -99,6 +99,7 @@ def main() -> int:
             "csd",
             "restaurant",
             "httpbin",
+            "crapi-signup",
         ),
     )
     parser.add_argument("--base", required=True)

@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from browser_runtime import cleanup_container, evidence_directory, retain_evidence
+from browser_runtime import cleanup_container, evidence_directory, main, retain_evidence
 
 
 def test_foreign_browser_container_is_preserved():
@@ -77,3 +77,12 @@ def test_browser_retention_refuses_unowned_directory_eviction(tmp_path):
     os.utime(foreign, (1, 1))
     retain_evidence(tmp_path, active, days=7, max_bytes=1)
     assert foreign.exists()
+
+
+def test_signup_browser_kind_is_accepted_before_required_argument_check(capsys):
+    with (
+        patch("sys.argv", ["origin-browser-verify", "crapi-signup"]),
+        pytest.raises(SystemExit),
+    ):
+        main()
+    assert "invalid choice" not in capsys.readouterr().err
