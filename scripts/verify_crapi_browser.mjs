@@ -84,10 +84,11 @@ async function rendered(name, route, selector, terms) {
     { timeout: 15000 },
   );
   await page.waitForTimeout(1000);
+  await settled();
+  await page.waitForFunction(() => [...document.images].every((image) => image.complete), { timeout: 15000 });
   const images = await page
     .locator('img')
     .evaluateAll((elements) => elements.map((image) => ({ loaded: image.complete && image.naturalWidth > 0 })));
-  await settled();
   const screenshot = `${name}.png`;
   await page.screenshot({ path: path.join(output, screenshot), fullPage: true });
   fs.chmodSync(path.join(output, screenshot), 0o600);
