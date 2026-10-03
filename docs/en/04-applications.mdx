@@ -1,6 +1,6 @@
 ---
 title: Applications
-description: "URL paths, request/response behavior, default credentials, and attack scenarios for Juice Shop (/juice-shop), DVWA (/dvwa), VAmPI (/vampi), httpbin (/httpbin), whoami (/whoami), CSD Demo (/csd-demo), DVGA (/dvga), RESTaurant (/restaurant), and crAPI (:8888)"
+description: "URL paths, request/response behavior, default credentials, and attack scenarios for Juice Shop (/juice-shop), DVWA (/dvwa), VAmPI (/vampi), httpbin (/httpbin), whoami (/whoami), CSD Demo (/csd-demo), DVGA (/dvga), RESTaurant (/restaurant), and crAPI (/crapi/)"
 sidebar:
   order: 4
 ---
@@ -27,7 +27,7 @@ The AWS module does not deploy nginx, a container host, or the other eight appli
 | `/dvwa/` | DVWA | GET | 302 redirect to `/dvwa/login.php` |
 | `/dvwa/login.php` | DVWA login | GET | 200 HTML login form |
 | `/dvwa/setup.php` | DVWA setup | GET | 200 HTML (first-run database init) |
-| `/vampi/` | VAmPI | GET | 200 HTML (API docs) |
+| `/vampi/` | VAmPI | GET | 200 JSON identifying VAmPI |
 | `/vampi/users/v1` | VAmPI API | GET | 200 JSON `{"users":[...]}` |
 | `/vampi/users/v1/register` | VAmPI API | POST | 200 JSON `{"status":"success",...}` |
 | `/vampi/users/v1/login` | VAmPI API | POST | 200 JSON `{"auth_token":"...","status":"success"}` |
@@ -45,7 +45,7 @@ The AWS module does not deploy nginx, a container host, or the other eight appli
 | `/restaurant/` | RESTaurant | GET | 200 (redirects to docs) |
 | `/restaurant/docs` | RESTaurant Swagger | GET | 200 HTML (FastAPI Swagger UI) |
 | `/restaurant/openapi.json` | RESTaurant OpenAPI | GET | 200 JSON OpenAPI spec |
-| `http://<PUBLIC_IP>:8888` | crAPI | GET | 200 HTML (SPA) |
+| `/crapi/` | crAPI | GET | 200 HTML (SPA) |
 | `http://<PUBLIC_IP>:8888/identity/api/auth/signup` | crAPI signup | POST | 200 JSON |
 | `http://<PUBLIC_IP>:8888/identity/api/auth/login` | crAPI login | POST | 200 JSON `{"token":"..."}` |
 
