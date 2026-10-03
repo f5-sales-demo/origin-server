@@ -13,6 +13,16 @@ def bind_juice_adapter(by_path: dict) -> None:
     """Recreate only declared Juice Shop containers when the preload changes."""
     compose_file = by_path["/opt/origin-server/docker-compose.yml"]
     adapter = by_path["/opt/origin-server/juice-shop-framing/preload.cjs"]["content"]
+    adapter = adapter.replace(
+        "__VT323_FONT_BASE64__",
+        (
+            Path(__file__).resolve().parents[1]
+            / "provisioning/fonts/VT323-Regular.ttf.base64"
+        )
+        .read_text()
+        .strip(),
+    )
+    by_path["/opt/origin-server/juice-shop-framing/preload.cjs"]["content"] = adapter
     digest = hashlib.sha256(adapter.encode()).hexdigest()
     content = compose_file["content"]
     for index in range(1, 5):

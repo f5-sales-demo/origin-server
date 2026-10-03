@@ -1,6 +1,8 @@
 """Exercise adapter transformations on synthetic upstream source fixtures."""
 
+import base64
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -185,3 +187,43 @@ def test_crapi_signup_consumes_success_response_before_navigation():
     )
     assert "if (receivedResponse.ok) return response;" in adapter
     assert "return response.json();" in adapter
+
+
+def test_juice_local_font_adapter_is_repeatable(tmp_path):
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    adapter = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("juice-shop-framing/preload.cjs")
+    )
+    font = (ROOT / "provisioning/fonts/VT323-Regular.ttf.base64").read_text().strip()
+    native = tmp_path / "juice-shop" / "frontend" / "dist"
+    native.mkdir(parents=True)
+    page = native / "index.html"
+    page.write_text(
+        '<html><head><link href="https://fonts.googleapis.com/css2?family=VT323" rel="stylesheet"></head><body>fixture</body></html>'
+    )
+    script = tmp_path / "adapter.cjs"
+    script.write_text(
+        adapter.replace("__VT323_FONT_BASE64__", font).replace(
+            "/juice-shop/frontend", str(tmp_path / "juice-shop" / "frontend")
+        )
+        + "\nfs.readFile("
+        + repr(str(page))
+        + ",()=>{fs.readFile("
+        + repr(str(page))
+        + ",()=>{});});"
+    )
+    result = subprocess.run(  # noqa: S603 - fixed synthetic adapter fixture
+        [shutil.which("node") or "/usr/bin/node", str(script)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    html = page.read_text()
+    assert "fonts.googleapis.com" not in html
+    assert html.count("data-origin-local-font") == 1
+    assert (
+        native / "assets/public/fonts/VT323-Regular.ttf"
+    ).read_bytes() == base64.b64decode(font)
