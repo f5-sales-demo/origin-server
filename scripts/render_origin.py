@@ -75,6 +75,11 @@ def render(root: Path) -> list[dict]:
             if app["id"] == "dvga"
             else ""
         )
+        read_timeout = (
+            f"        proxy_read_timeout {app['proxy_read_timeout_seconds']}s;\n"
+            if "proxy_read_timeout_seconds" in app
+            else ""
+        )
         routes.append(f"""    location = {prefix} {{ return 308 {app["prefix"]}; }}
     location {app["prefix"]} {{
         proxy_pass {upstream}/;
@@ -88,7 +93,7 @@ def render(root: Path) -> list[dict]:
         proxy_set_header X-Forwarded-Prefix {prefix};
         proxy_redirect ~^/(?!{app["id"]}(?:/|$))(.*)$ {prefix}/$1;
         proxy_cookie_path / {app["prefix"]};
-{affinity}    }}""")
+{read_timeout}{affinity}    }}""")
     site = by_path["/etc/nginx/sites-available/origin-server"]["content"]
     second = site[site.index("server {", site.index("server {") + 1) :]
     health = json.dumps(

@@ -193,3 +193,16 @@ def test_seeded_dvwa_sessions_survive_full_catalog_duration():
     )
     assert "php_admin_value[session.gc_maxlifetime] = 604800" in config
     assert "php_admin_value[session.cookie_lifetime] = 604800" in config
+
+
+def test_costly_graphql_route_keeps_declared_timeout_local():
+    site = next(
+        item["content"]
+        for item in render(ROOT)
+        if item["path"] == "/etc/nginx/sites-available/origin-server"
+    )
+    assert site.count("proxy_read_timeout 600s;") == 1
+    assert (
+        "proxy_read_timeout 600s;"
+        in site.split("location /dvga/ {", 1)[1].split("}", 1)[0]
+    )
