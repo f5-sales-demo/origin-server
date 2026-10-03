@@ -34,6 +34,10 @@ class AdapterTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "templates").mkdir()
+            (root / "core").mkdir()
+            (root / "core/security.py").write_text(
+                "import time\ndef simulate_load():\n    time.sleep(0.1)\n"
+            )
             (root / "app.py").write_text(
                 'app = Flask(__name__, static_folder="static/")\n'
             )

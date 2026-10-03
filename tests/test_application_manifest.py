@@ -128,6 +128,8 @@ def test_dvga_adapter_uses_request_prefix_for_native_and_proxy_routes(tmp_path):
         for item in files
         if item["path"].endswith("dvga-adapter/adapt.py")
     )
+    (tmp_path / "core").mkdir()
+    (tmp_path / "core/security.py").write_text("import time\ntime.sleep(0.1)\n")
     (tmp_path / "app.py").write_text('app = Flask(__name__, static_folder="static/")')
     (tmp_path / "templates").mkdir()
     template = tmp_path / "templates/paste.html"
@@ -210,7 +212,11 @@ def test_costly_graphql_route_keeps_declared_timeout_local():
 
 def test_synthetic_video_fixture_has_native_media_without_duplicate_repair():
     files = json.loads((ROOT / "provisioning/files.json").read_text())
-    seed = next(item["content"] for item in files if item["path"] == "/usr/local/bin/demo-catalog-fixtures")
+    seed = next(
+        item["content"]
+        for item in files
+        if item["path"] == "/usr/local/bin/demo-catalog-fixtures"
+    )
     assert "video_name, video, user_id" in seed
     assert "lo_from_bytea(0, decode(" in seed
     assert "WHERE video IS NULL AND video_name='tgen-synthetic.mp4'" in seed

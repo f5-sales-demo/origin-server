@@ -84,3 +84,15 @@ assert all(v['unresponsive_since']==0 for v in json.loads(STATE.read_text()).val
         [sys.executable, str(script)], capture_output=True, text=True, check=False
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_load_adapter_preserves_delay_and_iteration_count():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    source = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("dvga-adapter/adapt.py")
+    )
+    assert "cooperative_sleep(0.1)" in source
+    assert "from gevent import sleep as cooperative_sleep" in source
+    assert "loads =" not in source
