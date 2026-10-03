@@ -11,7 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class AdapterTests(unittest.TestCase):
+    """Exercise the source contract and its failure paths."""
+
     def test_dvga_adapter_compiles_modified_application(self):
+        """Verify the declared contract against a synthetic fixture."""
         files = json.loads((ROOT / "provisioning/files.json").read_text())
         source = next(
             item["content"]

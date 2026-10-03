@@ -58,7 +58,7 @@ def main() -> int:
     parser.add_argument("--provision", action="store_true")
     args = parser.parse_args()
     source = Path(__file__).resolve().parents[1]
-    from render_origin import render  # noqa: PLC0415 - CLI-only rendering dependency
+    from render_origin import render  # noqa: PLC0415, I001  # pylint: disable=import-outside-toplevel
 
     files = render(source)
     manifest = source / "provisioning/applications.json"

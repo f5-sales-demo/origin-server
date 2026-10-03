@@ -15,7 +15,8 @@ def render(root: Path) -> list[dict]:
     by_path = {item["path"]: item for item in files}
     app_list = manifest["applications"]
     by_path["/var/www/html/index.html"]["content"] = (
-        "<!doctype html><html><head><title>Origin Server</title></head><body><h1>Origin Server</h1><ul>"
+        "<!doctype html><html><head><title>Origin Server</title></head>"
+        "<body><h1>Origin Server</h1><ul>"
         + "".join(
             '<li><a href="'
             + app["prefix"]

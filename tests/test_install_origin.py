@@ -11,15 +11,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class InstallerTests(unittest.TestCase):
+    """Exercise the source contract and its failure paths."""
+
     def module(self):
+        """Verify the declared contract against a synthetic fixture."""
         spec = importlib.util.spec_from_file_location(
             "install_origin", ROOT / "scripts/install_origin.py"
         )
+        assert spec is not None
+        assert spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         return module
 
     def test_install_is_repeatable_and_confined(self):
+        """Verify the declared contract against a synthetic fixture."""
         module = self.module()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -37,6 +43,7 @@ class InstallerTests(unittest.TestCase):
             assert (root / "opt/origin-server/example").stat().st_mode & 511 == 384
 
     def test_invalid_paths_and_symlinks_fail_before_writes(self):
+        """Verify the declared contract against a synthetic fixture."""
         module = self.module()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

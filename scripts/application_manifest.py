@@ -83,13 +83,15 @@ def url_map(manifest: dict, base: str) -> dict[str, str]:
     """Generate published application URLs from one manifest."""
     validate_manifest(manifest)
     parsed = urlsplit(base)
+    if parsed.username:
+        message = "application base cannot contain credentials"
+        raise ValueError(message)
     if (
         parsed.scheme not in {"http", "https"}
         or not parsed.netloc
         or parsed.path not in {"", "/"}
         or parsed.query
         or parsed.fragment
-        or parsed.username
     ):
         message = "application base must be an HTTP(S) origin"
         raise ValueError(message)
