@@ -44,7 +44,7 @@ try {
     });
     const landing = await context.newPage();
     try {
-      const response = await landing.goto(new URL('/', base).href, { waitUntil: 'networkidle', timeout: 30000 });
+      const response = await landing.goto(new URL('/', base).href, { waitUntil: 'load', timeout: 30000 });
       const links = await landing
         .locator('a[href]')
         .evaluateAll((elements) =>
@@ -105,7 +105,8 @@ try {
           if (response.status() >= 400) result.bad_responses.push({ url: response.url(), status: response.status() });
         });
         try {
-          const response = await page.goto(item.url, { waitUntil: 'networkidle', timeout: 30000 });
+          const response = await page.goto(item.url, { waitUntil: 'load', timeout: 30000 });
+          await page.waitForTimeout(2000);
           const body = await response.text();
           result.status = response.status();
           result.content_type = response.headers()['content-type'] ?? '';
@@ -129,7 +130,7 @@ try {
             const target = new URL(url);
             if (target.origin !== new URL(base).origin) continue;
             if (!target.pathname.startsWith(app.prefix)) result.prefix_escapes.push(url);
-            else if (navigation.includes(url) && !target.hash) queue.push({ url });
+            else if (navigation.includes(url) && !target.href.includes('#')) queue.push({ url });
           }
           result.screenshot = `${app.id}-${crypto.createHash('sha256').update(item.url).digest('hex').slice(0, 16)}.png`;
           await page.screenshot({ path: path.join(output, result.screenshot), fullPage: true });
