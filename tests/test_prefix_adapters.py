@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -58,3 +60,19 @@ def test_crapi_adapter_preserves_seeded_backend_role_navigation():
     assert 'userRole === "ROLE_PREDEFINE"' in source
     assert "Pinned crAPI role guard changed" in source
     assert "componentRole === roleTypes.ROLE_USER" in source
+
+
+def test_crapi_chatbot_routes_to_its_pinned_dependency():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    compose = yaml.safe_load(
+        next(
+            item["content"]
+            for item in files
+            if item["path"].endswith("docker-compose.yml")
+        )
+    )
+    assert "@sha256:" in compose["services"]["crapi-chatbot"]["image"]
+    assert (
+        "CHATBOT_SERVICE=crapi-chatbot:5002"
+        in compose["services"]["crapi-web"]["environment"]
+    )

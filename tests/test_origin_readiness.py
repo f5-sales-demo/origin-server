@@ -140,7 +140,7 @@ class OriginTests(unittest.TestCase):
                 ensure(family + "-" + str(index) + ":" in compose)
                 ensure("127.0.0.1:" + str(start + index - 1) + ":" in compose)
         ensure("127.0.0.1:18888:80" in compose)
-        ensure_equal(len(yaml.safe_load(compose)["services"]), 41)
+        ensure_equal(len(yaml.safe_load(compose)["services"]), 42)
 
     def test_every_compose_container_has_fail_closed_readiness(self) -> None:
         """Check the named origin guest regression contract."""
@@ -169,7 +169,7 @@ class OriginTests(unittest.TestCase):
                 ensure_equal(
                     {call.args[0] for call in containers.call_args_list}, names
                 )
-                ensure_equal(len(result["checks"]), 47)
+                ensure_equal(len(result["checks"]), 48)
                 ensure(not result["ready"])
                 ensure_equal(
                     [c["name"] for c in result["checks"] if not c["ready"]], [failed]
@@ -207,7 +207,7 @@ class OriginTests(unittest.TestCase):
         ):
             result = g.check()
         ensure(not result["ready"])
-        ensure_equal(len(result["checks"]), 47)
+        ensure_equal(len(result["checks"]), 48)
         ensure(bool(all(not check["ready"] for check in result["checks"])))
 
     def test_each_replica_failure_is_preserved(self) -> None:
@@ -795,6 +795,7 @@ class OriginRuntimeTests(unittest.TestCase):
                 "<html>crAPI</html>",
                 '{"token":"synthetic"}',
                 json.dumps(page),
+                '{"initialized":"false"}',
                 '{"products":[{"id":1}],"credit":100}',
                 '{"items":[]}',
             ]
