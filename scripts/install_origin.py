@@ -103,6 +103,12 @@ def main() -> int:
     )
     files.append(
         {
+            "path": "/usr/local/bin/application_receipts.py",
+            "content": (source / "scripts/application_receipts.py").read_text(),
+        }
+    )
+    files.append(
+        {
             "path": "/usr/local/bin/origin-verify-workflows",
             "permissions": "0755",
             "content": (source / "scripts/verify_workflows.py").read_text(),

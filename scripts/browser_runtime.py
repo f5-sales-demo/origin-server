@@ -158,6 +158,8 @@ def main() -> int:
     provenance = json.loads(Path("/opt/origin-server/install-receipt.json").read_text())
     receipt = {
         "started": time.time(),
+        "base": args.base,
+        "kind": args.kind,
         "status": "running",
         "cleanup": False,
         "source_commit": provenance.get("source_commit"),
