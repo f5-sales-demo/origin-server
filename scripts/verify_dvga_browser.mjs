@@ -121,8 +121,8 @@ try {
   receipt.checks.push({ name: 'subscription-delivery', passed: true, screenshot });
   await page.getByRole('link', { name: 'Public Pastes', exact: true }).click();
   await checked('persisted-paste', [title, 'Synthetic browser fixture content']);
-} catch {
-  receipt.errors.push({ kind: 'workflow-assertion-failure' });
+} catch (error) {
+  receipt.errors.push({ kind: 'workflow-assertion-failure', detail: String(error) });
 } finally {
   try {
     receipt.fixture_restored = await restoreFixture();
