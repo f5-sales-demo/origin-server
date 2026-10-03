@@ -68,3 +68,17 @@ def test_export_includes_real_vampi_authentication():
     )
     assert 'result["vampi_token"]' in source
     assert "http://127.0.0.1:5101/users/v1/login" in source
+
+
+def test_restaurant_export_declares_distinct_idempotent_bola_actors():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    source = next(
+        item["content"]
+        for item in files
+        if item["path"] == "/usr/local/bin/demo-catalog-fixtures"
+    )
+    assert "tgen_bola_attacker" in source
+    assert "tgen_bola_victim" in source
+    assert '"restaurant_" + role' in source
+    assert "verify_password" in source
+    assert "user.role = role" in source
