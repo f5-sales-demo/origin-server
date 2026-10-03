@@ -315,6 +315,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--base")
     parser.add_argument("--native", action="store_true")
+    parser.add_argument("--require-declared", action="store_true")
     args = parser.parse_args()
     require(args.native != bool(args.base), "choose native or a published base")
     manifest = json.loads(args.manifest.read_text())
@@ -385,12 +386,19 @@ def main() -> int:
         json.dumps(
             {
                 "supported_workflows_passed": report["supported_workflows_passed"],
+                "declared_workflows_passed": report["declared_workflows_passed"],
                 "checks": len(checks),
                 "failures": sum(not check["passed"] for check in checks),
             }
         )
     )
-    return int(not report["supported_workflows_passed"])
+    return int(
+        not report[
+            "declared_workflows_passed"
+            if args.require_declared
+            else "supported_workflows_passed"
+        ]
+    )
 
 
 if __name__ == "__main__":
