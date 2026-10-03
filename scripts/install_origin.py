@@ -107,6 +107,13 @@ def main() -> int:
                 "content": (source / "scripts" / name).read_text(),
             }
         )
+    files.append(
+        {
+            "path": "/usr/local/bin/origin-browser-verify",
+            "permissions": "0755",
+            "content": (source / "scripts/browser_runtime.py").read_text(),
+        }
+    )
     receipt = {
         "started": time.time(),
         "status": "installing",
