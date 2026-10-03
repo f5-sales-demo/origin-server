@@ -41,8 +41,8 @@ class AdapterTests(unittest.TestCase):
             assert result.returncode == 0, result.stderr
             compile((root / "app.py").read_text(), "app", "exec")
             template = (root / "templates/paste.html").read_text()
-            assert "/dvga/static/" in template
-            assert "/dvga/graphql" in template
+            assert "{{ request.script_root }}/static/" in template
+            assert "{{ request.script_root }}/graphql" in template
             assert "location.host" in template
 
 

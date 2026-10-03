@@ -85,13 +85,15 @@ def retain_evidence(
 def main() -> int:
     """Retain timeout and tool failures without leaving Chromium running."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("kind", choices=("content", "crapi", "juice", "dvwa"))
+    parser.add_argument("kind", choices=("content", "crapi", "juice", "dvwa", "dvga"))
     parser.add_argument("--base", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--native", action="store_true")
     args = parser.parse_args()
-    if args.native and args.kind != "dvwa":
-        parser.error("native browser routing is currently supported only for DVWA")
+    if args.native and args.kind not in ("dvwa", "dvga"):
+        parser.error(
+            "native browser routing is currently supported only for DVWA and DVGA"
+        )
     output = evidence_directory(args.output)
     retain_evidence(output.parent, output)
     marker = uuid.uuid4().hex
@@ -102,6 +104,7 @@ def main() -> int:
         "crapi": "verify_crapi_browser.mjs",
         "juice": "verify_juice_browser.mjs",
         "dvwa": "verify_dvwa_browser.mjs",
+        "dvga": "verify_dvga_browser.mjs",
     }[args.kind]
     arguments = (
         ["--manifest", "/manifest.json", "--base", args.base, "--output", "/evidence"]

@@ -127,6 +127,7 @@ def main() -> int:
         "verify_crapi_browser.mjs",
         "verify_juice_browser.mjs",
         "verify_dvwa_browser.mjs",
+        "verify_dvga_browser.mjs",
     ):
         files.append(
             {

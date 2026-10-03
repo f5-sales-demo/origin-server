@@ -4,12 +4,14 @@ import copy
 import importlib.util
 import json
 import re
+import subprocess
 import sys
 import unittest
 from pathlib import Path
 
 import pytest
 import yaml
+from jinja2 import Template
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -117,3 +119,37 @@ def test_forwarded_application_redirect_is_not_prefixed_twice():
     pattern = r"^/(?!dvwa(?:/|$))(.*)$"
     assert re.match(pattern, "/security.php")
     assert not re.match(pattern, "/dvwa/security.php")
+
+
+def test_dvga_adapter_uses_request_prefix_for_native_and_proxy_routes(tmp_path):
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    adapter = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("dvga-adapter/adapt.py")
+    )
+    (tmp_path / "app.py").write_text('app = Flask(__name__, static_folder="static/")')
+    (tmp_path / "templates").mkdir()
+    template = tmp_path / "templates/paste.html"
+    template.write_text("""<script src="/static/jquery/jquery.js"></script><a href="/public_pastes">Pastes</a>
+<script>fetch('/graphql'); const burn = `/graphql?query=synthetic`;</script>""")
+    (tmp_path / "static/css").mkdir(parents=True)
+    css = tmp_path / "static/css/style.css"
+    css.write_text("a {background: url(/static/images/logo.png)}")
+    result = subprocess.run(  # noqa: S603 - owned adapter with synthetic fixture
+        [sys.executable, "-c", adapter.replace("/opt/dvga", str(tmp_path))],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+    for prefix in ("", "/dvga"):
+        rendered = Template(template.read_text()).render(
+            request={"script_root": prefix}
+        )
+        assert f'src="{prefix}/static/jquery/jquery.js"' in rendered
+        assert f'href="{prefix}/public_pastes"' in rendered
+        assert f"fetch('{prefix}/graphql')" in rendered
+        assert f"`{prefix}/graphql?" in rendered
+    assert "url(../images/logo.png)" in css.read_text()
