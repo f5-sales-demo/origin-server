@@ -168,3 +168,19 @@ def test_dvga_replica_affinity_binds_browser_and_api_requests():
     assert "map $cookie_dvga_replica $dvga_affinity" in nginx
     assert "hash $dvga_affinity consistent;" in nginx
     assert "dvga_replica=$dvga_affinity; Path=/dvga/; HttpOnly; SameSite=Lax" in site
+
+
+def test_juice_adapter_configuration_forces_recreation_when_digest_changes():
+    files = render(ROOT)
+    compose = yaml.safe_load(
+        next(
+            item["content"]
+            for item in files
+            if item["path"].endswith("docker-compose.yml")
+        )
+    )
+    for index in range(1, 5):
+        assert (
+            "org.f5.demo.adapter-sha256"
+            in compose["services"][f"juice-shop-{index}"]["labels"]
+        )

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Derive nginx routes, landing links, and readiness inventory from the manifest."""
 
+import hashlib
 import html
 import json
 from pathlib import Path
@@ -13,6 +14,17 @@ def render(root: Path) -> list[dict]:
     manifest = load_manifest(root / "provisioning/applications.json")
     files = json.loads((root / "provisioning/files.json").read_text())
     by_path = {item["path"]: item for item in files}
+    compose_file = by_path["/opt/origin-server/docker-compose.yml"]
+    adapter = by_path["/opt/origin-server/juice-shop-framing/preload.cjs"]["content"]
+    digest = hashlib.sha256(adapter.encode()).hexdigest()
+    content = compose_file["content"]
+    for index in range(1, 5):
+        marker = f"    container_name: juice-shop-{index}\n"
+        content = content.replace(
+            marker,
+            marker + "    labels:\n      org.f5.demo.adapter-sha256: " + digest + "\n",
+        )
+    compose_file["content"] = content
     app_list = manifest["applications"]
     by_path["/var/www/html/index.html"]["content"] = (
         "<!doctype html><html><head><title>Origin Server</title></head>"
