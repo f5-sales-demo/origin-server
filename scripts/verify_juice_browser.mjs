@@ -115,7 +115,16 @@ try {
   receipt.checks.push({ name: 'product-images', passed: images.length > 0 && images.every(Boolean) });
   await page.goto(new URL(`${prefix}#/login`, origin).href, { waitUntil: 'domcontentloaded' });
   await rendered('login-labels', 'app-login', ['Login', 'Email', 'Password']);
-  await page.locator('#email').fill('admin@juice-sh.op');
+  const configurationResponse = await context.request.get(
+    new URL(`${prefix}rest/admin/application-configuration`, origin).href,
+  );
+  if (configurationResponse.status() !== 200) throw new Error('Application account configuration failed');
+  const configuration = await configurationResponse.json();
+  const domain = configuration.config?.application?.domain;
+  if (typeof domain !== 'string' || !/^[a-z0-9.-]+$/.test(domain))
+    throw new Error('Application account domain missing');
+  const adminEmail = `admin@${domain}`;
+  await page.locator('#email').fill(adminEmail);
   await page.locator('#password').fill('admin123');
   const [login] = await Promise.all([
     page.waitForResponse(
@@ -127,7 +136,7 @@ try {
   ]);
   receipt.checks.push({ name: 'native-login', passed: login.status() === 200 });
   await page.goto(new URL(`${prefix}#/basket`, origin).href, { waitUntil: 'domcontentloaded' });
-  await rendered('seeded-basket', 'app-basket', ['admin@juice-sh.op', 'Apple Juice', 'Total Price']);
+  await rendered('seeded-basket', 'app-basket', [adminEmail, 'Apple Juice', 'Total Price']);
   for (const [route, selector, terms] of [
     ['about', 'app-about', ['Customer Feedback']],
     ['contact', 'app-contact', ['Customer Feedback', 'CAPTCHA']],
