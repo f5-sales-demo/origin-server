@@ -63,7 +63,7 @@ SELECT 1 / CASE WHEN EXISTS (SELECT 1 FROM user_login WHERE email=:'email' AND n
 DELETE FROM vehicle_details WHERE vin=:'vin' AND owner_id IS NULL;
 DELETE FROM user_details WHERE user_id IN (SELECT id FROM user_login WHERE email=:'email' AND number=:'number');
 DELETE FROM user_login WHERE email=:'email' AND number=:'number';
-SELECT COUNT(*) FROM user_login WHERE email=:'email';
+SELECT (SELECT COUNT(*) FROM user_login WHERE email=:'email') + (SELECT COUNT(*) FROM vehicle_details WHERE vin=:'vin');
 COMMIT;"""
     process = subprocess.run(  # noqa: S603 - exact owned database argv with psql quoted variables
         [
