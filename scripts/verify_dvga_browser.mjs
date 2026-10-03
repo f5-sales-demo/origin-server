@@ -83,7 +83,7 @@ async function restoreFixture() {
 try {
   await page.goto(url(''));
   await checked('home', ['Damn Vulnerable GraphQL Application']);
-  await page.getByRole('link', { name: 'Public Pastes', exact: true }).click();
+  await page.locator(`a[href="${prefix}public_pastes"]`).click();
   await checked('public-pastes', ['Public Pastes']);
   await page.waitForFunction(() => document.querySelector('#public_gallery').innerText.trim().length > 0);
   subscriber = await context.newPage();
@@ -95,7 +95,7 @@ try {
   });
   await subscriber.goto(url('public_pastes'));
   await subscriber.waitForFunction(() => document.querySelector('#public_gallery').innerText.trim().length > 0);
-  await page.getByRole('link', { name: 'Create Paste', exact: true }).click();
+  await page.locator(`a[href="${prefix}create_paste"]`).click();
   await checked('create-form', ['Create a Paste', 'Visibility', 'Your message']);
   await page.locator('#title').fill(title);
   await page.locator('#content').fill('Synthetic browser fixture content');
@@ -119,7 +119,7 @@ try {
   await subscriber.screenshot({ path: path.join(output, screenshot), fullPage: true });
   fs.chmodSync(path.join(output, screenshot), 0o600);
   receipt.checks.push({ name: 'subscription-delivery', passed: true, screenshot });
-  await page.getByRole('link', { name: 'Public Pastes', exact: true }).click();
+  await page.locator(`a[href="${prefix}public_pastes"]`).click();
   await checked('persisted-paste', [title, 'Synthetic browser fixture content']);
 } catch (error) {
   receipt.errors.push({ kind: 'workflow-assertion-failure', detail: String(error) });
