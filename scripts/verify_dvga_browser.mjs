@@ -88,8 +88,8 @@ try {
   await page.goto(url(''));
   await checked('home', ['Damn Vulnerable GraphQL Application']);
   await page.locator(`a[href="${prefix}public_pastes"]`).click();
-  await checked('public-pastes', ['Public Pastes']);
   await page.waitForFunction(() => document.querySelector('#public_gallery').innerText.trim().length > 0);
+  await checked('public-pastes', ['Public Pastes']);
   subscriber = await context.newPage();
   subscriber.on('pageerror', () => receipt.errors.push({ kind: 'subscription-browser-error' }));
   subscriber.on('requestfailed', () => receipt.errors.push({ kind: 'subscription-transport-failure' }));
