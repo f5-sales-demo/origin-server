@@ -66,7 +66,13 @@ BROWSER_WORKFLOWS = {
         "seeded-roles": {"profile-customer", "profile-chef"},
     },
     "crapi-signup": {
-        "signup": {"signup-submit", "signup-mailhog"},
+        "signup": {
+            "signup-submit",
+            "signup-mailhog",
+            "signup-login",
+            "reset-mailhog",
+            "reset-password-login",
+        },
         "mailhog": {"mailhog-render"},
     },
     "crapi": {

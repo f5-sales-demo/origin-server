@@ -127,7 +127,14 @@ def test_signup_browser_assertions_require_verified_fixture_recovery():
         "errors": [],
         "checks": [
             {"name": name, "passed": True}
-            for name in ["signup-submit", "signup-mailhog", "mailhog-render"]
+            for name in [
+                "signup-submit",
+                "signup-mailhog",
+                "signup-login",
+                "reset-mailhog",
+                "reset-password-login",
+                "mailhog-render",
+            ]
         ],
     }
     assert not browser_assertions(

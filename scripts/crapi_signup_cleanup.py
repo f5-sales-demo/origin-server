@@ -5,6 +5,7 @@ import re
 import subprocess
 from email import policy
 from email.parser import Parser
+from email.utils import getaddresses
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -19,27 +20,40 @@ def discover_welcome(journal: dict) -> None:
     owned_mail = [
         item
         for item in messages
-        if any(
-            email in recipient
-            for recipient in item.get("Content", {}).get("Headers", {}).get("To", [])
-        )
+        if email
+        in {
+            address
+            for _, address in getaddresses(
+                item.get("Content", {}).get("Headers", {}).get("To", [])
+            )
+        }
     ]
-    if len(owned_mail) > 1:
-        message = "ambiguous signup mail ownership"
-        raise ValueError(message)
-    if owned_mail:
-        message = owned_mail[0]
+    welcome = []
+    for message in owned_mail:
         parsed = Parser(policy=policy.default).parsestr(message["Raw"]["Data"])
-        payload = parsed.get_payload(decode=True)
-        if not isinstance(payload, bytes):
-            error = "welcome MIME payload missing"
-            raise ValueError(error)
-        body = payload.decode()
+        parts = parsed.walk() if parsed.is_multipart() else [parsed]
+        body = "\n".join(
+            part.get_content()
+            for part in parts
+            if part.get_content_type() in ("text/plain", "text/html")
+        )
         found = re.search(r"VIN:[\s\S]*?>([A-HJ-NPR-Z0-9]{17})<", body)
-        if not found:
-            error = "welcome vehicle ownership missing"
+        if found:
+            welcome.append(found[1])
+        elif parsed.get("Subject") != "crAPI OTP":
+            error = "unrecognized owned signup mail"
             raise ValueError(error)
-        journal.update(vehicle_vin=found[1], mail_ids=[message["ID"]])
+    if len(welcome) > 1:
+        error = "ambiguous signup vehicle ownership"
+        raise ValueError(error)
+    if welcome:
+        if journal.get("vehicle_vin") not in (None, welcome[0]):
+            error = "journaled vehicle ownership changed"
+            raise ValueError(error)
+        journal["vehicle_vin"] = welcome[0]
+    journal["mail_ids"] = sorted(
+        set(journal.get("mail_ids", [])) | {item["ID"] for item in owned_mail}
+    )
 
 
 def recover_signup(output: Path) -> dict:
@@ -60,6 +74,7 @@ def recover_signup(output: Path) -> dict:
         raise ValueError(message)
     sql = """BEGIN;
 SELECT 1 / CASE WHEN EXISTS (SELECT 1 FROM user_login WHERE email=:'email' AND number<>:'number') THEN 0 ELSE 1 END;
+DELETE FROM otp WHERE user_id IN (SELECT id FROM user_login WHERE email=:'email' AND number=:'number');
 DELETE FROM vehicle_details WHERE vin=:'vin' AND owner_id IS NULL;
 DELETE FROM user_details WHERE user_id IN (SELECT id FROM user_login WHERE email=:'email' AND number=:'number');
 DELETE FROM user_login WHERE email=:'email' AND number=:'number';
