@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Derive nginx routes, landing links, and readiness inventory from the manifest."""
 
+import base64
 import hashlib
 import html
 import json
@@ -39,11 +40,39 @@ def bind_juice_adapter(by_path: dict) -> None:
     compose_file["content"] = content
 
 
+def bind_csd_assets(root: Path, files: list[dict], by_path: dict) -> None:
+    """Install exact pinned native scripts through the owned CSD static route."""
+    asset_root = root / "provisioning/csd-assets"
+    assets = json.loads((asset_root / "manifest.json").read_text())
+    for name, specification in assets.items():
+        if Path(name).name != name:
+            message = "native CSD asset path invalid"
+            raise ValueError(message)
+        data = base64.b64decode(
+            (asset_root / (name + ".base64")).read_text(), validate=False
+        )
+        if hashlib.sha256(data).hexdigest() != specification["sha256"]:
+            message = "native CSD asset digest mismatch"
+            raise ValueError(message)
+        files.append(
+            {
+                "path": "/opt/origin-server/csd-demo/static/vendor/" + name,
+                "content": data.decode(),
+                "permissions": "0644",
+            }
+        )
+    dockerfile = by_path["/opt/origin-server/csd-demo/Dockerfile"]
+    dockerfile["content"] = dockerfile["content"].replace(
+        "COPY templates/ templates/", "COPY templates/ templates/\nCOPY static/ static/"
+    )
+
+
 def render(root: Path) -> list[dict]:
     """Reuse pinned provisioning files while deriving application declarations."""
     manifest = load_manifest(root / "provisioning/applications.json")
     files = json.loads((root / "provisioning/files.json").read_text())
     by_path = {item["path"]: item for item in files}
+    bind_csd_assets(root, files, by_path)
     bind_juice_adapter(by_path)
     app_list = manifest["applications"]
     by_path["/var/www/html/index.html"]["content"] = (
