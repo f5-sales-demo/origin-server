@@ -29,7 +29,12 @@ resource "azurerm_linux_virtual_machine" "main" {
     version   = "latest"
   }
 
-  custom_data = base64encode(templatefile("${path.module}/cloud-init.yaml", {}))
+  custom_data = base64gzip(templatefile("${path.module}/cloud-init.yaml", {
+    origin_commit                  = var.origin_commit
+    origin_archive_sha256          = var.origin_archive_sha256
+    origin_installer_sha256        = var.origin_installer_sha256
+    origin_python_installer_sha256 = var.origin_python_installer_sha256
+  }))
 
   tags = azurerm_resource_group.main.tags
 }

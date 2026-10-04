@@ -58,3 +58,39 @@ variable "disk_size_gb" {
   type        = number
   default     = 60
 }
+
+variable "origin_commit" {
+  description = "Immutable origin-server source commit."
+  type        = string
+  validation {
+    condition     = can(regex("^[0-9a-f]{40}$", var.origin_commit))
+    error_message = "An immutable 40-character origin commit is required."
+  }
+}
+
+variable "origin_archive_sha256" {
+  description = "SHA-256 of the exact origin source archive."
+  type        = string
+  validation {
+    condition     = can(regex("^[0-9a-f]{64}$", var.origin_archive_sha256))
+    error_message = "An exact origin archive SHA-256 is required."
+  }
+}
+
+variable "origin_installer_sha256" {
+  description = "SHA-256 of scripts/install-release.sh in the pinned origin source."
+  type        = string
+  validation {
+    condition     = can(regex("^[0-9a-f]{64}$", var.origin_installer_sha256))
+    error_message = "An exact origin installer SHA-256 is required."
+  }
+}
+
+variable "origin_python_installer_sha256" {
+  description = "SHA-256 of scripts/install_origin.py in the pinned origin source."
+  type        = string
+  validation {
+    condition     = can(regex("^[0-9a-f]{64}$", var.origin_python_installer_sha256))
+    error_message = "An exact Python installer SHA-256 is required."
+  }
+}
