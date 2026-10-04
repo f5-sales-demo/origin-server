@@ -75,7 +75,8 @@ def recover_signup(output: Path) -> dict:
     sql = """BEGIN;
 SELECT 1 / CASE WHEN EXISTS (SELECT 1 FROM user_login WHERE email=:'email' AND number<>:'number') THEN 0 ELSE 1 END;
 DELETE FROM otp WHERE user_id IN (SELECT id FROM user_login WHERE email=:'email' AND number=:'number');
-DELETE FROM vehicle_details WHERE vin=:'vin' AND owner_id IS NULL;
+SELECT 1 / CASE WHEN EXISTS (SELECT 1 FROM vehicle_details WHERE vin=:'vin' AND owner_id IS NOT NULL AND owner_id NOT IN (SELECT id FROM user_login WHERE email=:'email' AND number=:'number')) THEN 0 ELSE 1 END;
+DELETE FROM vehicle_details WHERE vin=:'vin' AND (owner_id IS NULL OR owner_id IN (SELECT id FROM user_login WHERE email=:'email' AND number=:'number'));
 DELETE FROM user_details WHERE user_id IN (SELECT id FROM user_login WHERE email=:'email' AND number=:'number');
 DELETE FROM user_login WHERE email=:'email' AND number=:'number';
 SELECT (SELECT COUNT(*) FROM user_login WHERE email=:'email') + (SELECT COUNT(*) FROM vehicle_details WHERE vin=:'vin');

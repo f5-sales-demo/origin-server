@@ -132,8 +132,29 @@ try {
     if (claims.sub !== email) throw new Error('Native JWT actor changed');
     return document.token;
   };
-  await login('Synthetic!123');
+  const token = await login('Synthetic!123');
   receipt.checks.push({ name: 'signup-login', passed: true });
+  const pincode = body.match(/Pincode:[\s\S]*?>([0-9]{4,8})</)?.[1];
+  if (!pincode) throw new Error('Welcome vehicle pincode missing');
+  const added = await context.request.post(new URL('/crapi/identity/api/v2/vehicle/add_vehicle', origin).href, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { vin: fixture.vehicle_vin, pincode },
+  });
+  if (added.status() !== 200) throw new Error('Native welcome vehicle registration failed');
+  const vehicles = await context.request.get(new URL('/crapi/identity/api/v2/vehicle/vehicles', origin).href, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const ownedVehicles = await vehicles.json();
+  if (
+    vehicles.status() !== 200 ||
+    !Array.isArray(ownedVehicles) ||
+    ownedVehicles.length !== 1 ||
+    ownedVehicles[0].vin !== fixture.vehicle_vin
+  )
+    throw new Error('Native registered vehicle actor or VIN mismatch');
+  fixture.vehicle_registered = true;
+  journal();
+  receipt.checks.push({ name: 'signup-vehicle', passed: true });
   const reset = await context.request.post(new URL('/crapi/identity/api/auth/forget-password', origin).href, {
     data: { email },
   });
@@ -200,7 +221,7 @@ try {
 } finally {
   await browser.close();
   receipt.browser_closed = true;
-  receipt.passed = receipt.checks.length === 6 && !receipt.errors.length;
+  receipt.passed = receipt.checks.length === 7 && !receipt.errors.length;
   fs.writeFileSync(path.join(output, 'receipt.json'), JSON.stringify(receipt, null, 2), { mode: 0o600 });
 }
 console.log(JSON.stringify({ passed: receipt.passed, checks: receipt.checks.length, failures: receipt.errors.length }));

@@ -131,6 +131,7 @@ def test_signup_browser_assertions_require_verified_fixture_recovery():
                 "signup-submit",
                 "signup-mailhog",
                 "signup-login",
+                "signup-vehicle",
                 "reset-mailhog",
                 "reset-password-login",
                 "mailhog-render",

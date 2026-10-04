@@ -70,6 +70,7 @@ BROWSER_WORKFLOWS = {
             "signup-submit",
             "signup-mailhog",
             "signup-login",
+            "signup-vehicle",
             "reset-mailhog",
             "reset-password-login",
         },
