@@ -7,131 +7,51 @@ sidebar:
 
 The Azure and AWS offerings have different runtimes and verification paths. Use SSH, Docker, nginx, and cloud-init checks only for the Azure full-origin. The AWS offering has no SSH-accessible host and must be verified through ECS, ELB, CloudWatch, S3, network reachability, and Terraform.
 
-## Azure Full-Origin Verification
+## Azure full-origin verification
 
-Run these checks after allowing 5--10 minutes for cloud-init to complete.
-
-### Health Endpoint
+Quick checks run on the owned origin VM after cloud-init completes:
 
 ```bash
-ORIGIN_IP=$(terraform output -raw public_ip)
-
-curl -sf "http://${ORIGIN_IP}/health" | jq .
+sudo cloud-init status --wait
+curl --fail http://127.0.0.1/health
+sudo nginx -t
+sudo /usr/local/bin/demo-origin-ready --timeout-seconds 300
+python3 /usr/local/lib/origin/application_manifest.py --manifest /opt/origin-server/applications.json --base http://127.0.0.1
 ```
 
-Expected:
+The generated map must contain exactly nine published prefixes. `/health`, running containers and successful HTTP status are health evidence only. VAmPI returns JSON, whoami returns plain text, and every other content assertion must match the declared application identity and type.
 
-```json
-{
-  "status": "healthy",
-  "component": "origin-server",
-  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami", "csd-demo", "dvga", "restaurant", "crapi"]
-}
-```
+## Complete workflow and browser verification
 
-### Application Endpoints
+Use private output directories on the origin VM. Set `ORIGIN_BASE` and `EVIDENCE_DIR` to the reviewed base URL
+and a fresh private evidence directory. Set `FIXTURE_INPUT` to the private JSON fixture input assembled from
+actual seeded identities for `origin-verify-workflows`; it is distinct from the provisioner’s fixture
+receipt/session exports. Create the output directory privately before invocation.
 
 ```bash
-# Default landing page
-curl -sf "http://${ORIGIN_IP}/" -o /dev/null -w "Landing: %{http_code}\n"
-
-# Juice Shop
-curl -sf "http://${ORIGIN_IP}/juice-shop/" -o /dev/null -w "Juice Shop: %{http_code}\n"
-
-# DVWA
-curl -sf "http://${ORIGIN_IP}/dvwa/" -o /dev/null -w "DVWA: %{http_code}\n"
-
-# VAmPI
-curl -sf "http://${ORIGIN_IP}/vampi/" -o /dev/null -w "VAmPI: %{http_code}\n"
-
-# httpbin
-curl -sf "http://${ORIGIN_IP}/httpbin/get" -o /dev/null -w "httpbin: %{http_code}\n"
-
-# whoami
-curl -sf "http://${ORIGIN_IP}/whoami/" -o /dev/null -w "whoami: %{http_code}\n"
-
-# DVGA
-curl -sf "http://${ORIGIN_IP}/dvga/" -o /dev/null -w "DVGA: %{http_code}\n"
-
-# RESTaurant
-curl -sf "http://${ORIGIN_IP}/restaurant/docs" -o /dev/null -w "RESTaurant: %{http_code}\n"
-
-# crAPI (port 8888)
-curl -sf "http://${ORIGIN_IP}:8888" -o /dev/null -w "crAPI: %{http_code}\n"
+umask 077
+sudo origin-verify-workflows \
+  --manifest /opt/origin-server/applications.json \
+  --fixtures "$FIXTURE_INPUT" \
+  --native --require-declared --output "$EVIDENCE_DIR/native-workflows.json"
+sudo origin-browser-verify content --base "$ORIGIN_BASE" --output "$EVIDENCE_DIR/content"
+sudo origin-browser-verify crapi-signup --base "$ORIGIN_BASE" --output "$EVIDENCE_DIR/signup"
 ```
 
-All should return `200` (DVWA returns `302` redirect to login).
+The browser wrapper supports `content`, `crapi`, `juice`, `dvwa`, `dvga`, `csd`, `restaurant`, `httpbin` and
+`crapi-signup`. Native browser routing is implemented for `juice`, `dvwa`, `dvga`, `csd` and `httpbin`; use
+declared native API workflows for the other applications. Repeat applicable checks on every native replica,
+origin nginx, and both WAAP domains over HTTP and HTTPS. The receipt aggregator `application_receipts.py`
+requires complete declared workflow/layer evidence; narrower runs cannot qualify the matrix.
 
-### Automated Smoke Test
+Review retained PNGs and DOM/network receipts: landing inventory, same-origin navigation, static assets, lazy images, translations, console errors, forms, authenticated pages and deep-link refresh. Wrong-content 200s and missing checks fail. HTTP-only smoke tests cannot satisfy rendered review. Confirm browser/container cleanup and exact fixture restoration.
 
-The repository includes a 39-point smoke test suite:
-
-```bash
-./tests/smoke-test.sh ${ORIGIN_IP}
-```
-
-This validates all 9 applications, health endpoints, VAmPI registration/login, CSD Demo exfil round-trip, DVGA GraphQL, RESTaurant Swagger, crAPI on port 8888, nginx gzip, and version hiding.
-
-### Docker Container Status
-
-SSH into the VM and verify all 41 containers are running:
-
-```bash
-ssh azureuser@${ORIGIN_IP} "sudo docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'" | sort
-```
-
-Expected output (41 containers):
-
-```text
-NAMES              STATUS         PORTS
-crapi-community    Up X minutes
-crapi-identity     Up X minutes
-crapi-mailhog      Up X minutes   0.0.0.0:18025->8025/tcp
-crapi-mongo        Up X minutes   27017/tcp
-crapi-postgres     Up X minutes   5432/tcp
-crapi-web          Up X minutes   0.0.0.0:8888->80/tcp
-crapi-workshop     Up X minutes
-csd-demo-1         Up X minutes   127.0.0.1:5001->5001/tcp
-csd-demo-2         Up X minutes   127.0.0.1:5002->5001/tcp
-csd-demo-3         Up X minutes   127.0.0.1:5003->5001/tcp
-csd-demo-4         Up X minutes   127.0.0.1:5004->5001/tcp
-dvga-1             Up X minutes   127.0.0.1:5201->5013/tcp
-dvga-2             Up X minutes   127.0.0.1:5202->5013/tcp
-dvga-3             Up X minutes   127.0.0.1:5203->5013/tcp
-dvga-4             Up X minutes   127.0.0.1:5204->5013/tcp
-dvwa-1             Up X minutes   127.0.0.1:8101->80/tcp
-dvwa-2             Up X minutes   127.0.0.1:8102->80/tcp
-dvwa-3             Up X minutes   127.0.0.1:8103->80/tcp
-dvwa-4             Up X minutes   127.0.0.1:8104->80/tcp
-dvwa-db            Up X minutes   3306/tcp
-httpbin-1          Up X minutes   127.0.0.1:8201->80/tcp
-httpbin-2          Up X minutes   127.0.0.1:8202->80/tcp
-httpbin-3          Up X minutes   127.0.0.1:8203->80/tcp
-httpbin-4          Up X minutes   127.0.0.1:8204->80/tcp
-juice-shop-1       Up X minutes   127.0.0.1:3001->3000/tcp
-juice-shop-2       Up X minutes   127.0.0.1:3002->3000/tcp
-juice-shop-3       Up X minutes   127.0.0.1:3003->3000/tcp
-juice-shop-4       Up X minutes   127.0.0.1:3004->3000/tcp
-restaurant-1       Up X minutes   127.0.0.1:8301->8080/tcp
-restaurant-2       Up X minutes   127.0.0.1:8302->8080/tcp
-restaurant-3       Up X minutes   127.0.0.1:8303->8080/tcp
-restaurant-4       Up X minutes   127.0.0.1:8304->8080/tcp
-restaurant-db      Up X minutes   5432/tcp
-vampi-1            Up X minutes   127.0.0.1:5101->5000/tcp
-vampi-2            Up X minutes   127.0.0.1:5102->5000/tcp
-vampi-3            Up X minutes   127.0.0.1:5103->5000/tcp
-vampi-4            Up X minutes   127.0.0.1:5104->5000/tcp
-whoami-1           Up X minutes   127.0.0.1:8082->80/tcp
-whoami-2           Up X minutes   127.0.0.1:8083->80/tcp
-whoami-3           Up X minutes   127.0.0.1:8084->80/tcp
-whoami-4           Up X minutes   127.0.0.1:8085->80/tcp
-```
-
-### nginx Status
-
-```bash
-ssh azureuser@${ORIGIN_IP} "sudo nginx -t && sudo systemctl status nginx --no-pager"
-```
+The earlier `dc99bef` matrix recorded 66 browser receipts and 315 screenshots with manual review. Later
+`94cc186` signup evidence covers seven checks across native/nginx and four WAAP serving layers. Neither
+qualifies all nine applications on the current PR head. [Application workflows](../application-workflows/)
+explains the signup/reset journal and JWT repair. Full current-source verification, merged installation and
+clean showcase rebuild remain open in [WAAP's
+tracker](https://f5-sales-demo.github.io/webapp-api-protection/en/origin-traffic-remediation-tasks/).
 
 ## AWS Juice Shop Verification
 
@@ -225,78 +145,14 @@ terraform plan -detailed-exitcode
 
 Exit code `0` confirms no changes. Exit code `2` means drift or unapplied configuration and must be reviewed; exit code `1` is an error.
 
-## Azure Full-Origin Troubleshooting
+## Azure full-origin troubleshooting
 
-### Cloud-init still running
+Inspect cloud-init, the private install receipt, native readiness and the exact failed workflow. Compare the
+installed source/archive/manifest digests with the intended candidate. Re-run the shared installer only with
+matching immutable inputs; a guest patch cannot qualify a clean rebuild. Keep failed receipts and screenshots.
+Do not clear all application state, accounts or MailHog messages to recover one synthetic actor.
 
-If endpoints return 502 or connection refused, cloud-init may still be provisioning:
-
-```bash
-ssh azureuser@${ORIGIN_IP} "cloud-init status"
-```
-
-- `status: running` -- still provisioning, wait a few minutes
-- `status: done` -- provisioning complete, check Docker containers
-- `status: error` -- check logs below
-
-### Cloud-init logs
-
-```bash
-ssh azureuser@${ORIGIN_IP} "sudo tail -100 /var/log/cloud-init-output.log"
-```
-
-### Container not starting
-
-```bash
-# Check container logs (each app has 4 instances: -1 through -4)
-ssh azureuser@${ORIGIN_IP} "sudo docker logs juice-shop-1 2>&1 | tail -20"
-ssh azureuser@${ORIGIN_IP} "sudo docker logs dvwa-1 2>&1 | tail -20"
-ssh azureuser@${ORIGIN_IP} "sudo docker logs vampi-1 2>&1 | tail -20"
-ssh azureuser@${ORIGIN_IP} "sudo docker logs httpbin-1 2>&1 | tail -20"
-ssh azureuser@${ORIGIN_IP} "sudo docker logs csd-demo-1 2>&1 | tail -20"
-ssh azureuser@${ORIGIN_IP} "sudo docker logs dvga-1 2>&1 | tail -20"
-ssh azureuser@${ORIGIN_IP} "sudo docker logs restaurant-1 2>&1 | tail -20"
-ssh azureuser@${ORIGIN_IP} "sudo docker logs crapi-web 2>&1 | tail -20"
-```
-
-### nginx returning 502
-
-The upstream container is not ready or has crashed:
-
-```bash
-# Check nginx error log
-ssh azureuser@${ORIGIN_IP} "sudo tail -20 /var/log/nginx/error.log"
-
-# Restart all instances of a specific app
-ssh azureuser@${ORIGIN_IP} "for i in 1 2 3 4; do sudo docker restart juice-shop-\$i; done"
-
-# Rebuild and restart all containers
-ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose build && sudo docker compose up -d"
-```
-
-### Disk space
-
-Docker images consume approximately 4.7 GiB. Access logging is disabled to prevent disk exhaustion under CDN load testing. Logrotate is configured as defense-in-depth (500 MiB cap). Verify disk usage:
-
-```bash
-ssh azureuser@${ORIGIN_IP} "df -h / && sudo docker system df"
-```
-
-### Container memory
-
-Check for containers approaching their memory limits (OOM risk):
-
-```bash
-ssh azureuser@${ORIGIN_IP} "sudo docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' | sort"
-```
-
-### Restart everything
-
-If needed, rebuild and restart all services:
-
-```bash
-ssh azureuser@${ORIGIN_IP} "cd /opt/origin-server && sudo docker compose down && sudo docker compose build && sudo docker compose up -d && sudo systemctl restart nginx"
-```
+When using WAAP, stop traffic through `tgen-control stop` before an authorized repair window and resume through readiness-gated `tgen-control start`. Diagnose absent prerequisites separately from application rejection or WAAP mitigation.
 
 ## AWS Troubleshooting
 

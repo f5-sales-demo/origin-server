@@ -2,7 +2,7 @@
   "customSets": [
     {
       "label": "Azure Full-Origin Deployment",
-      "description": "Azure VM deployment from terraform/: nine applications across 41 containers behind nginx; requires subscription_id and outputs the VM public_ip",
+      "description": "Azure VM deployment from terraform/: nine applications across 42 container services behind nginx; requires subscription_id and outputs the VM public_ip",
       "paths": ["02-prerequisites*", "03-deploy*", "05-verify*", "07-teardown*"]
     },
     {
@@ -19,8 +19,13 @@
       "label": "Integration",
       "description": "Provider-specific F5 Distributed Cloud origin-pool integration for the Azure VM public IP or AWS ALB DNS hostname",
       "paths": ["06-integrate*"]
+    },
+    {
+      "label": "Application workflows",
+      "description": "Application workflows with revision-specific evidence and incomplete gates",
+      "paths": ["application-workflows*", "04-applications*", "05-verify*", "08-api-testing-guide*"]
     }
   ],
   "promote": ["index*", "01-architecture*", "02-prerequisites*", "03-deploy*", "06-integrate*"],
-  "demote": ["07-teardown*"]
+  "demote": ["07-teardown*", "archive/**"]
 }
