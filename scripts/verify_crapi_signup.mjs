@@ -185,6 +185,7 @@ try {
 
   await page.goto(new URL('/crapi/mailhog/', origin).href);
   await page.waitForFunction(() => document.body.innerText.includes('MailHog'), undefined, { timeout: 15000 });
+  await page.waitForFunction((recipient) => document.body.innerText.includes(recipient), email, { timeout: 15000 });
   await page.screenshot({ path: path.join(output, 'mailhog.png'), fullPage: true });
   fs.chmodSync(path.join(output, 'mailhog.png'), 0o600);
   receipt.checks.push({ name: 'mailhog-render', passed: true, screenshot: 'mailhog.png' });
