@@ -241,3 +241,17 @@ def test_juice_seed_accounts_use_reserved_domain_on_every_replica():
         ]
         assert len(overrides) == 1
         assert json.loads(overrides[0])["application"]["domain"] == "example.com"
+
+
+def test_dvwa_session_expiry_runs_outside_http_workers():
+    files = {item["path"]: item["content"] for item in render(ROOT)}
+    pool = files["/opt/origin-server/dvwa-fpm/www.conf"]
+    assert "session.gc_probability] = 0" in pool
+    assert "session.gc_maxlifetime] = 604800" in pool
+    cleanup = files["/usr/local/bin/demo-dvwa-session-cleanup"]
+    assert "docker exec dvwa-1" in cleanup
+    assert "-name 'sess_*' -mmin +10080 -delete" in cleanup
+    assert (
+        "systemctl enable --now demo-dvwa-session-cleanup.timer"
+        in files["/usr/local/bin/demo-origin-provision"]
+    )
