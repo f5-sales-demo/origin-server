@@ -107,6 +107,17 @@ def main() -> int:
             "content": (source / "scripts/crapi_signup_cleanup.py").read_text(),
         }
     )
+    for name, target in [
+        ("catalog_signup_recovery.py", "catalog-signup-recovery"),
+        ("enroll_signup_recovery.py", "enroll-signup-recovery"),
+    ]:
+        files.append(
+            {
+                "path": "/usr/local/bin/" + target,
+                "permissions": "0755",
+                "content": (source / "scripts" / name).read_text(),
+            }
+        )
     files.append(
         {
             "path": "/usr/local/bin/application_receipts.py",
