@@ -74,13 +74,13 @@ let id;
 let subscriber;
 async function restoreFixture() {
   if (id) {
-    const before = await graphql('query Fixture($id:Int!){paste(id:$id){id title}}', { id: Number(id) });
+    const before = await graphql('query ($id:Int!){paste(id:$id){id title}}', { id: Number(id) });
     if (before.paste?.title !== title) throw new Error('Fixture ownership mismatch');
-    const removed = await graphql('mutation Cleanup($id:Int!){deletePaste(id:$id){result}}', { id: Number(id) });
-    const after = await graphql('query Fixture($id:Int!){paste(id:$id){id title}}', { id: Number(id) });
+    const removed = await graphql('mutation ($id:Int!){deletePaste(id:$id){result}}', { id: Number(id) });
+    const after = await graphql('query ($id:Int!){paste(id:$id){id title}}', { id: Number(id) });
     return removed.deletePaste?.result === true && after.paste === null;
   } else {
-    const found = await graphql('query Fixture($title:String!){paste(title:$title){id title}}', { title });
+    const found = await graphql('query ($title:String!){paste(title:$title){id title}}', { title });
     return found.paste === null;
   }
 }
