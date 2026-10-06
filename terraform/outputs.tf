@@ -128,5 +128,18 @@ output "restaurant_url" {
 
 output "crapi_url" {
   description = "crAPI microservices security URL"
-  value       = "http://${azurerm_public_ip.main.ip_address}:8888"
+  value       = "http://${azurerm_public_ip.main.ip_address}/crapi/"
+}
+
+output "application_urls" {
+  description = "Published application URL map generated from the shared manifest."
+  value = {
+    for app in jsondecode(file("${path.module}/../provisioning/applications.json")).applications :
+    app.id => "http://${azurerm_public_ip.main.ip_address}${app.prefix}"
+  }
+}
+
+output "application_manifest_sha256" {
+  description = "SHA-256 of the source application manifest."
+  value       = filesha256("${path.module}/../provisioning/applications.json")
 }

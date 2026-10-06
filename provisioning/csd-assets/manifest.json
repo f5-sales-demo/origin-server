@@ -1,0 +1,22 @@
+{
+  "lodash.min.js": {
+    "url": "https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js",
+    "sha256": "a9705dfc47c0763380d851ab1801be6f76019f6b67e40e9b873f8b4a0603f7a9"
+  },
+  "moment.js": {
+    "url": "https://cdn.jsdelivr.net/npm/moment@2.30.1/moment.js",
+    "sha256": "7dc0a51c32dae143f2eade235145dfd6a7756388c0f0bf409fa373dd6c233629"
+  },
+  "underscore-min.js": {
+    "url": "https://cdn.jsdelivr.net/npm/underscore@1.13.7/underscore-min.js",
+    "sha256": "c12dae551a8773812f3c6b682e8e66ecf71c729bf7e83f295747c0773e76cabb"
+  },
+  "dayjs.min.js": {
+    "url": "https://cdn.jsdelivr.net/npm/dayjs@1.11.13/dayjs.min.js",
+    "sha256": "9cfdb93f38afcf2d076abecd66d32bfd3383cdf1967654ebc26a26605daf4173"
+  },
+  "chart.umd.min.js": {
+    "url": "https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js",
+    "sha256": "b38076762f7363bc9e912b68b8e034826798db5df26bb61f000ec2e7a3137bc7"
+  }
+}

@@ -1,0 +1,50 @@
+---
+title: Application workflows
+description: "Real synthetic signup, welcome vehicle, reset OTP and exact fixture recovery."
+sidebar:
+  order: 5
+---
+
+## Prerequisites
+
+Run the shared source installer on the owned origin. It seeds application-native synthetic accounts, roles,
+books, pastes, vehicles, community data and real media; fixture identities and private session exports are
+retained for repeatable traffic. Installer reruns must preserve IDs/counts instead of duplicating records.
+Passwords, bearer tokens, mail content and fixture journals stay private. Use the installed fixture values;
+examples do not invent credentials or successful responses.
+
+## crAPI signup, vehicle and password reset
+
+`origin-browser-verify crapi-signup` executes one journaled synthetic actor through the actual application:
+
+1. Create an isolated signup identity and submit the real signup form.
+2. Read that exact recipient's native MIME welcome mail, including its VIN and pincode. Welcome mail is not a signup-verification OTP.
+3. Authenticate the same actor and register its actual welcome vehicle using the VIN/pincode.
+4. Request password reset for that actor and extract the labeled OTP from its actual `crAPI OTP` mail.
+5. Submit the reset with that OTP, log in with the new password and explicitly reject the old password.
+6. Require the exact recipient in the rendered MailHog inbox and retain private step screenshots.
+7. Close the browser and remove only the journaled actor, OTP, owned welcome vehicle and exact mail IDs. Verify removal in `fixture-recovery-receipt.json`.
+
+The wrapper invokes `crapi_signup_cleanup.py` even after a failed run. Missing or ambiguous journal evidence fails recovery; a bulk account/mail purge is not recovery. Retain original failures and the separate recovery receipt. Recurring traffic signup integration remains open: a focused origin verifier pass cannot qualify the catalog's registration scenario.
+
+The separate traffic OTP scenario uses a distinct origin-provisioned mutation actor. It journals baseline password/mail state, requests actual reset mail, checks bounded sampled guesses against native OTP responses and restores the baseline. It does not claim full-keyspace feasibility or WAAP attribution.
+
+## Reproducible JWT-column repair
+
+Upstream crAPI stores `user_login.jwt_token` in `varchar(500)`. A valid longer synthetic email produces a JWT
+that can exceed that column and prevent login. The provisioner queries `information_schema.columns`, changes
+the column to PostgreSQL `text` when required, and restarts only `crapi-identity` after a schema change, then
+waits for readiness. Rerunning the provisioner with an existing text column skips the schema change and
+restart. This repair is in `provisioning/files.json`, used by both install paths; a manual database edit
+cannot replace that source contract.
+
+## Other native workflows
+
+Juice Shop verifies translated labels, images, login, basket and Socket.IO affinity. DVWA uses a real seeded
+session, selected security level and authenticated vulnerability pages. VAmPI checks JSON API definition,
+login, users and seeded books on every replica. HTTPBin checks local Swagger assets/spec/forms. whoami checks
+diagnostic identity/headers. CSD checks checkout, dashboard, receiver, counter, clear-log and replica state.
+DVGA checks navigation, GraphQL, subscriptions and seeded pastes. RESTaurant checks Swagger at its root,
+ReDoc, local assets, authentication and seeded roles.
+
+Mutation receipts must prove baseline/postconditions and exact restoration, including interruption recovery. Dispatch and HTTP status alone cannot prove those behaviors. Follow [Verify](../05-verify/) for complete serving-layer and rendered checks; final current-source, clean-rebuild and convergence acceptance remains open.

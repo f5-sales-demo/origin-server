@@ -28,13 +28,13 @@ These are sibling deployments, not equivalent cloud implementations of the same 
 
 | Offering | Applications | Runtime and ingress | Source |
 | --- | --- | --- | --- |
-| **Azure full-origin** | Nine applications in 41 containers | nginx on an Ubuntu 24.04 Azure VM | [`terraform/`](https://github.com/f5-sales-demo/origin-server/tree/main/terraform) |
+| **Azure full-origin** | Nine applications in 42 container services | nginx on an Ubuntu 24.04 Azure VM | [`terraform/`](https://github.com/f5-sales-demo/origin-server/tree/main/terraform) |
 | **AWS Juice Shop** | Juice Shop only | Private Fargate tasks behind an internal-by-default ALB | [`terraform/modules/aws-juice-shop/`](https://github.com/f5-sales-demo/origin-server/tree/d6384bb0621c4c1eceb38d55a6b63e7b9cc7083a/terraform/modules/aws-juice-shop) |
 
 <CardGrid>
   <LinkCard
     title="Azure Full-Origin"
-    description="Nine applications across 41 containers on one Ubuntu 24.04 Azure VM, with nginx path routing and the complete Azure infrastructure in terraform/."
+    description="Nine applications across 42 container services on one Ubuntu 24.04 Azure VM, with nginx path routing and the complete Azure infrastructure in terraform/."
     href="01-architecture/#azure-full-origin-architecture"
   />
   <LinkCard
