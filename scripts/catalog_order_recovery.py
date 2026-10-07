@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import re
@@ -171,23 +172,49 @@ def operation(value: dict, directory: Path = ROOT) -> dict:
         message = "unsafe order journal path"
         raise ValueError(message)
     owner()
-    if value["action"] == "snapshot":
-        before = snapshot(value["order"])
-        payload = {
-            "identity": value["identity"],
-            "order": value["order"],
-            "before": before,
-        }
-        with file.open("x") as stream:
-            file.chmod(0o600)
-            json.dump(payload, stream)
-        return payload
-    saved = json.loads(file.read_text())
-    if saved["identity"] != value["identity"] or saved["order"] != value["order"]:
-        message = "order journal ownership changed"
+    lock_path = directory / "order.lock"
+    if lock_path.is_symlink():
+        message = "unsafe order deployment lock"
         raise ValueError(message)
-    after = restore(saved["before"])
-    return {**saved, "after": after, "restored": after == saved["before"]}
+    with lock_path.open("a") as lock:
+        lock_path.chmod(0o600)
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        active = directory / "active.json"
+        if active.is_symlink():
+            message = "unsafe active order journal"
+            raise ValueError(message)
+        if value["action"] == "snapshot":
+            if active.exists():
+                message = "another order journal requires recovery"
+                raise ValueError(message)
+            before = snapshot(value["order"])
+            payload = {
+                "identity": value["identity"],
+                "order": value["order"],
+                "before": before,
+            }
+            with file.open("x") as stream:
+                file.chmod(0o600)
+                json.dump(payload, stream)
+            with active.open("x") as stream:
+                active.chmod(0o600)
+                json.dump({"identity": value["identity"]}, stream)
+            return payload
+        saved = json.loads(file.read_text())
+        if saved["identity"] != value["identity"] or saved["order"] != value["order"]:
+            message = "order journal ownership changed"
+            raise ValueError(message)
+        if (
+            active.exists()
+            and json.loads(active.read_text()).get("identity") != value["identity"]
+        ):
+            message = "another active order journal owns the actor"
+            raise ValueError(message)
+        after = restore(saved["before"])
+        receipt = {**saved, "after": after, "restored": after == saved["before"]}
+        if active.exists():
+            active.unlink()
+        return receipt
 
 
 def main() -> int:

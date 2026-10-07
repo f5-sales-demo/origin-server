@@ -78,3 +78,19 @@ def test_order_enrollment_keeps_signup_and_foreign_keys(tmp_path):
     assert any(
         'command="/usr/local/bin/catalog-signup-recovery"' in row for row in rows
     )
+
+
+def test_second_journal_requires_prior_recovery(tmp_path):
+    value = {"action": "snapshot", "identity": "a" * 32, "order": 1}
+    with (
+        patch("catalog_order_recovery.owner"),
+        patch("catalog_order_recovery.snapshot", return_value=baseline()),
+        patch("catalog_order_recovery.restore", return_value=baseline()),
+    ):
+        operation(value, tmp_path)
+        with pytest.raises(ValueError, match="requires recovery"):
+            operation({**value, "identity": "b" * 32}, tmp_path)
+        operation({**value, "action": "restore"}, tmp_path)
+        operation({**value, "identity": "b" * 32}, tmp_path)
+        with pytest.raises(ValueError, match="another active"):
+            operation({**value, "action": "restore"}, tmp_path)
