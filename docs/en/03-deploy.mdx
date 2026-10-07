@@ -7,7 +7,7 @@ sidebar:
 
 This repository contains two separate supported offerings:
 
-- **Azure full-origin:** nine applications, nginx, and 41 containers on an Azure VM from
+- **Azure full-origin:** nine applications, nginx, and 42 container services on an Azure VM from
   `terraform/`.
 - **AWS Juice Shop:** Juice Shop only, on private Fargate tasks behind an ALB, from
   `terraform/modules/aws-juice-shop/`.
@@ -47,7 +47,7 @@ The Terraform directory contains 9 files following the Demo Resource Standard:
 
 `variables.tf` defines all configurable parameters. The `deployer` identifier is auto-resolved from
 your Azure AD account — you only need to set `subscription_id`. The `vm_size` default is
-`Standard_D16s_v3` (16 vCPU, 64 GiB RAM) sized for 41 Docker containers:
+`Standard_D16s_v3` (16 vCPU, 64 GiB RAM) sized for 42 Docker container services:
 
 ```hcl file=../_data/variables.tf
 ```
@@ -68,19 +68,14 @@ Premium SSD provides sufficient space for Docker images and container volumes:
 ```hcl file=../_data/vm.tf
 ```
 
-`cloud-init.yaml` provisions the VM with a hardened configuration. A shared helper library
-(`/usr/local/lib/cloud-init-helpers.sh`) provides retry logic on all network operations and progress
-logging to `/var/log/cloud-init-progress.log`. Active health-check polling replaces fixed-duration
-sleep for container readiness. It provisions:
+`cloud-init.yaml` fetches the immutable release installer and verifies its SHA-256 before execution. The installer verifies the source archive and Python installer digests, then runs `install_origin.py --provision`. `provisioning/files.json` and `provisioning/applications.json` are shared with the WAAP cloud-init path; there is no separate WAAP application implementation.
 
-- **Kernel tuning**: TCP keepalive, TIME_WAIT reuse, 2M tw_buckets, 64K somaxconn
-- **nginx**: 8 upstream blocks with sticky sessions (ip_hash, cookie hash), keepalive pools
-  (64--128), proxy cache for Juice Shop, error_log crit level
-- **Docker Compose**: 41 containers across 9 applications with per-container CPU/memory limits
-- **Custom builds**: DVWA-FPM (php-fpm with pm.max_requests=200), CSD Demo (Flask + gunicorn),
-  RESTaurant (cloned from GitHub)
-- **Worker recycling**: uvicorn --limit-max-requests 200 (RESTaurant), pm.max_requests 200
-  (DVWA-FPM) to prevent memory leaks under sustained load
+Supply `origin_commit`, `origin_archive_sha256`, `origin_installer_sha256` and
+`origin_python_installer_sha256` from the same reviewed source. Do not substitute a mutable branch or reuse
+another candidate's digest. Provisioning installs pinned dependencies, builds prefix adapters, starts the 42
+Compose services, reconciles the crAPI JWT column, seeds synthetic fixtures and checks native readiness.
+Installer receipts bind source and manifest digests. Prior failed receipts remain under the private
+install-receipts directory.
 
 ```yaml file=../_data/cloud-init.yaml
 ```
@@ -114,26 +109,9 @@ terraform show .artifacts/tfplan
 terraform apply .artifacts/tfplan
 ```
 
-Terraform outputs the public IP, SSH command, and application URLs. Allow 5--10 minutes for
-cloud-init to install Docker, pull images, and configure nginx, then verify the health endpoint:
+Terraform outputs the public IP, SSH command and application URL map. Wait for cloud-init completion, then use [Verify](../05-verify/) for native readiness and full content checks. `/health` lists the inventory; it does not establish authenticated or rendered acceptance. Fixtures are seeded by the installer. Do not reset DVWA manually to make a verification pass.
 
-```bash
-curl -s "http://$(terraform output -raw public_ip)/health" | jq .
-```
-
-Expected response:
-
-```json
-{
-  "status": "healthy",
-  "component": "origin-server",
-  "applications": ["juice-shop", "dvwa", "vampi", "httpbin", "whoami", "csd-demo", "dvga", "restaurant", "crapi"]
-}
-```
-
-DVWA requires one-time database initialization at `http://<PUBLIC_IP>/dvwa/setup.php`. Select
-**Create / Reset Database**. Default credentials are `admin` / `password`. VAmPI initializes its
-SQLite database automatically.
+For the combined showcase, use WAAP's existing `deploy`, `verify`, `rebuild` and `destroy` lifecycle rather than the standalone root. The lifecycle preserves shared namespace/DNS and private state. Archive pins must be updated to merged upstream revisions and installed before clean-rebuild acceptance.
 
 ## Deploy AWS Juice Shop
 
@@ -267,34 +245,6 @@ configuration, backend, and state intact.
 
 ## Wiring to downstream components
 
-For the Azure full-origin, downstream components use the Azure outputs:
-
-```bash
-# CDN Simulator — pass origin-server's public IP as its upstream
-cd ../cdn-simulator/terraform
-origin_ip=$(cd ../../origin-server/terraform && terraform output -raw public_ip)
-cat > terraform.tfvars <<EOF
-subscription_id = "your-subscription-id"
-origin_server   = "http://${origin_ip}"
-origin_host     = "${origin_ip}:80"
-EOF
-
-# Traffic Generator — pass the F5 XC load balancer FQDN, not the origin IP directly
-cd ../traffic-generator/terraform
-cat > terraform.tfvars <<EOF
-subscription_id = "your-subscription-id"
-target_fqdn     = "your-xc-load-balancer.example.com"
-EOF
-```
-
-| Azure output | Downstream component | Input variable |
-| --- | --- | --- |
-| `public_ip` | CDN Simulator | `origin_server` (with `http://` prefix) |
-| `public_ip` | CDN Simulator | `origin_host` (with `:80` suffix, no scheme) |
-| `public_ip` | F5 XC Origin Pool | Origin server address |
-
-For AWS Juice Shop, use `origin_hostname` as the origin address and `listener_port` as the port. An
-internal ALB requires F5 Distributed Cloud to have an authorized routed path into the VPC.
-
-Proceed to [Applications](../04-applications/) for usage guides or [Verify](../05-verify/) for smoke
-tests.
+Use Terraform-generated application URLs and the reviewed origin ingress with the owning CDN or WAAP configuration.
+Keep subscription inputs and deployed state private. The shared traffic catalog reads its two approved domains from
+private structured configuration; see [Integrate](../06-integrate/). Do not copy a legacy target override into a catalog deployment.

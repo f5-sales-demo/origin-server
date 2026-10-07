@@ -11,60 +11,52 @@ This repository provides two separate origin offerings for authorized F5 Distrib
 
 | Offering | Application scope | Runtime | Ingress | Terraform source |
 | --- | --- | --- | --- | --- |
-| **Azure full-origin** | Nine applications across 41 containers | nginx and Docker on an Ubuntu 24.04 Azure VM | nginx on the VM | [`terraform/`](https://github.com/f5-sales-demo/origin-server/tree/main/terraform) |
+| **Azure full-origin** | Nine applications across 42 container services | nginx and Docker on an Ubuntu 24.04 Azure VM | nginx on the VM | [`terraform/`](https://github.com/f5-sales-demo/origin-server/tree/main/terraform) |
 | **AWS Juice Shop** | OWASP Juice Shop only | Private AWS Fargate tasks | Application Load Balancer, internal by default | [`terraform/modules/aws-juice-shop/`](https://github.com/f5-sales-demo/origin-server/tree/d6384bb0621c4c1eceb38d55a6b63e7b9cc7083a/terraform/modules/aws-juice-shop) |
 
 The AWS offering is not a cloud-equivalent version of the Azure nine-application stack. It does not deploy nginx, DVWA, VAmPI, httpbin, whoami, CSD Demo, DVGA, RESTaurant, or crAPI.
 
 In both designs, F5 Distributed Cloud can provide the public HTTP load balancer and configured edge security controls in front of the origin.
 
-## Azure Full-Origin Architecture
+## Azure full-origin architecture
+
+The application inventory is `provisioning/applications.json`; `provisioning/files.json` contains the Compose and nginx inputs. Both the standalone Terraform root and WAAP use the digest-checked `scripts/install-release.sh` and `scripts/install_origin.py`. Guest-only changes are not reproducible installation evidence.
 
 ```mermaid
 graph LR
-    Client[Client Browser] --> XCHLB[F5 XC HTTP LB]
-    XCHLB --> NGINX[nginx Reverse Proxy<br/>Ubuntu 24.04 · D16s_v3<br/>reuseport · 16 workers]
-    NGINX --> |/| DEFAULT[Landing Page]
-    NGINX --> |/juice-shop/| JS[Juice Shop ×4<br/>Ports 3001-3004<br/>hash cookie_token · cache]
-    NGINX --> |/dvwa/| DVWA[DVWA-FPM ×4<br/>Ports 8101-8104<br/>hash cookie_PHPSESSID]
-    NGINX --> |/vampi/| VAMPI[VAmPI ×4<br/>Ports 5101-5104<br/>ip_hash · gunicorn]
-    NGINX --> |/httpbin/| HTTPBIN[httpbin ×4<br/>Ports 8201-8204<br/>gunicorn -w 4]
-    NGINX --> |/whoami/| WHOAMI[whoami ×4<br/>Ports 8082-8085]
-    NGINX --> |/csd-demo/| CSD[CSD Demo ×4<br/>Ports 5001-5004<br/>ip_hash · gunicorn -w 1]
-    NGINX --> |/dvga/| DVGA[DVGA ×4<br/>Ports 5201-5204<br/>ip_hash · SQLite]
-    NGINX --> |/restaurant/| REST[RESTaurant ×4<br/>Ports 8301-8304<br/>round-robin]
-    XCHLB --> |:8888| CRAPI[crAPI ×7 microservices<br/>Port 8888<br/>web · identity · community<br/>workshop · postgres · mongo · mailhog]
-    DVWA --> DB[(MariaDB 10.11<br/>dvwa-db)]
-    REST --> RESTDB[(PostgreSQL 15.4<br/>restaurant-db)]
+    Browser[Browser and catalog traffic] --> XC[F5 Distributed Cloud HTTP and HTTPS load balancers]
+    XC --> Nginx[Origin nginx on port 80]
+    Nginx --> Apps[Eight application pools with four replicas each]
+    Nginx --> C[crAPI frontend at /crapi/]
+    C --> Services[Identity, community, workshop, chatbot and private dependencies]
 ```
 
-**41 containers** on a Standard_D16s_v3 VM (16 vCPU, 64 GiB RAM, 60 GiB disk).
+The manifest declares nine applications. Compose declares **42 container services**: 32 replicas for the eight pooled applications, two shared application databases, and eight crAPI services. This is a source inventory, not a live container-health verdict. crAPI uses loopback port 18888 behind nginx and is published at `/crapi/`.
 
-The nginx reverse proxy:
+## Azure application mapping
 
-- **Listens on port 80** with `reuseport` and `backlog=4096` for high-concurrency CDN traffic
-- **Routes by path prefix** to load-balanced upstream pools (4 instances per application)
-- **Sticky sessions** prevent state loss: `hash $cookie_token` for Juice Shop, `hash $cookie_PHPSESSID` for DVWA, `ip_hash` for VAmPI and CSD Demo (SQLite/in-memory state per instance)
-- **Proxy cache** for Juice Shop static assets (10 MB zone, 100 MB max, 60 s TTL)
-- **Access logging disabled** to prevent disk exhaustion under CDN load testing (logrotate as defense-in-depth)
-- **Passes client headers** (`X-Real-IP`, `X-Forwarded-For`, `X-Forwarded-Proto`) for origin visibility
-- **Kernel tuning** via sysctl: `somaxconn=65535`, `tcp_tw_reuse=1`, `ip_local_port_range=1024-65535`
+| Application | Published prefix | Replicas | Native loopback ports | Content and workflows |
+| --- | --- | --- | --- | --- |
+| Juice Shop | `/juice-shop/` | 4 | 3001–3004 | translated-labels, products-and-images, login, basket, supporting-pages, socket-io-affinity |
+| DVWA | `/dvwa/` | 4 | 8101–8104 | authenticated-navigation, styles-and-forms, security-settings, seeded-vulnerability-pages |
+| VAmPI | `/vampi/` | 4 | 5101–5104 | api-definition, authentication, users, seeded-books |
+| HTTPBin | `/httpbin/` | 4 | 8201–8204 | local-swagger-assets, specification, links-and-forms |
+| whoami | `/whoami/` | 4 | 8082–8085 | diagnostic-content, proxy-headers |
+| CSD Demo | `/csd-demo/` | 4 | 5001–5004 | dashboard, checkout, receiver, counter, clear-log, replica-state |
+| DVGA | `/dvga/` | 4 | 5201–5204 | styles-scripts-images, navigation-and-forms, GraphQL, subscriptions, seeded-pastes |
+| RESTaurant | `/restaurant/` | 4 | 8301–8304 | swagger, redoc, local-assets, authentication, seeded-roles |
+| crAPI | `/crapi/` | 1 | 18888 | login, signup, seeded-vehicle, community, workshop, deep-link-refresh, mailhog |
 
-## Azure Application Mapping
+nginx keeps published assets, redirects, forms, cookies, API definitions and SPA deep links under each prefix.
+Juice Shop uses a consistent hash of forwarded client identity (falling back to the remote address), DVWA
+hashes the PHP session cookie, VAmPI and CSD Demo use `ip_hash`, and DVGA hashes the replica cookie (falling
+back to a request ID). HTTPBin, whoami and RESTaurant use round-robin pools. State is not automatically
+interchangeable between every replica: verify each native instance as well as published affinity. DVWA shares
+its database and session volume; RESTaurant shares PostgreSQL. CSD state is checked across replicas.
 
-| Path | Upstream | Instances | Ports | Sticky Session | Purpose |
-| --- | --- | --- | --- | --- | --- |
-| `/` | nginx | -- | -- | -- | Landing page with links to all apps |
-| `/health` | nginx | -- | -- | -- | JSON health endpoint (9 apps listed) |
-| `/juice-shop/` | juice_shop | 4 | 3001-3004 | `hash $cookie_token` | Modern web app security (XSS, injection, CSRF) |
-| `/dvwa/` | dvwa | 4 + MariaDB | 8101-8104 | `hash $cookie_PHPSESSID` | Classic WAF testing with adjustable difficulty |
-| `/vampi/` | vampi | 4 | 5101-5104 | `ip_hash` | REST API security testing (OWASP API Top 10) |
-| `/httpbin/` | httpbin_up | 4 | 8201-8204 | -- | HTTP request/response service for API demos |
-| `/whoami/` | whoami_up | 4 | 8082-8085 | -- | Request diagnostics -- shows all headers, client IP |
-| `/csd-demo/` | csd_demo | 4 | 5001-5004 | `ip_hash` | Client-Side Defense testing (Magecart attacks) |
-| `/dvga/` | dvga | 4 | 5201-5204 | `ip_hash` | GraphQL API security testing (injection, DoS, auth bypass) |
-| `/restaurant/` | restaurant | 4 + PostgreSQL | 8301-8304 | -- | REST API security (OWASP API Top 10 2023) |
-| `:8888` | crapi | 7 microservices | 8888 | -- | OWASP crAPI (BOLA, BFLA, mass assignment, SSRF, JWT) |
+Access logs are disabled in the checked-in nginx configuration. Private structured verification receipts provide evidence. Prefix adapters and the Juice Shop response-framing preload are provisioned from source. VAmPI's root and API definition return JSON; RESTaurant publishes Swagger at `/restaurant/`, ReDoc at `/restaurant/redoc`, and its definition at `/restaurant/openapi.json`.
+
+[Verification](../05-verify/) distinguishes quick health from complete browser and workflow checks. [Application workflows](../application-workflows/) covers synthetic actors and recovery. CSD activity in the WAAP showcase is display-only with `csd_enabled=false`.
 
 ## AWS Juice Shop Architecture
 
@@ -104,7 +96,7 @@ For the pinned inputs, prerequisites, deployment contract, and verification guid
 
 This is one piece of a larger lab environment. Each component is self-contained and deployed independently:
 
-- **Azure full-origin** provides nginx and 41 Docker containers on an Azure VM.
+- **Azure full-origin** provides nginx and 42 Docker container services on an Azure VM.
 - **AWS Juice Shop** independently provides Juice Shop on private Fargate tasks behind an ALB.
 - **CDN Simulator** provides the CDN edge layer (nginx caching on Azure VM)
 - **Other components** provide the F5 XC configuration, DNS, WAF policies, API security, etc.
@@ -123,4 +115,4 @@ The human operator adds components one at a time. Each component's documentation
 | **CSD Demo** | Custom checkout page with 5 toggleable Magecart-style attacks (card skimmer, formjacker, keylogger, cryptominer, DOM hijack); exfil endpoint + attacker dashboard; gunicorn single-worker for in-memory state persistence |
 | **DVGA** | Damn Vulnerable GraphQL Application; GraphQL-specific vulnerabilities including injection, DoS, batching attacks, and authorization bypass; GraphiQL UI for interactive exploration; ip_hash sticky for SQLite per instance |
 | **RESTaurant** | Damn Vulnerable RESTaurant API Game; purpose-built for OWASP API Security Top 10 2023; FastAPI with Swagger UI; shared PostgreSQL 15.4 backend; covers BOLA, BFLA, mass assignment, SSRF, and injection |
-| **crAPI** | OWASP Completely Ridiculous API; 7-microservice architecture covering BOLA, BFLA, mass assignment, SSRF, JWT manipulation, and NoSQL injection; dedicated port 8888 (SPA with hardcoded API paths); MailHog for email capture |
+| **crAPI** | OWASP Completely Ridiculous API; eight-service architecture covering BOLA, BFLA, mass assignment, SSRF, JWT manipulation, and NoSQL injection; prefix-aware frontend under `/crapi/`; MailHog for email capture |
