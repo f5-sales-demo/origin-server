@@ -29,9 +29,9 @@ CREATE TABLE SecurityAnswers(UserId INTEGER);
             "Memories",
             "PrivacyRequests",
             "Recycles",
-            "Wallets",
         ]:
             db.execute("CREATE TABLE " + table + "(UserId INTEGER)")
+        db.execute("CREATE TABLE Wallets(UserId INTEGER,balance INTEGER)")
         for i, email in enumerate(
             ["admin@example.com", "jim@example.com", "bender@example.com"], 1
         ):
@@ -90,6 +90,7 @@ close(){this.db.close()}
             (marker + "@example.com",),
         )
         sql.execute("INSERT INTO Baskets VALUES(100,100)")
+        sql.execute("INSERT INTO Wallets VALUES(100,0)")
         sql.execute("INSERT INTO BasketItems VALUES(1,1,1,1,'new','new')")
         sql.execute(
             "INSERT INTO Feedbacks VALUES(100,1,?,3,'new')", (marker + ":payload",)

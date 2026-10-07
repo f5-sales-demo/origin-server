@@ -30,10 +30,13 @@ async function snapshot(){
    for(const basket of b.baskets){if(!current.baskets.some(r=>r.id===basket.id&&r.UserId===basket.UserId))throw Error('basket identity changed')}
    await run('DELETE FROM Feedbacks WHERE comment LIKE ? AND id NOT IN (1,2,3)',[v.marker+':%']);
    for(const user of current.temporary){
-    for(const table of ['Addresses','Cards','Complaints','Memories','PrivacyRequests','Recycles','Wallets','Feedbacks']){
+    for(const table of ['Addresses','Cards','Complaints','Memories','PrivacyRequests','Recycles','Feedbacks']){
      if((await all('SELECT COUNT(*) AS n FROM '+table+' WHERE UserId=?',[user.id]))[0].n)throw Error('temporary actor has unrelated data');
     }
     if((await all('SELECT COUNT(*) AS n FROM BasketItems WHERE BasketId IN (SELECT id FROM Baskets WHERE UserId=?)',[user.id]))[0].n)throw Error('temporary actor has unrelated basket items');
+    const wallets=await all('SELECT * FROM Wallets WHERE UserId=?',[user.id]);
+    if(wallets.some(w=>w.balance!==0))throw Error('temporary actor has nonzero wallet');
+    await run('DELETE FROM Wallets WHERE UserId=? AND balance=0',[user.id]);
     await run('DELETE FROM SecurityAnswers WHERE UserId=?',[user.id]);
     await run('DELETE FROM Baskets WHERE UserId=?',[user.id]);
     await run('DELETE FROM Users WHERE id=? AND email=?',[user.id,user.email]);
