@@ -360,6 +360,27 @@ class OriginTests(unittest.TestCase):
         stack.enter_context(patch.object(g, "command", side_effect=command))
         return g, seen, posted, stack
 
+    def test_empty_http_200_vampi_replica_is_seeded_once(self) -> None:
+        g, _seen, _, stack = self.initializer_transport()
+        populated = set()
+        resets = []
+        native_http = g.http
+
+        def reply(port, path, *args, **kwargs):
+            if path == "/users/v1" and port not in populated:
+                return '{"users":[]}'
+            if path == "/createdb":
+                populated.add(port)
+                resets.append(port)
+                return '{"message":"Database populated."}'
+            return native_http(port, path, *args, **kwargs)
+
+        with stack, patch.object(g, "http", side_effect=reply):
+            g.initialize()
+            g.initialize()
+        ensure_equal(populated, {5101, 5102, 5103, 5104})
+        ensure_equal(resets, [5101, 5102, 5103, 5104])
+
     def test_initializer_executes_real_cookie_and_form_flow(self) -> None:
         """Check the named origin guest regression contract."""
         g, seen, posted, stack = self.initializer_transport()
