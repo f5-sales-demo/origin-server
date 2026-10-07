@@ -210,6 +210,13 @@ def main() -> int:
             "content": (source / "scripts/catalog_juice_recovery.py").read_text(),
         }
     )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_dvga_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_dvga_recovery.py").read_text(),
+        }
+    )
     receipt = {
         **source_provenance(),
         "started": time.time(),

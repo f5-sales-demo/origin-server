@@ -129,6 +129,7 @@ def test_dvga_adapter_uses_request_prefix_for_native_and_proxy_routes(tmp_path):
         if item["path"].endswith("dvga-adapter/adapt.py")
     )
     (tmp_path / "core").mkdir()
+    (tmp_path / "core/models.py").write_text("# synthetic model fixture\n")
     (tmp_path / "core/security.py").write_text("import time\ntime.sleep(0.1)\n")
     (tmp_path / "app.py").write_text('app = Flask(__name__, static_folder="static/")')
     (tmp_path / "templates").mkdir()
