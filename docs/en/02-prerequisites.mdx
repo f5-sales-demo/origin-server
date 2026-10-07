@@ -8,7 +8,7 @@ sidebar:
 This repository provides two supported sibling offerings. They do not share a runtime and do not
 provide feature parity:
 
-- **Azure full-origin** deploys nine applications in 41 containers behind nginx on an Azure VM from
+- **Azure full-origin** deploys nine applications in 42 container services behind nginx on an Azure VM from
   `terraform/`.
 - **AWS Juice Shop** deploys Juice Shop only on private Fargate tasks behind an Application Load
   Balancer (ALB) from `terraform/modules/aws-juice-shop/`.
@@ -92,10 +92,11 @@ approximately 14.5 GiB (22.7% of 64 GiB).
 :::
 
 :::note
-The NSG allows inbound traffic on ports 80 (HTTP) and 8888 (crAPI). Port 8888 is required because
-crAPI is a single-page application that hardcodes its API paths and cannot be served behind a path
-prefix.
-:::
+The nginx origin ingress uses port 80; every application, including crAPI at `/crapi/`, is published through
+that ingress. crAPI's native frontend is loopback port 18888. Inspect the owning Terraform NSG and approved
+source restrictions; separate public port 8888 access is obsolete. Supply matching immutable origin
+commit/archive/installer digests and verify the shared provisioner and [native
+workflows](../application-workflows/).
 
 ## AWS Juice Shop prerequisites
 
