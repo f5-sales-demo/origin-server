@@ -171,6 +171,8 @@ def main() -> int:
     )
     for name, source_file in (
         ("catalog-order-recovery", "catalog_order_recovery.py"),
+        ("catalog-family-recovery", "catalog_family_recovery.py"),
+        ("enroll-family-recovery", "enroll_signup_recovery.py"),
         ("enroll-order-recovery", "enroll_signup_recovery.py"),
     ):
         files.append(
