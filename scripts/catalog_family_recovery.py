@@ -11,6 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from catalog_crapi_recovery import crapi_database
 from catalog_dvga_recovery import dvga_database
 from catalog_dvwa_recovery import dvwa_database
 from catalog_juice_recovery import juice_database
@@ -110,7 +111,9 @@ def family_database(
         return restaurant_database(name, action, marker, before)
     if family == "juice-shop":
         return juice_database(name, action, marker, before)
-    return dvga_database(name, action, marker)
+    if family == "dvga":
+        return dvga_database(name, action, marker)
+    return crapi_database(name, action, marker, before)
 
 
 def operate(value: dict, root: Path = JOURNALS) -> dict:
@@ -118,7 +121,8 @@ def operate(value: dict, root: Path = JOURNALS) -> dict:
     if (
         set(value) != {"action", "identity", "family"}
         or value["action"] not in ("snapshot", "restore")
-        or value["family"] not in ("vampi", "dvwa", "restaurant", "juice-shop", "dvga")
+        or value["family"]
+        not in ("vampi", "dvwa", "restaurant", "juice-shop", "dvga", "crapi")
         or not re.fullmatch(r"[a-f0-9]{32}", value["identity"])
     ):
         message = "invalid declared family journal"

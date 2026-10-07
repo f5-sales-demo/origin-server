@@ -217,6 +217,14 @@ def main() -> int:
             "content": (source / "scripts/catalog_dvga_recovery.py").read_text(),
         }
     )
+    for source_file in ("catalog_crapi_recovery.py", "catalog_order_recovery.py"):
+        files.append(
+            {
+                "path": "/usr/local/bin/" + source_file,
+                "permissions": "0644",
+                "content": (source / "scripts" / source_file).read_text(),
+            }
+        )
     receipt = {
         **source_provenance(),
         "started": time.time(),
