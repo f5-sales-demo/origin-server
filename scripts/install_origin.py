@@ -196,6 +196,20 @@ def main() -> int:
             "content": (source / "scripts/catalog_restaurant_recovery.py").read_text(),
         }
     )
+    files.append(
+        {
+            "path": "/opt/origin-server/juice-shop-framing/catalog-journal.cjs",
+            "permissions": "0644",
+            "content": (source / "scripts/juice_catalog_journal.cjs").read_text(),
+        }
+    )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_juice_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_juice_recovery.py").read_text(),
+        }
+    )
     receipt = {
         **source_provenance(),
         "started": time.time(),

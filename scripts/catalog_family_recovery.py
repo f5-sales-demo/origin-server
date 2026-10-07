@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from catalog_dvwa_recovery import dvwa_database
+from catalog_juice_recovery import juice_database
 from catalog_restaurant_recovery import restaurant_database
 
 JOURNALS = Path("/opt/origin-server/private-family-journals")
@@ -104,7 +105,9 @@ def family_database(
         return database(name, action, before)
     if family == "dvwa":
         return dvwa_database(name, action, marker)
-    return restaurant_database(name, action, marker, before)
+    if family == "restaurant":
+        return restaurant_database(name, action, marker, before)
+    return juice_database(name, action, marker, before)
 
 
 def operate(value: dict, root: Path = JOURNALS) -> dict:
@@ -112,7 +115,7 @@ def operate(value: dict, root: Path = JOURNALS) -> dict:
     if (
         set(value) != {"action", "identity", "family"}
         or value["action"] not in ("snapshot", "restore")
-        or value["family"] not in ("vampi", "dvwa", "restaurant")
+        or value["family"] not in ("vampi", "dvwa", "restaurant", "juice-shop")
         or not re.fullmatch(r"[a-f0-9]{32}", value["identity"])
     ):
         message = "invalid declared family journal"

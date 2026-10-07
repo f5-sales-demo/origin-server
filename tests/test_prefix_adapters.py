@@ -215,8 +215,11 @@ def test_juice_local_font_adapter_is_repeatable(tmp_path):
     )
     script = tmp_path / "adapter.cjs"
     script.write_text(
-        adapter.replace("__VT323_FONT_BASE64__", font).replace(
-            "/juice-shop/frontend", str(tmp_path / "juice-shop" / "frontend")
+        adapter.replace("__VT323_FONT_BASE64__", font)
+        .replace("/juice-shop/frontend", str(tmp_path / "juice-shop" / "frontend"))
+        .replace(
+            "/juice-shop/waap-catalog-journal.cjs",
+            str(ROOT / "scripts/juice_catalog_journal.cjs"),
         )
         + "\nfs.readFile("
         + repr(str(page))
@@ -264,7 +267,7 @@ def test_restaurant_invalid_role_is_rejected_before_database_mutation():
 
     class Role(enum.StrEnum):
         CHEF = "Chef"
-        CUSTOMER = "Customer"
+        SHOPPER = "Customer"
         EMPLOYEE = "Employee"
 
     class RejectionError(Exception):
