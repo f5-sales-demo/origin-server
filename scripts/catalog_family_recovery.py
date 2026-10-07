@@ -127,8 +127,8 @@ def operate(value: dict, root: Path = JOURNALS) -> dict:
         message = "unsafe family journal path"
         raise ValueError(message)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
-    path = root / (value["identity"] + ".json")
     family = value["family"]
+    path = root / (family + "-" + value["identity"] + ".json")
     marker = "tgen-" + value["identity"]
     active = root / (family + ".active.json")
     lock_path = root / (family + ".lock")

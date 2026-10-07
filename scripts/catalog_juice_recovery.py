@@ -18,7 +18,7 @@ async function snapshot(){
  feedback:await all('SELECT * FROM Feedbacks WHERE id IN (1,2,3) ORDER BY id'),
  baskets:await all('SELECT * FROM Baskets WHERE id IN (1,2,3) ORDER BY id'),
  items:await all('SELECT * FROM BasketItems WHERE BasketId IN (1,2,3) ORDER BY id'),
- temporary:await all('SELECT * FROM Users WHERE email=?',[v.marker+'@example.com'])};
+ temporary:await all('SELECT * FROM Users WHERE email=? OR email LIKE ? ORDER BY id',[v.marker+'@example.com',v.marker+'-bot%@example.com'])};
 }
 (async()=>{
  await run('BEGIN IMMEDIATE');

@@ -46,6 +46,8 @@ def test_dvwa_journal_uses_unique_marker_and_requires_empty_owned_namespace(tmp_
         assert after["after"] == before["replicas"]
         assert database.call_count == 8
         assert (
-            json.loads((tmp_path / ("a" * 32 + ".json")).read_text())["family"]
+            json.loads((tmp_path / ("dvwa-" + "a" * 32 + ".json")).read_text())[
+                "family"
+            ]
             == "dvwa"
         )

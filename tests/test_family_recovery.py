@@ -23,7 +23,7 @@ def test_family_journal_restores_four_replica_baselines(tmp_path):
         assert result["restored"]
         assert result["after"] == saved["replicas"]
         assert database.call_count == 8
-        assert (tmp_path / ("a" * 32 + ".json")).stat().st_mode & 0o077 == 0
+        assert (tmp_path / ("vampi-" + "a" * 32 + ".json")).stat().st_mode & 0o077 == 0
 
 
 def test_unknown_family_extra_data_and_concurrent_journal_fail(tmp_path):
