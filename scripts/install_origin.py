@@ -189,6 +189,13 @@ def main() -> int:
             "content": (source / "scripts/catalog_dvwa_recovery.py").read_text(),
         }
     )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_restaurant_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_restaurant_recovery.py").read_text(),
+        }
+    )
     receipt = {
         **source_provenance(),
         "started": time.time(),

@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 from catalog_dvwa_recovery import dvwa_database
+from catalog_restaurant_recovery import restaurant_database
 
 JOURNALS = Path("/opt/origin-server/private-family-journals")
 VAMPI_ACTORS = [
@@ -95,12 +96,23 @@ def database(container: str, action: str, before: dict | None = None) -> dict:
     return json.loads(result.stdout)
 
 
+def family_database(
+    name: str, family: str, action: str, marker: str, before: dict | None = None
+) -> dict:
+    """Dispatch only fixed family-specific native recovery adapters."""
+    if family == "vampi":
+        return database(name, action, before)
+    if family == "dvwa":
+        return dvwa_database(name, action, marker)
+    return restaurant_database(name, action, marker, before)
+
+
 def operate(value: dict, root: Path = JOURNALS) -> dict:
     """Require a fixed family and host-owned baseline; never accept caller SQL or rows."""
     if (
         set(value) != {"action", "identity", "family"}
         or value["action"] not in ("snapshot", "restore")
-        or value["family"] not in ("vampi", "dvwa")
+        or value["family"] not in ("vampi", "dvwa", "restaurant")
         or not re.fullmatch(r"[a-f0-9]{32}", value["identity"])
     ):
         message = "invalid declared family journal"
@@ -129,11 +141,7 @@ def operate(value: dict, root: Path = JOURNALS) -> dict:
                 "family": family,
                 "marker": marker,
                 "replicas": {
-                    name: (
-                        database(name, "snapshot")
-                        if family == "vampi"
-                        else dvwa_database(name, "snapshot", marker)
-                    )
+                    name: family_database(name, family, "snapshot", marker)
                     for name in [family + "-" + str(i) for i in range(1, 5)]
                 },
             }
@@ -156,11 +164,7 @@ def operate(value: dict, root: Path = JOURNALS) -> dict:
             message = "family journal identity changed"
             raise ValueError(message)
         after = {
-            name: (
-                database(name, "restore", before)
-                if family == "vampi"
-                else dvwa_database(name, "restore", marker)
-            )
+            name: family_database(name, family, "restore", marker, before)
             for name, before in baseline["replicas"].items()
         }
         if after != baseline["replicas"]:
