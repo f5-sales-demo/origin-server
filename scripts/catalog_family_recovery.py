@@ -46,7 +46,7 @@ else:
   if row['id'] in original and row['username']!=original[row['id']]['username']:raise ValueError('actor identity changed')
   if row['id'] not in original:
    if row['username'] in [r['username'] for r in before['users']]:raise ValueError('actor replacement ambiguous')
-   if row['username'] not in ['masstest1','masstest2','masstest3','masstest4','massput']:raise ValueError('new actor outside registration corpus')
+   if row['username'] not in ['masstest1','masstest2','masstest3','masstest4','massput',value.get('marker')]:raise ValueError('new actor outside registration corpus')
    if c.execute('SELECT COUNT(*) FROM books WHERE user_id=?',(row['id'],)).fetchone()[0]:raise ValueError('new actor has unrelated books')
    c.execute('DELETE FROM users WHERE id=? AND username=?',(row['id'],row['username']))
  for row in before['users']:
@@ -63,7 +63,9 @@ c.commit();print(json.dumps(result))
 """
 
 
-def database(container: str, action: str, before: dict | None = None) -> dict:
+def database(
+    container: str, action: str, before: dict | None = None, marker: str | None = None
+) -> dict:
     """Verify exact Compose ownership before accessing a declared replica database."""
     data = json.loads(
         subprocess.check_output(  # noqa: S603 - declared owned Docker inventory
@@ -90,7 +92,14 @@ def database(container: str, action: str, before: dict | None = None) -> dict:
             "-c",
             SQLITE_HELPER,
         ],
-        input=json.dumps({"actors": VAMPI_ACTORS, "action": action, "before": before}),
+        input=json.dumps(
+            {
+                "actors": [*VAMPI_ACTORS, *([marker] if marker else [])],
+                "action": action,
+                "before": before,
+                "marker": marker,
+            }
+        ),
         capture_output=True,
         text=True,
         check=True,
@@ -104,9 +113,9 @@ def family_database(
 ) -> dict:
     """Dispatch only fixed family-specific native recovery adapters."""
     if family == "vampi":
-        return database(name, action, before)
+        return database(name, action, before, marker)
     if family == "dvwa":
-        return dvwa_database(name, action, marker)
+        return dvwa_database(name, action, marker, before)
     if family == "restaurant":
         return restaurant_database(name, action, marker, before)
     if family == "juice-shop":

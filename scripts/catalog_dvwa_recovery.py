@@ -26,6 +26,7 @@ require '/var/www/html/config/config.inc.php';
 $c=new mysqli($_DVWA['db_server'],$_DVWA['db_user'],$_DVWA['db_password'],$_DVWA['db_database'],$_DVWA['db_port']);
 $c->set_charset('utf8mb4');$c->begin_transaction();
 $marker=$v['marker'];$pattern=$marker.'%';
+$users=$c->query('SELECT user_id,user,first_name,last_name,password FROM users WHERE user_id BETWEEN 1 AND 6 ORDER BY user_id FOR UPDATE')->fetch_all(MYSQLI_ASSOC);
 $s=$c->prepare('SELECT comment_id,name,comment FROM guestbook WHERE comment LIKE ? ORDER BY comment_id FOR UPDATE');
 $s->bind_param('s',$pattern);$s->execute();$rows=$s->get_result()->fetch_all(MYSQLI_ASSOC);
 $root='/var/www/html/hackable/uploads';
@@ -39,6 +40,25 @@ foreach(scandir($root) as $name){
 }
 ksort($files);
 if($v['action']==='restore'){
+ if(isset($v['before']['users'])){
+  foreach($v['before']['users'] as $before){
+   $found=false;
+   foreach($users as $current){
+    if($current['user_id']!==$before['user_id'])continue;
+    if($current['user']!==$before['user'])throw new Exception('DVWA user identity changed');
+    $tag='t'.substr($marker,-12);
+    foreach(['first_name','last_name'] as $field){
+     if($current[$field]!==$before[$field] && $current[$field]!==$tag)throw new Exception('DVWA unowned user field change');
+    }
+    if($current['password']!==$before['password'] && !in_array($current['password'],[md5('hacked'),md5('hacked123')],true))throw new Exception('DVWA unowned password change');
+    $d=$c->prepare('UPDATE users SET first_name=?,last_name=?,password=? WHERE user_id=? AND user=?');
+    $d->bind_param('sssis',$before['first_name'],$before['last_name'],$before['password'],$before['user_id'],$before['user']);$d->execute();$found=true;
+   }
+   if(!$found)throw new Exception('DVWA owned user missing');
+  }
+  $users=$v['before']['users'];
+ }
+
  foreach($files as $name=>$hash){
   if(!isset($v['uploads'][$name])||$v['uploads'][$name]!==$hash)throw new Exception('unowned or changed upload');
  }
@@ -55,7 +75,7 @@ if($v['action']==='restore'){
  }
  $files=[];$rows=[];
 }
-$c->commit();echo json_encode(['uploads'=>(object)$files,'guestbook'=>$rows],JSON_THROW_ON_ERROR);
+$c->commit();echo json_encode(['uploads'=>(object)$files,'guestbook'=>$rows,'users'=>$users],JSON_THROW_ON_ERROR);
 """
 
 
@@ -82,7 +102,9 @@ def validate_inventory(inventory: dict, marker: str) -> None:
         raise ValueError(message)
 
 
-def dvwa_database(container: str, action: str, marker: str) -> dict:
+def dvwa_database(
+    container: str, action: str, marker: str, before: dict | None = None
+) -> dict:
     """Verify Compose ownership and execute only fixed PHP journal operations."""
     data = json.loads(
         subprocess.check_output(  # noqa: S603 - declared Docker inventory
@@ -101,7 +123,12 @@ def dvwa_database(container: str, action: str, marker: str) -> dict:
     result = subprocess.run(  # noqa: S603 - fixed PHP helper and structured input
         ["/usr/bin/docker", "exec", "-i", container, "php", "-r", PHP_HELPER],
         input=json.dumps(
-            {"marker": marker, "action": action, "uploads": expected_uploads(marker)}
+            {
+                "marker": marker,
+                "action": action,
+                "uploads": expected_uploads(marker),
+                "before": before,
+            }
         ),
         text=True,
         capture_output=True,
@@ -110,7 +137,7 @@ def dvwa_database(container: str, action: str, marker: str) -> dict:
     )
     inventory = json.loads(result.stdout)
     validate_inventory(inventory, marker)
-    if action == "snapshot" and inventory != {"uploads": {}, "guestbook": []}:
+    if action == "snapshot" and (inventory["uploads"] or inventory["guestbook"]):
         message = "DVWA marker already has persistent data"
         raise ValueError(message)
     return inventory
