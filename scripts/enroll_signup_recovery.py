@@ -43,11 +43,11 @@ def enroll(public: str, directory: Path, kind: str = "signup") -> None:
 
 if __name__ == "__main__":
     os.umask(0o077)
-    kind = (
+    RECOVERY_KIND = (
         "family"
         if Path(sys.argv[0]).name == "enroll-family-recovery"
         else "order"
         if Path(sys.argv[0]).name == "enroll-order-recovery"
         else "signup"
     )
-    enroll(sys.stdin.read(KEY_LIMIT + 1).strip(), Path("/root/.ssh"), kind)
+    enroll(sys.stdin.read(KEY_LIMIT + 1).strip(), Path("/root/.ssh"), RECOVERY_KIND)

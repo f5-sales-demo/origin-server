@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from catalog_dvwa_recovery import dvwa_database
+
 JOURNALS = Path("/opt/origin-server/private-family-journals")
 VAMPI_ACTORS = [
     "admin",
@@ -98,7 +100,7 @@ def operate(value: dict, root: Path = JOURNALS) -> dict:
     if (
         set(value) != {"action", "identity", "family"}
         or value["action"] not in ("snapshot", "restore")
-        or value["family"] != "vampi"
+        or value["family"] not in ("vampi", "dvwa")
         or not re.fullmatch(r"[a-f0-9]{32}", value["identity"])
     ):
         message = "invalid declared family journal"
@@ -108,8 +110,10 @@ def operate(value: dict, root: Path = JOURNALS) -> dict:
         raise ValueError(message)
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     path = root / (value["identity"] + ".json")
-    active = root / "vampi.active.json"
-    lock_path = root / "vampi.lock"
+    family = value["family"]
+    marker = "tgen-" + value["identity"]
+    active = root / (family + ".active.json")
+    lock_path = root / (family + ".lock")
     if any(p.is_symlink() for p in [path, active, lock_path]):
         message = "unsafe family journal artifact"
         raise ValueError(message)
@@ -118,13 +122,19 @@ def operate(value: dict, root: Path = JOURNALS) -> dict:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if value["action"] == "snapshot":
             if active.exists():
-                message = "VAmPI family requires prior recovery"
+                message = "catalog family requires prior recovery"
                 raise ValueError(message)
             baseline = {
                 "identity": value["identity"],
+                "family": family,
+                "marker": marker,
                 "replicas": {
-                    name: database(name, "snapshot")
-                    for name in ["vampi-1", "vampi-2", "vampi-3", "vampi-4"]
+                    name: (
+                        database(name, "snapshot")
+                        if family == "vampi"
+                        else dvwa_database(name, "snapshot", marker)
+                    )
+                    for name in [family + "-" + str(i) for i in range(1, 5)]
                 },
             }
             with path.open("x") as stream:
@@ -135,14 +145,22 @@ def operate(value: dict, root: Path = JOURNALS) -> dict:
                 json.dump({"identity": value["identity"]}, stream)
             return baseline
         baseline = json.loads(path.read_text())
-        if baseline["identity"] != value["identity"] or (
-            active.exists()
-            and json.loads(active.read_text())["identity"] != value["identity"]
+        if (
+            baseline["identity"] != value["identity"]
+            or baseline["family"] != family
+            or (
+                active.exists()
+                and json.loads(active.read_text())["identity"] != value["identity"]
+            )
         ):
             message = "family journal identity changed"
             raise ValueError(message)
         after = {
-            name: database(name, "restore", before)
+            name: (
+                database(name, "restore", before)
+                if family == "vampi"
+                else dvwa_database(name, "restore", marker)
+            )
             for name, before in baseline["replicas"].items()
         }
         if after != baseline["replicas"]:
