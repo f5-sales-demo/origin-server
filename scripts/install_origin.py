@@ -169,6 +169,17 @@ def main() -> int:
             "content": (source / "scripts/browser_runtime.py").read_text(),
         }
     )
+    for name, source_file in (
+        ("catalog-order-recovery", "catalog_order_recovery.py"),
+        ("enroll-order-recovery", "enroll_signup_recovery.py"),
+    ):
+        files.append(
+            {
+                "path": "/usr/local/bin/" + name,
+                "permissions": "0755",
+                "content": (source / "scripts" / source_file).read_text(),
+            }
+        )
     receipt = {
         **source_provenance(),
         "started": time.time(),

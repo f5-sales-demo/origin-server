@@ -10,8 +10,13 @@ KEY_LIMIT = 256
 MARKER = "waap-catalog-signup-recovery"
 
 
-def enroll(public: str, directory: Path) -> None:
+def enroll(public: str, directory: Path, kind: str = "signup") -> None:
     """Preserve other root SSH keys and constrain this dedicated key to one helper."""
+    if kind not in ("signup", "order"):
+        message = "unknown synthetic recovery kind"
+        raise ValueError(message)
+    marker = MARKER if kind == "signup" else "waap-catalog-order-recovery"
+    helper = "/usr/local/bin/catalog-" + kind + "-recovery"
     if len(public) > KEY_LIMIT or not re.fullmatch(
         r"ssh-ed25519 [A-Za-z0-9+/=]{60,120}(?: [A-Za-z0-9-]+)?", public
     ):
@@ -26,14 +31,9 @@ def enroll(public: str, directory: Path) -> None:
         message = "SSH keys cannot be a symlink"
         raise ValueError(message)
     rows = path.read_text().splitlines() if path.exists() else []
-    rows = [row for row in rows if not row.endswith(" " + MARKER)]
+    rows = [row for row in rows if not row.endswith(" " + marker)]
     key = " ".join(public.split()[:2])
-    rows.append(
-        'restrict,command="/usr/local/bin/catalog-signup-recovery" '
-        + key
-        + " "
-        + MARKER
-    )
+    rows.append('restrict,command="' + helper + '" ' + key + " " + marker)
     temporary = directory / "authorized_keys.catalog.tmp"
     with temporary.open("x") as stream:
         stream.write("\n".join(rows) + "\n")
@@ -43,4 +43,8 @@ def enroll(public: str, directory: Path) -> None:
 
 if __name__ == "__main__":
     os.umask(0o077)
-    enroll(sys.stdin.read(KEY_LIMIT + 1).strip(), Path("/root/.ssh"))
+    enroll(
+        sys.stdin.read(KEY_LIMIT + 1).strip(),
+        Path("/root/.ssh"),
+        "order" if Path(sys.argv[0]).name == "enroll-order-recovery" else "signup",
+    )
