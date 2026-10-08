@@ -608,7 +608,9 @@ class OriginRuntimeTests(unittest.TestCase):
         ensure('"name2": "-seed-name2"' in source)
         ensure('"admin": "-seed-admin"' in source)
         ensure("or str(randrange(100))" in source)
-        ensure("COPY seed.py /tmp/seed.py" in files["/opt/origin-server/vampi/Dockerfile"])
+        ensure(
+            "COPY seed.py /tmp/seed.py" in files["/opt/origin-server/vampi/Dockerfile"]
+        )
 
     def test_pinned_runtime_layout_and_wsgi_entrypoint(self) -> None:
         """Check the named origin guest regression contract."""
