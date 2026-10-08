@@ -55,7 +55,7 @@
   },
   {
     "path": "/opt/origin-server/vampi/Dockerfile",
-    "content": "FROM erev0s/vampi@sha256:0a5a224b6e14ae7da6a6ea265178ff71286ff903aec74adee98f660bb0e4ca12\nRUN printf '%s\\n' 'gunicorn==26.2.0 --hash=sha256:bd249d0b3f7972f7432f0a6b6ff3b3ee2d129f70cd1ff6c09a9dd9e29a2b88e3' | pip install --no-cache-dir --require-hashes -r /dev/stdin\nRUN cd /vampi && python -c \"from gunicorn.util import import_app; import_app('config:vuln_app')\"\n"
+    "content": "FROM erev0s/vampi@sha256:0a5a224b6e14ae7da6a6ea265178ff71286ff903aec74adee98f660bb0e4ca12\nRUN printf '%s\\n' 'gunicorn==26.2.0 --hash=sha256:bd249d0b3f7972f7432f0a6b6ff3b3ee2d129f70cd1ff6c09a9dd9e29a2b88e3' | pip install --no-cache-dir --require-hashes -r /dev/stdin\nRUN cd /vampi && python -c \"from gunicorn.util import import_app; import_app('config:vuln_app')\"\nCOPY seed.py /tmp/seed.py\nRUN python /tmp/seed.py\n"
   },
   {
     "path": "/opt/origin-server/vampi-gunicorn.sh",
@@ -161,5 +161,10 @@
   {
     "path": "/etc/systemd/system/demo-dvwa-session-cleanup.timer",
     "content": "[Unit]\nDescription=Schedule showcase DVWA session expiry\n[Timer]\nOnBootSec=10m\nOnUnitActiveSec=1h\nPersistent=true\n[Install]\nWantedBy=timers.target\n"
+  },
+  {
+    "path": "/opt/origin-server/vampi/seed.py",
+    "content": "from pathlib import Path\npath = Path('/vampi/models/user_model.py')\nsource = path.read_text()\nneedle = 'randomint = str(randrange(100))'\nif source.count(needle) != 1:\n    raise ValueError('native VAmPI book seed changed')\n# Only the three declared seed accounts use fixed, disjoint titles.\nsource = source.replace(needle, 'randomint = {\"name1\": \"-seed-name1\", \"name2\": \"-seed-name2\", \"admin\": \"-seed-admin\"}.get(username) or str(randrange(100))')\npath.write_text(source)\n",
+    "permissions": "0644"
   }
 ]
