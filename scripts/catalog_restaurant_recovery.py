@@ -7,7 +7,7 @@ import json
 import re
 import subprocess
 
-SUFFIXES = ("register", "customer", "ssrf", "chain")
+SUFFIXES = ("register", "customer", "ssrf", "chain", "command", "jwt")
 SNAPSHOT = """
 SELECT json_build_object(
  'users',COALESCE((SELECT json_agg(u ORDER BY id) FROM users u WHERE id=1),'[]'),
