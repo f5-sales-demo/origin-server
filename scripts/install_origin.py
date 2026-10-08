@@ -171,12 +171,57 @@ def main() -> int:
     )
     for name, source_file in (
         ("catalog-order-recovery", "catalog_order_recovery.py"),
+        ("catalog-family-recovery", "catalog_family_recovery.py"),
+        ("enroll-family-recovery", "enroll_signup_recovery.py"),
         ("enroll-order-recovery", "enroll_signup_recovery.py"),
     ):
         files.append(
             {
                 "path": "/usr/local/bin/" + name,
                 "permissions": "0755",
+                "content": (source / "scripts" / source_file).read_text(),
+            }
+        )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_dvwa_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_dvwa_recovery.py").read_text(),
+        }
+    )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_restaurant_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_restaurant_recovery.py").read_text(),
+        }
+    )
+    files.append(
+        {
+            "path": "/opt/origin-server/juice-shop-framing/catalog-journal.cjs",
+            "permissions": "0644",
+            "content": (source / "scripts/juice_catalog_journal.cjs").read_text(),
+        }
+    )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_juice_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_juice_recovery.py").read_text(),
+        }
+    )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_dvga_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_dvga_recovery.py").read_text(),
+        }
+    )
+    for source_file in ("catalog_crapi_recovery.py", "catalog_order_recovery.py"):
+        files.append(
+            {
+                "path": "/usr/local/bin/" + source_file,
+                "permissions": "0644",
                 "content": (source / "scripts" / source_file).read_text(),
             }
         )

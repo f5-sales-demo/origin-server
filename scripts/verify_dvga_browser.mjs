@@ -16,6 +16,19 @@ const browser = await chromium.launch({
   ...(process.env.ORIGIN_CHROMIUM_PATH ? { executablePath: process.env.ORIGIN_CHROMIUM_PATH } : {}),
 });
 const context = await browser.newContext();
+// One declared replica identity spans browser navigation and API cleanup.
+if (prefix === '/dvga/') {
+  await context.addCookies([
+    {
+      name: 'dvga_replica',
+      value: crypto.randomUUID(),
+      url: origin.origin + '/dvga/',
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ]);
+}
+
 await context.route('**/*', async (route) => {
   const request = route.request();
   await route.continue({
