@@ -36,6 +36,9 @@ class AdapterTests(unittest.TestCase):
             (root / "templates").mkdir()
             (root / "core").mkdir()
             (root / "core/models.py").write_text("# synthetic model fixture\n")
+            (root / "core/helpers.py").write_text(
+                "import os\ndef run_cmd(cmd):\n    return os.popen(cmd).read()\n"
+            )
             (root / "core/security.py").write_text(
                 "import time\ndef simulate_load():\n    time.sleep(0.1)\n"
             )
