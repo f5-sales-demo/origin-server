@@ -113,3 +113,26 @@ test('marked challenge solves restore only owned state and reject foreign confli
   await assert.rejects(journal.restore(marker), /ownership ambiguous/);
   assert.equal(challenge.solved, true);
 });
+
+test('native order query preserves success and returns synchronous errors to rejection handler', async () => {
+  const { wrapOrderFind } = require('../scripts/juice_catalog_journal.cjs');
+  const query = { $where: "this.orderId === 'synthetic'" };
+  const failure = new ReferenceError('synthetic query evaluation failure');
+  const collection = {
+    find(received) {
+      assert.equal(received, query);
+      throw failure;
+    },
+  };
+  wrapOrderFind(collection);
+  await assert.rejects(collection.find(query), (error) => error === failure);
+  const native = Promise.resolve([{ orderId: 'synthetic' }]);
+  const healthy = {
+    find(received) {
+      assert.equal(received, query);
+      return native;
+    },
+  };
+  wrapOrderFind(healthy);
+  assert.equal(healthy.find(query), native);
+});
