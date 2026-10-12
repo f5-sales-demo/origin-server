@@ -164,16 +164,22 @@ function start(collection, socketPath = SOCKET) {
   return server;
 }
 
-function wrapOrderFind(collection) {
-  const find = collection.find;
-  collection.find = function (...args) {
-    try {
-      return Promise.resolve(find.apply(this, args));
-    } catch (error) {
-      // The native trackOrder handler already handles rejected datastore promises.
-      // Preserve its query and native rejection rather than dropping the connection.
-      return Promise.reject(error);
-    }
+function guardRetriever(Retriever) {
+  const retrieve = Retriever.prototype.retriveAll;
+  Retriever.prototype.retriveAll = function (filter, options) {
+    let rejectFilter;
+    const failed = new Promise((resolve, reject) => {
+      rejectFilter = reject;
+    });
+    const guarded = (document) => {
+      try {
+        return filter(document);
+      } catch (error) {
+        rejectFilter(error);
+        return false;
+      }
+    };
+    return Promise.race([retrieve.call(this, guarded, options), failed]);
   };
 }
 
@@ -190,10 +196,12 @@ function install() {
   let attached = false;
   Module._load = function (request, parent, isMain) {
     const value = original.call(this, request, parent, isMain);
+    if (request.endsWith('/DocumentRetriver') && value?.DocumentRetriver) {
+      guardRetriever(value.DocumentRetriver);
+    }
     if (value && value.challenges && Array.isArray(value.notifications)) cache = value;
     if (!attached && value && value.reviewsCollection && value.ordersCollection) {
       attached = true;
-      wrapOrderFind(value.ordersCollection);
       start(value.reviewsCollection);
     }
     if (
@@ -213,4 +221,4 @@ function install() {
   };
 }
 
-module.exports = { ReviewJournal, install, start, wrapOrderFind };
+module.exports = { ReviewJournal, install, start, guardRetriever };

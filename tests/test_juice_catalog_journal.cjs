@@ -114,41 +114,21 @@ test('marked challenge solves restore only owned state and reject foreign confli
   assert.equal(challenge.solved, true);
 });
 
-test('native order query preserves success and returns synchronous errors to rejection handler', async () => {
-  const { wrapOrderFind } = require('../scripts/juice_catalog_journal.cjs');
-  const query = { $where: "this.orderId === 'synthetic'" };
-  const failure = new ReferenceError('synthetic query evaluation failure');
-  const collection = {
-    find(received) {
-      assert.equal(received, query);
+test('native retrieval rejects asynchronous matcher errors and preserves successful query results', async () => {
+  const { guardRetriever } = require('../scripts/juice_catalog_journal.cjs');
+  class Retriever {
+    retriveAll(filter) {
+      return new Promise((resolve) => setImmediate(() => resolve([{ orderId: 'synthetic' }].filter(filter))));
+    }
+  }
+  guardRetriever(Retriever);
+  const retriever = new Retriever();
+  const failure = new ReferenceError('synthetic matcher failure');
+  await assert.rejects(
+    retriever.retriveAll(() => {
       throw failure;
-    },
-  };
-  wrapOrderFind(collection);
-  await assert.rejects(collection.find(query), (error) => error === failure);
-  const native = Promise.resolve([{ orderId: 'synthetic' }]);
-  const healthy = {
-    find(received) {
-      assert.equal(received, query);
-      return native;
-    },
-  };
-  wrapOrderFind(healthy);
-  assert.deepEqual(await healthy.find(query), await native);
-});
-
-test('native datastore thenable evaluation errors become native rejections', async () => {
-  const { wrapOrderFind } = require('../scripts/juice_catalog_journal.cjs');
-  const failure = new ReferenceError('synthetic thenable failure');
-  const collection = {
-    find() {
-      return {
-        then() {
-          throw failure;
-        },
-      };
-    },
-  };
-  wrapOrderFind(collection);
-  await assert.rejects(collection.find({ $where: 'synthetic' }), (error) => error === failure);
+    }),
+    (error) => error === failure,
+  );
+  assert.deepEqual(await retriever.retriveAll((row) => row.orderId === 'synthetic'), [{ orderId: 'synthetic' }]);
 });
