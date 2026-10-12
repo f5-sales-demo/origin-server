@@ -259,3 +259,26 @@ def test_dvwa_session_expiry_runs_outside_http_workers():
         "systemctl enable --now demo-dvwa-session-cleanup.timer"
         in files["/usr/local/bin/demo-origin-provision"]
     )
+
+
+def test_juice_country_mapping_is_declared_on_every_native_replica():
+    expected = json.loads(
+        (ROOT / "provisioning/juice-country-mapping.json").read_text()
+    )
+    assert expected["scoreBoardChallenge"] == {"name": "Canada", "code": "CA"}
+    compose = yaml.safe_load(
+        next(
+            item["content"]
+            for item in render(ROOT)
+            if item["path"].endswith("docker-compose.yml")
+        )
+    )
+    for index in range(1, 5):
+        environment = compose["services"][f"juice-shop-{index}"]["environment"]
+        override = next(
+            json.loads(value.removeprefix("NODE_CONFIG="))
+            for value in environment
+            if value.startswith("NODE_CONFIG=")
+        )
+        assert override["ctf"]["countryMapping"] == expected
+        assert override["application"]["domain"] == "example.com"
