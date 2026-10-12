@@ -134,5 +134,21 @@ test('native order query preserves success and returns synchronous errors to rej
     },
   };
   wrapOrderFind(healthy);
-  assert.equal(healthy.find(query), native);
+  assert.deepEqual(await healthy.find(query), await native);
+});
+
+test('native datastore thenable evaluation errors become native rejections', async () => {
+  const { wrapOrderFind } = require('../scripts/juice_catalog_journal.cjs');
+  const failure = new ReferenceError('synthetic thenable failure');
+  const collection = {
+    find() {
+      return {
+        then() {
+          throw failure;
+        },
+      };
+    },
+  };
+  wrapOrderFind(collection);
+  await assert.rejects(collection.find({ $where: 'synthetic' }), (error) => error === failure);
 });

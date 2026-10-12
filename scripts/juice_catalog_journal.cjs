@@ -168,7 +168,7 @@ function wrapOrderFind(collection) {
   const find = collection.find;
   collection.find = function (...args) {
     try {
-      return find.apply(this, args);
+      return Promise.resolve(find.apply(this, args));
     } catch (error) {
       // The native trackOrder handler already handles rejected datastore promises.
       // Preserve its query and native rejection rather than dropping the connection.
