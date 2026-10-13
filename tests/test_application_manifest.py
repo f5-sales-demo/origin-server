@@ -266,6 +266,14 @@ def test_juice_country_mapping_is_declared_on_every_native_replica():
         (ROOT / "provisioning/juice-country-mapping.json").read_text()
     )
     assert expected["scoreBoardChallenge"] == {"name": "Canada", "code": "CA"}
+    assert len(expected) == 116
+    assert expected["chatbotGreedyInjectionChallenge"] == {
+        "name": "Norway", "code": "NO"
+    }
+    assert all(
+        isinstance(country["name"], str) and isinstance(country["code"], str)
+        for country in expected.values()
+    )
     compose = yaml.safe_load(
         next(
             item["content"]
