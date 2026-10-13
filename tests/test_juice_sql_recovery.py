@@ -16,7 +16,7 @@ from catalog_juice_recovery import NODE_SQL
 def seed(path):
     with sqlite3.connect(path) as db:
         db.executescript("""
-CREATE TABLE Users(id INTEGER PRIMARY KEY,email TEXT,password TEXT,lastLoginIp TEXT,profileImage TEXT,updatedAt TEXT);
+CREATE TABLE Users(id INTEGER PRIMARY KEY,email TEXT,password TEXT,lastLoginIp TEXT,profileImage TEXT,updatedAt TEXT,username TEXT);
 CREATE TABLE Feedbacks(id INTEGER PRIMARY KEY,UserId INTEGER,comment TEXT,rating INTEGER,updatedAt TEXT);
 CREATE TABLE Baskets(id INTEGER PRIMARY KEY,UserId INTEGER);
 CREATE TABLE BasketItems(id INTEGER PRIMARY KEY,ProductId INTEGER,BasketId INTEGER,quantity INTEGER,createdAt TEXT,updatedAt TEXT);
@@ -36,8 +36,8 @@ CREATE TABLE SecurityAnswers(UserId INTEGER);
             ["admin@example.com", "jim@example.com", "bender@example.com"], 1
         ):
             db.execute(
-                "INSERT INTO Users VALUES(?,?,?,?,?,?)",
-                (i, email, "original", "127.0.0.1", "default.svg", "original"),
+                "INSERT INTO Users VALUES(?,?,?,?,?,?,?)",
+                (i, email, "original", "127.0.0.1", "default.svg", "original", "seed"),
             )
             db.execute("INSERT INTO Baskets VALUES(?,?)", (i, i))
             db.execute(
@@ -45,7 +45,7 @@ CREATE TABLE SecurityAnswers(UserId INTEGER);
                 (i, i, "original", 5, "original"),
             )
         db.execute(
-            "INSERT INTO Users VALUES(99,'foreign@example.com','private','foreign','foreign','foreign')"
+            "INSERT INTO Users VALUES(99,'foreign@example.com','private','foreign','foreign','foreign','foreign')"
         )
 
 
@@ -86,9 +86,15 @@ close(){this.db.close()}
             "UPDATE Feedbacks SET comment=?,rating=1 WHERE id=1", (marker + ":changed",)
         )
         sql.execute(
-            "INSERT INTO Users VALUES(100,?,'synthetic','0.0.0.0','default','new')",
+            "INSERT INTO Users VALUES(100,?,'synthetic','0.0.0.0','default','new','')",
             (marker + "@example.com",),
         )
+        sql.execute(
+            "INSERT INTO Users VALUES(101,'scanner-varied@example.com','synthetic','0.0.0.0','default','new',?)",
+            (marker,),
+        )
+        sql.execute("INSERT INTO Baskets VALUES(101,101)")
+        sql.execute("INSERT INTO Wallets VALUES(101,0)")
         sql.execute("INSERT INTO Baskets VALUES(100,100)")
         sql.execute("INSERT INTO Wallets VALUES(100,0)")
         sql.execute("INSERT INTO BasketItems VALUES(1,1,1,1,'new','new')")
