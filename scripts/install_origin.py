@@ -101,6 +101,20 @@ def main() -> int:
             },
         ]
     )
+    files.extend(
+        [
+            {
+                "path": "/opt/origin-server/docker-packages.json",
+                "content": (source / "provisioning/docker-packages.json").read_text(),
+                "permissions": "0644",
+            },
+            {
+                "path": "/usr/local/bin/origin-install-docker-packages",
+                "content": (source / "scripts/install_docker_packages.py").read_text(),
+                "permissions": "0755",
+            },
+        ]
+    )
     files.append(
         {
             "path": "/usr/local/bin/crapi_signup_cleanup.py",
