@@ -115,6 +115,21 @@ def main() -> int:
             },
         ]
     )
+    files.extend(
+        [
+            {
+                "path": "/opt/origin-server/dvwa-build-packages.json",
+                "content": (
+                    source / "provisioning/dvwa-build-packages.json"
+                ).read_text(),
+            },
+            {
+                "path": "/usr/local/bin/origin-prepare-dvwa-packages",
+                "permissions": "0755",
+                "content": (source / "scripts/prepare_dvwa_packages.py").read_text(),
+            },
+        ]
+    )
     files.append(
         {
             "path": "/usr/local/bin/crapi_signup_cleanup.py",
