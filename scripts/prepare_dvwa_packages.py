@@ -118,6 +118,7 @@ def download(record: dict, directory: Path) -> Path:
         raise ValueError(message)
     path = directory / (record["package"] + ".deb")
     path.write_bytes(body)
+    path.chmod(0o644)
     for field, key in [
         ("Package", "package"),
         ("Version", "version"),
@@ -146,6 +147,7 @@ def prepare(lock: Path = LOCK, destination: Path = DESTINATION) -> None:
             for record, path in zip(records, paths, strict=True)
         )
         (staging / "SHA256SUMS").write_text(checksums)
+        (staging / "SHA256SUMS").chmod(0o644)
         destination.mkdir(exist_ok=True)
         for existing in destination.iterdir():
             if existing.name not in {path.name for path in paths} | {"SHA256SUMS"}:
