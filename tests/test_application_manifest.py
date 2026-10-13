@@ -282,3 +282,15 @@ def test_juice_country_mapping_is_declared_on_every_native_replica():
         )
         assert override["ctf"]["countryMapping"] == expected
         assert override["application"]["domain"] == "example.com"
+
+
+def test_juice_proxy_preserves_raw_target_before_native_parameter_decoding():
+    files = {item["path"]: item["content"] for item in render(ROOT)}
+    nginx = files["/etc/nginx/nginx.conf"]
+    site = files["/etc/nginx/sites-available/origin-server"]
+    assert "map $request_uri $juice_native_uri" in nginx
+    assert "~^/juice-shop(/.*)$ $1;" in nginx
+    juice = site.split("location /juice-shop/ {", 1)[1].split("}", 1)[0]
+    assert "proxy_pass http://juice_shop$juice_native_uri;" in juice
+    assert "proxy_pass http://juice_shop/;" not in juice
+    assert "proxy_pass http://dvwa/;" in site

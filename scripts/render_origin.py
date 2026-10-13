@@ -76,6 +76,20 @@ def bind_csd_assets(root: Path, files: list[dict], by_path: dict) -> None:
     )
 
 
+def bind_juice_raw_target(by_path: dict) -> None:
+    """Preserve encoded path segments for the native Juice Shop route decoder."""
+    nginx = by_path["/etc/nginx/nginx.conf"]
+    marker = "    upstream juice_shop {"
+    nginx["content"] = nginx["content"].replace(
+        marker,
+        "    map $request_uri $juice_native_uri {\n"
+        '        default "";\n'
+        "        ~^/juice-shop(/.*)$ $1;\n"
+        "    }\n" + marker,
+        1,
+    )
+
+
 def render(root: Path) -> list[dict]:
     """Reuse pinned provisioning files while deriving application declarations."""
     manifest = load_manifest(root / "provisioning/applications.json")
@@ -123,9 +137,12 @@ def render(root: Path) -> list[dict]:
             if "proxy_read_timeout_seconds" in app
             else ""
         )
+        # A URI suffix makes nginx decode/re-encode path segments before dispatch.
+        # Juice Shop's native parameter decoder must receive the original bytes.
+        upstream += "$juice_native_uri" if app["id"] == "juice-shop" else "/"
         routes.append(f"""    location = {prefix} {{ return 308 {app["prefix"]}; }}
     location {app["prefix"]} {{
-        proxy_pass {upstream}/;
+        proxy_pass {upstream};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
@@ -137,6 +154,7 @@ def render(root: Path) -> list[dict]:
         proxy_redirect ~^/(?!{app["id"]}(?:/|$))(.*)$ {prefix}/$1;
         proxy_cookie_path / {app["prefix"]};
 {read_timeout}{affinity}    }}""")
+    bind_juice_raw_target(by_path)
     site = by_path["/etc/nginx/sites-available/origin-server"]["content"]
     second = site[site.index("server {", site.index("server {") + 1) :]
     health = json.dumps(
