@@ -49,6 +49,44 @@ def bind_juice_adapter(by_path: dict) -> None:
     compose_file["content"] = content
 
 
+def bind_dvga_wsgi(root: Path, files: list[dict], by_path: dict) -> None:
+    """Declare the native GraphQL worker adapter in every DVGA image."""
+    files.append(
+        {
+            "path": "/opt/origin-server/dvga-adapter/dvga_wsgi.py",
+            "content": (root / "scripts/dvga_wsgi.py").read_text(),
+            "permissions": "0644",
+        }
+    )
+    dockerfile = by_path["/opt/origin-server/dvga-adapter/Dockerfile"]
+    dockerfile["content"] = dockerfile["content"].replace(
+        "COPY adapt.py /tmp/adapt.py",
+        "COPY adapt.py /tmp/adapt.py\nCOPY dvga_wsgi.py /opt/dvga/dvga_wsgi.py",
+    )
+    adapter = by_path["/opt/origin-server/dvga-adapter/adapt.py"]
+    needle = "app.wsgi_app = ProxyFix(app.wsgi_app, x_prefix=1)"
+    if adapter["content"].count(needle) != 1:
+        message = "Native DVGA application wrapper changed"
+        raise ValueError(message)
+    adapter["content"] = adapter["content"].replace(
+        needle,
+        "from dvga_wsgi import NativeGraphQLThreadIsolation\\n"
+        "app.wsgi_app = ProxyFix(NativeGraphQLThreadIsolation(app.wsgi_app), x_prefix=1)",
+    )
+
+    adapter["content"] = (
+        adapter["content"]
+        .replace(
+            "from gevent import subprocess as cooperative_subprocess",
+            "from dvga_wsgi import native_command_output",
+        )
+        .replace(
+            "cooperative_subprocess.Popen(cmd, shell=True, stdout=cooperative_subprocess.PIPE, text=True).communicate()[0]",
+            "native_command_output(cmd)",
+        )
+    )
+
+
 def bind_csd_assets(root: Path, files: list[dict], by_path: dict) -> None:
     """Install exact pinned native scripts through the owned CSD static route."""
     asset_root = root / "provisioning/csd-assets"
@@ -95,6 +133,7 @@ def render(root: Path) -> list[dict]:
     manifest = load_manifest(root / "provisioning/applications.json")
     files = json.loads((root / "provisioning/files.json").read_text())
     by_path = {item["path"]: item for item in files}
+    bind_dvga_wsgi(root, files, by_path)
     bind_csd_assets(root, files, by_path)
     bind_juice_adapter(by_path)
     app_list = manifest["applications"]
