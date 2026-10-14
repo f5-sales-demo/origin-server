@@ -58,12 +58,32 @@ def bind_dvga_wsgi(root: Path, files: list[dict], by_path: dict) -> None:
             "permissions": "0644",
         }
     )
+    files.append(
+        {
+            "path": "/opt/origin-server/dvga-adapter/dvga_startup.py",
+            "content": (root / "scripts/dvga_startup.py").read_text(),
+            "permissions": "0644",
+        }
+    )
     dockerfile = by_path["/opt/origin-server/dvga-adapter/Dockerfile"]
     dockerfile["content"] = dockerfile["content"].replace(
         "COPY adapt.py /tmp/adapt.py",
-        "COPY adapt.py /tmp/adapt.py\nCOPY dvga_wsgi.py /opt/dvga/dvga_wsgi.py",
+        "COPY adapt.py /tmp/adapt.py\nCOPY dvga_wsgi.py /opt/dvga/dvga_wsgi.py\n"
+        "COPY dvga_startup.py /opt/dvga/dvga_startup.py",
     )
     adapter = by_path["/opt/origin-server/dvga-adapter/adapt.py"]
+    adapter["content"] += """
+# Ordinary startup preserves native records; setup.py remains the explicit reset.
+source = app.read_text()
+needle = 'os.popen("python3 setup.py").read()'
+if source.count(needle) != 1:
+    raise ValueError('native DVGA startup initializer changed')
+replacement = ('from dvga_startup import initialize_database; '
+               'initialize_database(config.SQLALCHEMY_FILE, Path(__file__).resolve().with_name("setup.py"))')
+source = source.replace(needle, replacement)
+source = 'from pathlib import Path\\n' + source
+app.write_text(source)
+"""
     needle = "app.wsgi_app = ProxyFix(app.wsgi_app, x_prefix=1)"
     if adapter["content"].count(needle) != 1:
         message = "Native DVGA application wrapper changed"
