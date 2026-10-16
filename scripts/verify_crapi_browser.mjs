@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { captureScreenshot, evidenceMode } from './browser_evidence.mjs';
 
 const [base, output] = process.argv.slice(2);
 if (!base || !output) throw new Error('Application origin and private output directory are required');
@@ -12,6 +13,7 @@ if (!['http:', 'https:'].includes(origin.protocol) || origin.username || origin.
   throw new Error('HTTP application origin without credentials is required');
 fs.mkdirSync(output, { recursive: true, mode: 0o700 });
 const receipt = {
+  evidence_mode: evidenceMode,
   source_sha256: crypto
     .createHash('sha256')
     .update(fs.readFileSync(new URL(import.meta.url)))
@@ -95,9 +97,7 @@ async function rendered(name, route, selector, terms) {
   const images = await page
     .locator('img')
     .evaluateAll((elements) => elements.map((image) => ({ loaded: image.complete && image.naturalWidth > 0 })));
-  const screenshot = `${name}.png`;
-  await page.screenshot({ path: path.join(output, screenshot), fullPage: true });
-  fs.chmodSync(path.join(output, screenshot), 0o600);
+  const screenshot = await captureScreenshot(page, output, `${name}.png`);
   receipt.checks.push({ name, path: route, passed: images.every((image) => image.loaded), screenshot });
 }
 try {
