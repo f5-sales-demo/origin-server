@@ -96,3 +96,37 @@ def test_load_adapter_preserves_delay_and_iteration_count():
     assert "cooperative_sleep(0.1)" in source
     assert "from gevent import sleep as cooperative_sleep" in source
     assert "loads =" not in source
+
+
+def test_native_command_runner_uses_cooperative_subprocess_without_payload_changes():
+    files = json.loads((ROOT / "provisioning/files.json").read_text())
+    source = next(
+        item["content"]
+        for item in files
+        if item["path"].endswith("dvga-adapter/adapt.py")
+    )
+    assert "from gevent import subprocess as cooperative_subprocess" in source
+    assert "Popen(cmd, shell=True" in source
+    assert ".communicate()[0]" in source
+    assert "native DVGA command runner changed" in source
+
+
+def test_slow_native_command_yields_to_legitimate_serving_work():
+    script = """
+import gevent
+from gevent import subprocess
+completed = []
+def command():
+    value = subprocess.Popen(["/bin/sh", "-c", "sleep 0.2; printf synthetic"], stdout=subprocess.PIPE, text=True).communicate()[0]
+    completed.append(value)
+job = gevent.spawn(command)
+gevent.sleep(0.05)
+assert not completed
+completed.append("legitimate")
+job.join(timeout=2)
+assert completed == ["legitimate", "synthetic"]
+"""
+    result = subprocess.run(  # noqa: S603 - fixed local concurrency regression
+        [sys.executable, "-c", script], capture_output=True, text=True, check=False
+    )
+    assert result.returncode == 0, result.stderr

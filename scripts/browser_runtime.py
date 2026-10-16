@@ -105,6 +105,7 @@ def main() -> int:
     parser.add_argument("--base", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--native", action="store_true")
+    parser.add_argument("--text-only", action="store_true")
     args = parser.parse_args()
     if args.native and args.kind not in ("dvwa", "dvga", "csd", "httpbin", "juice"):
         parser.error(
@@ -155,6 +156,8 @@ def main() -> int:
         source + ":/opt/origin-browser/source:ro",
         "--volume",
         "/opt/origin-server/applications.json:/manifest.json:ro",
+        "--env",
+        "ORIGIN_EVIDENCE_MODE=" + ("text-only" if args.text_only else "screenshots"),
         "origin-browser-verifier",
         "node",
         "/opt/origin-browser/source/" + script,
@@ -169,6 +172,11 @@ def main() -> int:
         "cleanup": False,
         "source_commit": provenance.get("source_commit"),
         "native": args.native,
+        "evidence_mode": "text-only" if args.text_only else "screenshots",
+        "evidence_helper_sha256": hashlib.sha256(
+            Path(source, "browser_evidence.mjs").read_bytes()
+        ).hexdigest(),
+        "screenshots_reviewed": False,
         "verifier_sha256": hashlib.sha256(
             Path(source, script).read_bytes()
         ).hexdigest(),

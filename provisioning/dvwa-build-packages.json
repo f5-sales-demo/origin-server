@@ -1,0 +1,167 @@
+{
+  "schema_version": 1,
+  "snapshot": "20261012T000000Z",
+  "base_image": "php@sha256:584e584083bada479f0ee733a3025722a68e366eb721e618d1b6a252e4ff45c5",
+  "packages": [
+    {
+      "package": "libelf1t64",
+      "version": "0.192-4",
+      "architecture": "amd64",
+      "sha256": "94497b7e17b6f574a0605b380d454e20d3f01a9c63b70c2a2263f679d30053e1",
+      "size": 189408,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/e/elfutils/libelf1t64_0.192-4_amd64.deb"
+    },
+    {
+      "package": "libbpf1",
+      "version": "1:1.5.0-3",
+      "architecture": "amd64",
+      "sha256": "04c96ead3024888d80d08c8d08cc8cf4589f4614627acc69519f87ffb5adc1c2",
+      "size": 168832,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/libb/libbpf/libbpf1_1.5.0-3_amd64.deb"
+    },
+    {
+      "package": "libmnl0",
+      "version": "1.0.5-3",
+      "architecture": "amd64",
+      "sha256": "4ec9c1096e0b954e3bdb03a62314ee7f49999045d3d55be3e4ded520ffc9baf5",
+      "size": 11928,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/libm/libmnl/libmnl0_1.0.5-3_amd64.deb"
+    },
+    {
+      "package": "libtirpc-common",
+      "version": "1.3.6+ds-1",
+      "architecture": "all",
+      "sha256": "300f582e2c9151a8d329568c705cadc76252c417147312fe331c4560d2c7a6c3",
+      "size": 11004,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/libt/libtirpc/libtirpc-common_1.3.6%2bds-1_all.deb"
+    },
+    {
+      "package": "libtirpc3t64",
+      "version": "1.3.6+ds-1",
+      "architecture": "amd64",
+      "sha256": "ef4536c09bf5063554310e22d586ae90990100ba66d2fe7c35660e9e658913b6",
+      "size": 83300,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/libt/libtirpc/libtirpc3t64_1.3.6%2bds-1_amd64.deb"
+    },
+    {
+      "package": "libxtables12",
+      "version": "1.8.11-2",
+      "architecture": "amd64",
+      "sha256": "4de5aa59faef5e98d6ba9f5f521a915be5641f224f597862f8d29e8319e8db16",
+      "size": 31896,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/i/iptables/libxtables12_1.8.11-2_amd64.deb"
+    },
+    {
+      "package": "libcap2-bin",
+      "version": "1:2.75-10+deb13u1+b3",
+      "architecture": "amd64",
+      "sha256": "6404b8ee315ce3eb8e273981650e419ff0e91aed5213d4975a6895f98944ea80",
+      "size": 36456,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/libc/libcap2/libcap2-bin_2.75-10%2bdeb13u1%2bb3_amd64.deb"
+    },
+    {
+      "package": "iproute2",
+      "version": "6.15.0-1",
+      "architecture": "amd64",
+      "sha256": "7b2dcade4a83ded723fcab21c5a53c47f29352c9c5e1661a089a1e481b3fb48a",
+      "size": 1089184,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/i/iproute2/iproute2_6.15.0-1_amd64.deb"
+    },
+    {
+      "package": "iputils-ping",
+      "version": "3:20240905-3",
+      "architecture": "amd64",
+      "sha256": "a78f6118527796bde8c34d410dda1e5457f4e4e2de080a0b852cd59d7058ef6f",
+      "size": 51248,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/i/iputils/iputils-ping_20240905-3_amd64.deb"
+    },
+    {
+      "package": "libbrotli-dev",
+      "version": "1.1.0-2+b7",
+      "architecture": "amd64",
+      "sha256": "7149124783ccc38764f8b869ea2e4bde319c3d0872b248b7ab472b47d41c5176",
+      "size": 315872,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/b/brotli/libbrotli-dev_1.1.0-2%2bb7_amd64.deb"
+    },
+    {
+      "package": "libbz2-dev",
+      "version": "1.0.8-6",
+      "architecture": "amd64",
+      "sha256": "b395471bf69087a18a6baa04d68a9d50497b20f8a2602d9729c7069f820bbe6b",
+      "size": 31368,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/b/bzip2/libbz2-dev_1.0.8-6_amd64.deb"
+    },
+    {
+      "package": "libpng16-16t64",
+      "version": "1.6.48-1+deb13u6",
+      "architecture": "amd64",
+      "sha256": "0f8034d1c2547760430c81e8d87e5d6acd533a3493c80cf76dbecd0343b6773c",
+      "size": 283368,
+      "url": "https://snapshot.debian.org/archive/debian-security/20261012T000000Z/pool/updates/main/libp/libpng1.6/libpng16-16t64_1.6.48-1%2bdeb13u6_amd64.deb"
+    },
+    {
+      "package": "libfreetype6",
+      "version": "2.13.3+dfsg-1+deb13u1",
+      "architecture": "amd64",
+      "sha256": "e4947f3291528f03d574f2b01d5c5fc45c58c47480f32888a5cdf0f231ab584e",
+      "size": 452308,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/f/freetype/libfreetype6_2.13.3%2bdfsg-1%2bdeb13u1_amd64.deb"
+    },
+    {
+      "package": "zlib1g-dev",
+      "version": "1:1.3.dfsg+really1.3.1-1+b1",
+      "architecture": "amd64",
+      "sha256": "76ed5c858e1aef38b7be93acce5910e457e77bd6271471b9d05fb42e78826224",
+      "size": 919744,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/z/zlib/zlib1g-dev_1.3.dfsg%2breally1.3.1-1%2bb1_amd64.deb"
+    },
+    {
+      "package": "libpng-dev",
+      "version": "1.6.48-1+deb13u6",
+      "architecture": "amd64",
+      "sha256": "c340b3a68d3e494290db3952293cbb64f01a8ea1ac75ae0ac6980a3418782415",
+      "size": 367276,
+      "url": "https://snapshot.debian.org/archive/debian-security/20261012T000000Z/pool/updates/main/libp/libpng1.6/libpng-dev_1.6.48-1%2bdeb13u6_amd64.deb"
+    },
+    {
+      "package": "libfreetype-dev",
+      "version": "2.13.3+dfsg-1+deb13u1",
+      "architecture": "amd64",
+      "sha256": "f58107859d9fa44206e64cf35bdbd4febdec66a33e456ce2e5e3712f01b6c895",
+      "size": 622868,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/f/freetype/libfreetype-dev_2.13.3%2bdfsg-1%2bdeb13u1_amd64.deb"
+    },
+    {
+      "package": "libjpeg62-turbo",
+      "version": "1:2.1.5-4",
+      "architecture": "amd64",
+      "sha256": "5504299ad0e3c0a9ca9f962a68a650a040db52f9f416a109e74df48d55601d3f",
+      "size": 168152,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/libj/libjpeg-turbo/libjpeg62-turbo_2.1.5-4_amd64.deb"
+    },
+    {
+      "package": "libjpeg62-turbo-dev",
+      "version": "1:2.1.5-4",
+      "architecture": "amd64",
+      "sha256": "e687e3c8b24a3aa74974928b8e0b07f6df2442187492d85cbcea7dacd91e3aba",
+      "size": 291604,
+      "url": "https://snapshot.debian.org/archive/debian/20261012T000000Z/pool/main/libj/libjpeg-turbo/libjpeg62-turbo-dev_2.1.5-4_amd64.deb"
+    },
+    {
+      "package": "nginx-common",
+      "version": "1.26.3-3+deb13u9",
+      "architecture": "all",
+      "sha256": "d0eab69fa763305d11bd623418118b61da1738aacd1390cd4465b7773289df1c",
+      "size": 111548,
+      "url": "https://snapshot.debian.org/archive/debian-security/20261012T000000Z/pool/updates/main/n/nginx/nginx-common_1.26.3-3%2bdeb13u9_all.deb"
+    },
+    {
+      "package": "nginx",
+      "version": "1.26.3-3+deb13u9",
+      "architecture": "amd64",
+      "sha256": "29258fa0e2f4c9162a95eda2c36cf84ee8f57289a14c58fb7e6d3868c61a5db3",
+      "size": 613276,
+      "url": "https://snapshot.debian.org/archive/debian-security/20261012T000000Z/pool/updates/main/n/nginx/nginx_1.26.3-3%2bdeb13u9_amd64.deb"
+    }
+  ]
+}

@@ -601,6 +601,17 @@ class OriginRuntimeTests(unittest.TestCase):
             ensure_equal(g.main(), 1)
         ensure(not json.loads(output.getvalue())["ready"])
 
+    def test_vampi_seed_book_titles_are_deterministic_and_disjoint(self) -> None:
+        files = embedded_files()
+        source = files["/opt/origin-server/vampi/seed.py"]
+        ensure('"name1": "-seed-name1"' in source)
+        ensure('"name2": "-seed-name2"' in source)
+        ensure('"admin": "-seed-admin"' in source)
+        ensure("or str(randrange(100))" in source)
+        ensure(
+            "COPY seed.py /tmp/seed.py" in files["/opt/origin-server/vampi/Dockerfile"]
+        )
+
     def test_pinned_runtime_layout_and_wsgi_entrypoint(self) -> None:
         """Check the named origin guest regression contract."""
         files = embedded_files()

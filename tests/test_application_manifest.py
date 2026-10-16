@@ -129,6 +129,10 @@ def test_dvga_adapter_uses_request_prefix_for_native_and_proxy_routes(tmp_path):
         if item["path"].endswith("dvga-adapter/adapt.py")
     )
     (tmp_path / "core").mkdir()
+    (tmp_path / "core/models.py").write_text("# synthetic model fixture\n")
+    (tmp_path / "core/helpers.py").write_text(
+        "import os\ndef run_cmd(cmd):\n    return os.popen(cmd).read()\n"
+    )
     (tmp_path / "core/security.py").write_text("import time\ntime.sleep(0.1)\n")
     (tmp_path / "app.py").write_text('app = Flask(__name__, static_folder="static/")')
     (tmp_path / "templates").mkdir()
@@ -255,3 +259,47 @@ def test_dvwa_session_expiry_runs_outside_http_workers():
         "systemctl enable --now demo-dvwa-session-cleanup.timer"
         in files["/usr/local/bin/demo-origin-provision"]
     )
+
+
+def test_juice_country_mapping_is_declared_on_every_native_replica():
+    expected = json.loads(
+        (ROOT / "provisioning/juice-country-mapping.json").read_text()
+    )
+    assert expected["scoreBoardChallenge"] == {"name": "Canada", "code": "CA"}
+    assert len(expected) == 116
+    assert expected["chatbotGreedyInjectionChallenge"] == {
+        "name": "Norway",
+        "code": "NO",
+    }
+    assert all(
+        isinstance(country["name"], str) and isinstance(country["code"], str)
+        for country in expected.values()
+    )
+    compose = yaml.safe_load(
+        next(
+            item["content"]
+            for item in render(ROOT)
+            if item["path"].endswith("docker-compose.yml")
+        )
+    )
+    for index in range(1, 5):
+        environment = compose["services"][f"juice-shop-{index}"]["environment"]
+        override = next(
+            json.loads(value.removeprefix("NODE_CONFIG="))
+            for value in environment
+            if value.startswith("NODE_CONFIG=")
+        )
+        assert override["ctf"]["countryMapping"] == expected
+        assert override["application"]["domain"] == "example.com"
+
+
+def test_juice_proxy_preserves_raw_target_before_native_parameter_decoding():
+    files = {item["path"]: item["content"] for item in render(ROOT)}
+    nginx = files["/etc/nginx/nginx.conf"]
+    site = files["/etc/nginx/sites-available/origin-server"]
+    assert "map $request_uri $juice_native_uri" in nginx
+    assert "~^/juice-shop(/.*)$ $1;" in nginx
+    juice = site.split("location /juice-shop/ {", 1)[1].split("}", 1)[0]
+    assert "proxy_pass http://juice_shop$juice_native_uri;" in juice
+    assert "proxy_pass http://juice_shop/;" not in juice
+    assert "proxy_pass http://dvwa/;" in site
