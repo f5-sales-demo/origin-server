@@ -17,8 +17,8 @@ application_receipts = import_module("application_receipts")
 browser_observations = application_receipts.browser_observations
 signup_observations = application_receipts.signup_observations
 main = import_module("browser_runtime").main
-NODE = shutil.which("node")
-assert NODE is not None
+NODE = shutil.which("node") or ""
+assert NODE
 
 
 def test_text_only_capture_never_calls_browser_or_creates_image(tmp_path):
