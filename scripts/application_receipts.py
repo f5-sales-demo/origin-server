@@ -201,7 +201,11 @@ def http_observations(output: Path, fixture: Path, layers: list) -> list[dict]:
 
 
 def browser_observations(
-    output: Path, manifest: dict, layers: list, provenance: dict
+    output: Path,
+    manifest: dict,
+    layers: list,
+    provenance: dict,
+    text_only: bool = False,
 ) -> list[dict]:
     """Run each declared browser kind on every native and published target."""
     observations = []
@@ -223,6 +227,8 @@ def browser_observations(
                 "--output",
                 str(directory),
             ]
+            if text_only:
+                command.append("--text-only")
             if layer.startswith("native-") and kind in {
                 "juice",
                 "dvwa",
@@ -276,7 +282,11 @@ def browser_observations(
 
 
 def signup_observations(
-    output: Path, manifest: dict, layers: list, provenance: dict
+    output: Path,
+    manifest: dict,
+    layers: list,
+    provenance: dict,
+    text_only: bool = False,
 ) -> list[dict]:
     """Signup is a separate stateful browser slice with mandatory recovery."""
     observations = []
@@ -295,6 +305,8 @@ def signup_observations(
             "--output",
             str(directory),
         ]
+        if text_only:
+            command.append("--text-only")
         with (output / ("crapi-signup-" + layer + ".log")).open("w") as log:
             subprocess.run(  # noqa: S603 - installed scoped signup verifier
                 command, stdout=log, stderr=subprocess.STDOUT, check=False, timeout=1000
@@ -390,6 +402,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--domain", action="append", required=True)
+    parser.add_argument("--text-only", action="store_true")
     args = parser.parse_args()
     if len(args.domain) != DOMAIN_COUNT:
         parser.error("two published domains required")
@@ -420,8 +433,12 @@ def main() -> int:
     )
     observations.extend(http_observations(output, fixture, layers))
     observations.extend(csd_replica_state(layers))
-    observations.extend(browser_observations(output, manifest, layers, provenance))
-    observations.extend(signup_observations(output, manifest, layers, provenance))
+    observations.extend(
+        browser_observations(output, manifest, layers, provenance, args.text_only)
+    )
+    observations.extend(
+        signup_observations(output, manifest, layers, provenance, args.text_only)
+    )
     final_provenance = json.loads(
         Path("/opt/origin-server/install-receipt.json").read_text()
     )
@@ -432,6 +449,7 @@ def main() -> int:
         source_commit=provenance["source_commit"],
         archive_sha256=provenance["archive_sha256"],
         completed=time.time(),
+        evidence_mode="text-only" if args.text_only else "screenshots",
         screenshots_reviewed=False,
         accepted=False,
         observations=observations,

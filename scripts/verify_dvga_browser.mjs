@@ -4,13 +4,21 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { captureScreenshot, evidenceMode } from './browser_evidence.mjs';
 
 const [base, output, prefix = '/dvga/'] = process.argv.slice(2);
 if (!base || !output || !['/', '/dvga/'].includes(prefix)) throw new Error('Declared DVGA route required');
 const origin = new URL(base);
 const title = `Synthetic Browser ${crypto.randomUUID()}`;
 fs.mkdirSync(output, { recursive: true, mode: 0o700 });
-const receipt = { checks: [], errors: [], fixture_restored: false, browser_closed: false, accepted: false };
+const receipt = {
+  evidence_mode: evidenceMode,
+  checks: [],
+  errors: [],
+  fixture_restored: false,
+  browser_closed: false,
+  accepted: false,
+};
 const browser = await chromium.launch({
   headless: true,
   ...(process.env.ORIGIN_CHROMIUM_PATH ? { executablePath: process.env.ORIGIN_CHROMIUM_PATH } : {}),
@@ -64,9 +72,7 @@ async function checked(name, terms) {
       }),
     prefix,
   );
-  const screenshot = `${name}.png`;
-  await page.screenshot({ path: path.join(output, screenshot), fullPage: true });
-  fs.chmodSync(path.join(output, screenshot), 0o600);
+  const screenshot = await captureScreenshot(page, output, `${name}.png`);
   receipt.checks.push({ name, passed: images && !escaped, screenshot });
 }
 async function graphql(query, variables = {}) {
@@ -133,9 +139,7 @@ try {
     title,
     { timeout: 15000 },
   );
-  const screenshot = 'subscription-delivery.png';
-  await subscriber.screenshot({ path: path.join(output, screenshot), fullPage: true });
-  fs.chmodSync(path.join(output, screenshot), 0o600);
+  const screenshot = await captureScreenshot(subscriber, output, 'subscription-delivery.png');
   receipt.checks.push({ name: 'subscription-delivery', passed: true, screenshot });
   await page.locator(`a[href="${prefix}public_pastes"]`).click();
   await checked('persisted-paste', [title, 'Synthetic browser fixture content']);

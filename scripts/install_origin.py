@@ -167,6 +167,13 @@ def main() -> int:
             "content": (source / "scripts/verify_crapi_browser.mjs").read_text(),
         }
     )
+    files.append(
+        {
+            "path": "/usr/local/bin/browser_evidence.mjs",
+            "permissions": "0644",
+            "content": (source / "scripts/browser_evidence.mjs").read_text(),
+        }
+    )
     for name in ("Dockerfile", "package.json", "package-lock.json"):
         files.append(
             {
@@ -175,6 +182,7 @@ def main() -> int:
             }
         )
     for name in (
+        "browser_evidence.mjs",
         "verify_content.mjs",
         "verify_crapi_browser.mjs",
         "verify_juice_browser.mjs",
