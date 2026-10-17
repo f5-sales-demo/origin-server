@@ -1,5 +1,8 @@
 data "azurerm_client_config" "certificate_operator" {
 }
+# Authorized isolated acceptance must exercise complete teardown through reviewed saved plans.
+# Purge protection retains seven-day recovery; a hard destroy guard would prevent that cleanup.
+# tflint-ignore: azurerm_resources_missing_prevent_destroy
 resource "azurerm_key_vault" "certificate_origin" {
   name                          = var.config.vault_name
   location                      = var.location
