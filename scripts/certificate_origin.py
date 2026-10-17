@@ -100,6 +100,8 @@ def tls_context(material: dict[str, str]) -> tuple[ssl.SSLContext, str]:
     """Load TLS keys through an anonymous memory file; never write them to disk."""
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.options |= ssl.OP_NO_TICKET
+    context.num_tickets = 0
     context.verify_mode = ssl.CERT_REQUIRED
     context.load_verify_locations(cadata=material["client_ca"])
     if sys.platform != "linux":

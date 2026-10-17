@@ -20,3 +20,7 @@ terraform/modules/aws-juice-shop/versions.tf -> aws-juice-shop/versions.tf
 terraform/modules/aws-juice-shop/tests/module.tftest.hcl -> aws-juice-shop/tests/module.tftest.hcl
 terraform/modules/aws-juice-shop/examples/minimal/main.tf -> aws-juice-shop/examples/minimal/main.tf
 terraform/modules/aws-juice-shop/examples/minimal/variables.tf -> aws-juice-shop/examples/minimal/variables.tf
+terraform/modules/certificate-origin/main.tf -> certificate-origin/main.tf
+terraform/modules/certificate-origin/outputs.tf -> certificate-origin/outputs.tf
+terraform/modules/certificate-origin/variables.tf -> certificate-origin/variables.tf
+terraform/modules/certificate-origin/versions.tf -> certificate-origin/versions.tf
