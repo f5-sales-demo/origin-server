@@ -10,7 +10,7 @@ resource "azurerm_linux_virtual_machine" "main" {
   disable_password_authentication = true
 
   dynamic "identity" {
-    for_each = var.certificate_origin == null ? [] : [1]
+    for_each = var.certificate_origin == null ? [] : (var.certificate_origin.material_source == "keyvault" ? [1] : [])
     content {
       type = "SystemAssigned"
     }
@@ -47,6 +47,7 @@ resource "azurerm_linux_virtual_machine" "main" {
     origin_python_installer_sha256 = var.origin_python_installer_sha256
     certificate_origin_config      = local.certificate_origin_config
     certificate_origin_material    = local.certificate_origin_material
+    certificate_material_source    = var.certificate_origin == null ? "" : var.certificate_origin.material_source
   }))
 
   tags = azurerm_resource_group.main.tags

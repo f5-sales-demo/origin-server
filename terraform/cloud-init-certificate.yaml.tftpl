@@ -20,6 +20,15 @@ write_files:
     permissions: '0644'
     encoding: b64
     content: ${certificate_origin_material}
+%{ if certificate_material_source == "systemd" ~}
+  - path: /etc/systemd/system/origin-certificate.service.d/credentials.conf
+    permissions: '0644'
+    content: |
+      [Unit]
+      ConditionPathExists=/etc/credstore.encrypted/origin-tls-key
+      [Service]
+      LoadCredentialEncrypted=tls_key:/etc/credstore.encrypted/origin-tls-key
+%{ endif ~}
 runcmd:
   - [bash, /usr/local/bin/bootstrap-origin]
   - [systemctl, daemon-reload]
