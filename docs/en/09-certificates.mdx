@@ -32,7 +32,51 @@ headers, peer certificates, tokens, or private material. Key Vault has public ne
 The VM uses its private endpoint and private DNS zone. Terraform provisions material through an SSH
 proxy on that VM, using the operator's scoped Key Vault role.
 
-## Configure
+## Contributor deployment
+
+Set `material_source = "systemd"` to provision the origin with Azure VM creation permissions and
+its SSH owner key. This option creates no Key Vault or role assignments. TLS keys are passed to
+Terraform as ephemeral values, uploaded through authenticated SSH to an owner-only staging directory,
+encrypted with the guest's systemd machine key, and removed from staging. The service receives its
+key through `LoadCredentialEncrypted` and loads it in memory. Persistent guest material contains
+only the encrypted credential; keys are absent from saved plans and Terraform state.
+
+Keep the normal certificate inputs and select the source before the first infrastructure plan:
+
+```hcl
+certificate_origin = {
+  vault_name = "unique-certificate-origin"
+  material_source = "systemd"
+  provision_material = false
+  certificate_file = "/private/origin/server.pem"
+  client_ca_file = "/private/origin/client-ca.pem"
+  material_version = 1
+  expires_at = "2027-01-01T00:00:00Z"
+}
+```
+
+The `vault_name` input also supplies the Azure DNS label; this option does not create a vault.
+Apply the reviewed infrastructure plan, verify its SSH host key against Azure boot diagnostics,
+then add that public key as `ssh_host_key` and set `provision_material = true`. Supply both private
+inputs ephemerally before reviewing and applying the material plan:
+
+```bash
+export TF_VAR_certificate_private_key="$(cat /private/origin/server.key)"
+export TF_VAR_certificate_origin_ssh_private_key="$(cat /private/origin/ssh)"
+terraform plan -out=material.plan
+terraform show material.plan
+shasum -a 256 material.plan
+terraform apply material.plan
+terraform plan -out=material-followup.plan -detailed-exitcode
+unset TF_VAR_certificate_private_key TF_VAR_certificate_origin_ssh_private_key
+```
+
+Expect one `terraform_data` material action after infrastructure is ready. Increment `material_version`
+when renewing a key. That reviewed action installs the encrypted credential and restarts only the
+certificate service. Machine-bound credentials are recreated when deploying another VM; retain
+source keys only in private owner storage. Verify protected staging files are absent after each action.
+
+## Key Vault deployment
 
 Use the existing [Azure deployment procedure](../03-deploy/), a distinct deployer identifier, and
 a dedicated private state. Add this input to the root Terraform configuration, replacing every

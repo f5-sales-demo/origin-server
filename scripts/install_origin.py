@@ -87,6 +87,13 @@ def main() -> int:
     files.extend(
         [
             {
+                "path": "/usr/local/bin/origin-install-certificate",
+                "permissions": "0755",
+                "content": (
+                    source / "scripts/install_certificate_material.py"
+                ).read_text(),
+            },
+            {
                 "path": "/usr/local/lib/origin/certificate_origin.py",
                 "content": (source / "scripts/certificate_origin.py").read_text(),
             },

@@ -231,11 +231,25 @@ class TCPHandler(socketserver.StreamRequestHandler):
         self.wfile.write(b"certificate-origin:" + challenge)
 
 
+def load_material(config: dict[str, Any]) -> dict[str, str]:
+    """Read the selected protected material source without exposing its contents."""
+    source = config.get("material_source", "keyvault")
+    if source == "keyvault":
+        return vault_material(config["vault_url"], config["secret_name"])
+    if source != "systemd":
+        message = "Unsupported certificate material source"
+        raise ValueError(message)
+    directory = Path(os.environ["CREDENTIALS_DIRECTORY"])
+    return {
+        "certificate": Path(config["certificate_file"]).read_text(),
+        "private_key": (directory / "tls_key").read_text(),
+        "client_ca": Path(config["client_ca_file"]).read_text(),
+    }
+
+
 def run(config: dict[str, Any]) -> None:
     """Wait for provisioned material, then run the declared diagnostic listeners."""
-    material = Material(
-        lambda: vault_material(config["vault_url"], config["secret_name"])
-    )
+    material = Material(lambda: load_material(config))
     while material.current is None:
         try:
             material.refresh()

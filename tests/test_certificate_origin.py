@@ -14,6 +14,7 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from tests.origin_test_support import ensure, ensure_equal, expect_error
 
@@ -203,6 +204,23 @@ class TLSOriginTests(unittest.TestCase):
             result["encrypted_material"], {"synthetic": "string:///encrypted-material"}
         )
         ensure_equal(result["client_certificate_sha256"], self.fingerprint("client"))
+
+    def test_systemd_credential_source_serves_actual_peer_identity(self):
+        directory = self.root / "credentials"
+        directory.mkdir(mode=0o700)
+        (directory / "tls_key").write_text(self.material["private_key"])
+        config = {
+            "material_source": "systemd",
+            "certificate_file": str(self.root / "server.pem"),
+            "client_ca_file": str(self.root / "ca.pem"),
+        }
+        with patch.dict(os.environ, {"CREDENTIALS_DIRECTORY": str(directory)}):
+            self.holder.loader = lambda: ORIGIN.load_material(config)
+            self.holder.refresh()
+        ensure_equal(
+            self.request("client")["client_certificate_sha256"],
+            self.fingerprint("client"),
+        )
 
     def test_failed_refresh_preserves_healthy_context(self):
         before = self.holder.current

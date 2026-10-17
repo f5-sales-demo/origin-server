@@ -24,3 +24,7 @@ terraform/modules/certificate-origin/main.tf -> certificate-origin/main.tf
 terraform/modules/certificate-origin/outputs.tf -> certificate-origin/outputs.tf
 terraform/modules/certificate-origin/variables.tf -> certificate-origin/variables.tf
 terraform/modules/certificate-origin/versions.tf -> certificate-origin/versions.tf
+scripts/install_certificate_material.py
+terraform/modules/certificate-origin-systemd/main.tf -> certificate-origin-systemd/main.tf
+terraform/modules/certificate-origin-systemd/variables.tf -> certificate-origin-systemd/variables.tf
+terraform/modules/certificate-origin-systemd/versions.tf -> certificate-origin-systemd/versions.tf
