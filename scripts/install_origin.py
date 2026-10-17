@@ -87,6 +87,16 @@ def main() -> int:
     files.extend(
         [
             {
+                "path": "/usr/local/lib/origin/certificate_origin.py",
+                "content": (source / "scripts/certificate_origin.py").read_text(),
+            },
+            {
+                "path": "/etc/systemd/system/origin-certificate.service",
+                "content": (
+                    source / "provisioning/certificate-origin.service"
+                ).read_text(),
+            },
+            {
                 "path": "/opt/origin-server/applications.json",
                 "content": manifest.read_text(),
             },

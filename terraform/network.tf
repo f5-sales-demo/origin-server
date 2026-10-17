@@ -13,6 +13,7 @@ resource "azurerm_subnet" "main" {
   resource_group_name  = azurerm_resource_group.main.name
   virtual_network_name = azurerm_virtual_network.main.name
   address_prefixes     = ["10.200.1.0/24"]
+  service_endpoints    = var.certificate_origin == null ? [] : ["Microsoft.KeyVault"]
 }
 
 resource "azurerm_public_ip" "main" {
@@ -21,6 +22,7 @@ resource "azurerm_public_ip" "main" {
   resource_group_name = azurerm_resource_group.main.name
   allocation_method   = "Static"
   sku                 = "Standard"
+  domain_name_label   = var.certificate_origin == null ? null : var.certificate_origin.vault_name
 
   tags = azurerm_resource_group.main.tags
 }
@@ -79,6 +81,21 @@ resource "azurerm_network_security_group" "main" {
     destination_port_range     = "8888"
     source_address_prefix      = "*"
     destination_address_prefix = "*"
+  }
+
+  dynamic "security_rule" {
+    for_each = var.certificate_origin == null ? [] : [var.certificate_origin]
+    content {
+      name                       = "CertificateDiagnostics"
+      priority                   = 140
+      direction                  = "Inbound"
+      access                     = "Allow"
+      protocol                   = "Tcp"
+      source_port_range          = "*"
+      destination_port_ranges    = [for port in concat(security_rule.value.mtls_ports, [security_rule.value.http_port, security_rule.value.tcp_port]) : tostring(port)]
+      source_address_prefix      = "*"
+      destination_address_prefix = "*"
+    }
   }
 
   tags = azurerm_resource_group.main.tags

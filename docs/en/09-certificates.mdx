@@ -1,0 +1,154 @@
+---
+title: Certificate origin
+description: "Deploy an optional Azure origin for HTTP, TCP, mutual TLS, renewal, and encrypted-material diagnostics."
+sidebar:
+  order: 9
+---
+
+The Azure full-origin deployment can also serve certificate qualification traffic. This optional
+capability runs beside the existing applications and needs no F5 Customer Edge. Other ecosystem
+projects reference the origin's exported hostname and ports while keeping their own Terraform states.
+
+The default input is `certificate_origin = null`. Enabling it adds a managed identity, Key Vault,
+scoped role assignments, diagnostic network listeners, and a systemd application. The existing
+origin release installer supplies the application from the same immutable source archive as the
+other applications. This capability adds no container image or separate publication pipeline.
+
+## Material and ownership
+
+Prepare a server certificate covering the origin's Azure DNS hostname and a public CA that trusts
+the client's `clientAuth` certificate. Store inputs outside Git with directory mode `0700` and file
+mode `0600`. The Azure hostname is `<vault-name>.<location>.cloudapp.azure.com`; confirm the exported
+hostname after deployment. The vault name must be globally unique.
+
+Use Terraform 1.11 or newer and AzureRM 4.81 or newer. Terraform writes the backend key through
+Key Vault's `value_wo` input. The key variable is sensitive and ephemeral, so saved plans and state
+omit its value. Supply it again when applying a saved plan. Key Vault encrypts the material at rest;
+the VM's managed identity has only the `Key Vault Secrets User` role on this vault.
+
+The application retrieves the latest secret over verified HTTPS and loads its key through an
+anonymous Linux memory file. It never writes the key to the guest filesystem or logs request
+headers, peer certificates, tokens, or private material. Key Vault has public network access disabled.
+The VM uses its private endpoint and private DNS zone. Terraform provisions material through an SSH
+proxy on that VM, using the operator's scoped Key Vault role.
+
+## Configure
+
+Use the existing [Azure deployment procedure](../03-deploy/), a distinct deployer identifier, and
+a dedicated private state. Add this input to the root Terraform configuration, replacing every
+example name, path, timestamp, and operator address with verified values:
+
+```hcl
+certificate_origin = {
+  vault_name = "unique-certificate-origin"
+  certificate_file = "/private/origin/server.pem"
+  client_ca_file = "/private/origin/client-ca.pem"
+  material_version = 1
+  expires_at = "2027-01-01T00:00:00Z"
+  provision_material = false
+  mtls_ports = [18443, 19443]
+  http_port = 18080
+  tcp_port = 19000
+  encrypted_material = {}
+}
+```
+
+Use the certificate's actual expiration for `expires_at`. Put only public encrypted locations in
+`encrypted_material`; never use it for plaintext credentials or keys. Listener ports must be
+distinct and must not overlap the existing applications.
+
+First review and apply the infrastructure plan with `provision_material = false`. This provisions
+the VM, private endpoint, DNS, and roles while the certificate application waits for material:
+
+```bash
+umask 077
+terraform init -upgrade
+terraform validate
+terraform plan -out=origin.plan
+terraform show origin.plan
+shasum -a 256 origin.plan
+terraform apply origin.plan
+terraform plan -out=followup.plan -detailed-exitcode
+terraform output certificate_origin_inventory
+```
+
+Require exit `0` for the refresh-enabled follow-up plan. Verify the VM's SSH host fingerprint from
+Azure boot diagnostics before connecting. Start a local SSH proxy using the dedicated SSH key:
+
+```bash
+origin_ip="$(terraform output -raw public_ip)"
+proxy_socket="/private/origin/ssh-proxy.socket"
+ssh -M -S "$proxy_socket" -fNT -D 127.0.0.1:1080 \
+  -i /private/origin/ssh azureuser@"$origin_ip"
+export HTTPS_PROXY=socks5://127.0.0.1:1080
+origin_no_proxy="${NO_PROXY-}"
+export NO_PROXY="${NO_PROXY:+$NO_PROXY,}management.azure.com,login.microsoftonline.com,graph.microsoft.com"
+export TF_VAR_certificate_private_key="$(cat /private/origin/server.key)"
+```
+
+Set `provision_material = true`, review a fresh saved plan, and require only the intended Key Vault
+secret addition. Apply it through the proxy and obtain a zero-change follow-up plan:
+
+```bash
+terraform plan -out=material.plan
+terraform show material.plan
+shasum -a 256 material.plan
+terraform apply material.plan
+terraform plan -out=material-followup.plan -detailed-exitcode
+unset TF_VAR_certificate_private_key HTTPS_PROXY
+export NO_PROXY="$origin_no_proxy"
+ssh -S "$proxy_socket" -O exit azureuser@"$origin_ip"
+```
+
+Use the same private route for subsequent material renewal, refresh, and removal plans. Secret
+dependencies keep the VM and private endpoint available until material deletion completes during
+teardown; public Azure management requests bypass the proxy. Preserve the reviewed immutable origin
+commit and archive checksums. A VM, open port, or successful bootstrap does not establish certificate
+traffic qualification.
+
+## Verify
+
+The plain HTTP listener returns a unique challenge at `/get`. The TCP listener accepts one newline
+terminated challenge and returns `certificate-origin:<challenge>`. Both mTLS listeners require a
+verified client certificate. Their `/get` response reports `client_certificate_sha256`,
+`certificate_sha256`, `listener_port`, and the challenge. Certificate fingerprints use lowercase
+SHA-256 hexadecimal without colons. Request headers cannot supply the reported TLS identity.
+
+```bash
+origin="unique-certificate-origin.eastus2.cloudapp.azure.com"
+challenge="$(openssl rand -hex 16)"
+curl --silent --show-error --fail \
+  "http://$origin:18080/get?challenge=$challenge"
+printf '%s\n' "$challenge" | nc "$origin" 19000
+curl --silent --show-error --fail \
+  --cacert /private/origin/server-ca.pem \
+  --cert /private/origin/client.pem --key /private/origin/client.key \
+  "https://$origin:18443/get?challenge=$challenge"
+openssl x509 -in /private/origin/client.pem -noout -fingerprint -sha256
+```
+
+Repeat the TLS request on port `19443`. Require a matching challenge and exact server and client
+fingerprints. Missing or untrusted client certificates and wrong server trust or hostname must fail.
+The authenticated `/material` endpoint returns the configured encrypted locations with the same
+peer fingerprint. It is unavailable over plain HTTP.
+
+A direct operator request verifies the origin prerequisite. Consumer qualification requires real
+traffic through F5 and the fingerprint of the certificate F5 presents to this origin. Each consumer
+project must record that proof separately before claiming mTLS qualification.
+
+## Renew and remove
+
+Renew the selected client's certificate in its consumer owner's Terraform state, keeping its logical
+ID and resource addresses stable. The origin reports the new fingerprint on the next TLS connection.
+The backend needs no restart when its trusted CA remains the same.
+
+To renew backend material or its trusted client CA, update the public file and ephemeral key input,
+increment `material_version`, and set the corresponding expiration. Review and apply a saved plan.
+The application polls Key Vault every 30 seconds and swaps its TLS context only after validating
+the new certificate and key. A failed refresh preserves the previous healthy context. Verify both
+mTLS ports and repeat the empty-plan check.
+
+Remove isolated acceptance deployments through complete saved destroy plans and verify absence
+twice. Keep successful documentation origins deployed. Key Vault uses purge protection and a
+seven-day soft-delete period: active-resource absence and revoked identity access are distinct
+from permanent deletion of the protected vault tombstone. Record both outcomes precisely.

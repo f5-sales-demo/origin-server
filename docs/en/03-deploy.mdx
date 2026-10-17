@@ -28,9 +28,9 @@ cp terraform.tfvars.example terraform.tfvars
 
 ### Azure Terraform configuration
 
-The Terraform directory contains 9 files following the Demo Resource Standard:
+The core Terraform files follow the Demo Resource Standard:
 
-- `versions.tf` — Terraform and provider version constraints (azurerm ~> 4.0, azuread ~> 3.0)
+- `versions.tf` — Terraform and provider version constraints (Terraform >= 1.11, AzureRM >= 4.81 and < 5.0, AzureAD ~> 3.0)
 - `providers.tf` — Azure RM and Azure AD provider configuration
 - `data.tf` — Azure AD data sources for deployer auto-resolution
 - `locals.tf` — Deployer resolution, Azure Cloud Adoption Framework resource naming, standard tags
@@ -39,6 +39,10 @@ The Terraform directory contains 9 files following the Demo Resource Standard:
 - `network.tf` — VNet (10.200.0.0/16), subnet, public IP, NSG (ports 22/80/443/8888), NIC
 - `vm.tf` — Ubuntu 24.04 VM with cloud-init via templatefile()
 - `outputs.tf` — 25 outputs (15 standard + 10 component-specific application URLs)
+
+The optional [certificate origin](../09-certificates/) adds `certificate-origin.tf` and
+`cloud-init-certificate.yaml.tftpl`. Its input defaults to disabled, preserving the existing application
+deployment and cloud-init template.
 
 `main.tf` contains only the resource group:
 
