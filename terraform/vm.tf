@@ -9,6 +9,13 @@ resource "azurerm_linux_virtual_machine" "main" {
   admin_username                  = var.admin_username
   disable_password_authentication = true
 
+  dynamic "identity" {
+    for_each = var.certificate_origin == null ? [] : [1]
+    content {
+      type = "SystemAssigned"
+    }
+  }
+
   admin_ssh_key {
     username   = var.admin_username
     public_key = file(pathexpand(var.ssh_public_key_path))
@@ -29,11 +36,13 @@ resource "azurerm_linux_virtual_machine" "main" {
     version   = "latest"
   }
 
-  custom_data = base64gzip(templatefile("${path.module}/cloud-init.yaml", {
+  custom_data = base64gzip(templatefile(var.certificate_origin == null ? "${path.module}/cloud-init.yaml" : "${path.module}/cloud-init-certificate.yaml.tftpl", {
     origin_commit                  = var.origin_commit
     origin_archive_sha256          = var.origin_archive_sha256
     origin_installer_sha256        = var.origin_installer_sha256
     origin_python_installer_sha256 = var.origin_python_installer_sha256
+    certificate_origin_config      = local.certificate_origin_config
+    certificate_origin_material    = local.certificate_origin_material
   }))
 
   tags = azurerm_resource_group.main.tags

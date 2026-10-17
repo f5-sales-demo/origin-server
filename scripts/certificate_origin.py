@@ -1,0 +1,184 @@
+#!/usr/bin/env python3
+"""Serve synthetic HTTP, TCP, and authenticated certificate diagnostics on Azure."""
+
+import hashlib
+import http.server
+import json
+import os
+import socketserver
+import ssl
+import threading
+import time
+import urllib.parse
+import urllib.request
+from pathlib import Path
+
+LIMIT = 1024 * 1024
+
+
+class NoRedirects(urllib.request.HTTPRedirectHandler):
+    """Never forward a managed identity token to a redirected endpoint."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        """Reject redirects before forwarding credentials."""
+        raise ValueError("Certificate material endpoint redirected")
+
+
+def read_json(request):
+    """Read bounded JSON without including response contents in errors."""
+    with urllib.request.build_opener(NoRedirects(), urllib.request.ProxyHandler({})).open(request, timeout=20) as response:
+        data = response.read(LIMIT + 1)
+    if len(data) > LIMIT:
+        raise ValueError("Certificate material exceeds limit")
+    return json.loads(data)
+
+
+def vault_material(vault, secret):
+    """Retrieve private material using this VM's managed identity."""
+    parsed = urllib.parse.urlsplit(vault)
+    if parsed.scheme != "https" or not parsed.hostname or not parsed.hostname.endswith(".vault.azure.net") or parsed.path not in ("", "/") or parsed.query or parsed.fragment or parsed.username or parsed.password:
+        raise ValueError("Expected an Azure Key Vault HTTPS origin")
+    if not secret or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-" for c in secret):
+        raise ValueError("Invalid material secret name")
+    identity = read_json(urllib.request.Request(
+        "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fvault.azure.net",
+        headers={"Metadata": "true"},
+    ))
+    material = read_json(urllib.request.Request(
+        vault.rstrip("/") + "/secrets/" + secret + "?api-version=7.4",
+        headers={"Authorization": "Bearer " + identity["access_token"]},
+    ))
+    return json.loads(material["value"])
+
+
+def tls_context(material):
+    """Load TLS keys through an anonymous memory file; never write them to disk."""
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.verify_mode = ssl.CERT_REQUIRED
+    context.load_verify_locations(cadata=material["client_ca"])
+    descriptor = os.memfd_create("origin-tls", os.MFD_CLOEXEC)
+    try:
+        payload = (material["certificate"] + "\n" + material["private_key"]).encode()
+        with os.fdopen(os.dup(descriptor), "wb") as stream:
+            stream.write(payload)
+        context.load_cert_chain("/proc/self/fd/" + str(descriptor))
+    finally:
+        os.close(descriptor)
+    leaf = ssl.PEM_cert_to_DER_cert(material["certificate"].split("-----END CERTIFICATE-----", 1)[0] + "-----END CERTIFICATE-----")
+    return context, hashlib.sha256(leaf).hexdigest()
+
+
+class Material:
+    """Atomically replace serving contexts after a successful material refresh."""
+
+    def __init__(self, loader):
+        self.loader = loader
+        self.current = None
+
+    def refresh(self):
+        """Keep the previous healthy context when retrieval or validation fails."""
+        prepared = tls_context(self.loader())
+        self.current = prepared
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    """Report actual authenticated peer identity, never request-header identity."""
+
+    def log_message(self, *args):
+        """Suppress request and credential logging."""
+
+    def do_GET(self):  # noqa: N802 -- HTTP handler API.
+        """Return a bounded challenge or published encrypted material."""
+        parsed = urllib.parse.urlsplit(self.path)
+        challenge = urllib.parse.parse_qs(parsed.query).get("challenge", [""])[0]
+        if len(challenge) > 256:
+            self.send_error(400)
+            return
+        if parsed.path not in ("/get", "/readyz", "/material"):
+            self.send_error(404)
+            return
+        peer = ""
+        if isinstance(self.connection, ssl.SSLSocket):
+            peer = hashlib.sha256(self.connection.getpeercert(binary_form=True)).hexdigest()
+        if parsed.path == "/material" and not peer:
+            self.send_error(403)
+            return
+        result = {
+            "example": "certificate-origin",
+            "challenge": challenge,
+            "client_certificate_sha256": peer,
+            "certificate_sha256": getattr(self.connection, "origin_fingerprint", ""),
+            "listener_port": self.server.server_port,
+        }
+        if parsed.path == "/material":
+            result["encrypted_material"] = json.loads(Path(self.server.material_file).read_text())
+        data = json.dumps(result).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+
+class TLSServer(http.server.ThreadingHTTPServer):
+    """Use the current TLS material for each new connection."""
+
+    def __init__(self, address, material, material_file):
+        self.material = material
+        self.material_file = material_file
+        self.fingerprint = ""
+        super().__init__(address, Handler)
+
+    def get_request(self):
+        """Require a verified client before dispatching its HTTP request."""
+        connection, address = self.socket.accept()
+        connection.settimeout(10)
+        context, fingerprint = self.material.current
+        try:
+            secured = context.wrap_socket(connection, server_side=True)
+            secured.origin_fingerprint = fingerprint
+            return secured, address
+        except Exception:
+            connection.close()
+            raise
+
+
+class TCPHandler(socketserver.StreamRequestHandler):
+    """Echo one bounded challenge over an owned TCP origin connection."""
+
+    def handle(self):
+        """Make stale or unrelated backend responses distinguishable."""
+        self.connection.settimeout(10)
+        challenge = self.rfile.readline(258)
+        if len(challenge) > 257 or not challenge.endswith(b"\n"):
+            return
+        self.wfile.write(b"certificate-origin:" + challenge)
+
+
+def run(config):
+    """Wait for provisioned material, then run the declared diagnostic listeners."""
+    material = Material(lambda: vault_material(config["vault_url"], config["secret_name"]))
+    while material.current is None:
+        try:
+            material.refresh()
+        except Exception:
+            time.sleep(10)
+    servers = [TLSServer(("0.0.0.0", port), material, config["material_file"]) for port in config["mtls_ports"]]
+    plain = http.server.ThreadingHTTPServer(("0.0.0.0", config["http_port"]), Handler)
+    plain.fingerprint = ""
+    plain.material_file = config["material_file"]
+    servers.extend([plain, socketserver.ThreadingTCPServer(("0.0.0.0", config["tcp_port"]), TCPHandler)])
+    for server in servers:
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+    while True:
+        time.sleep(30)
+        try:
+            material.refresh()
+        except Exception:
+            continue
+
+
+if __name__ == "__main__":
+    run(json.loads(Path("/etc/origin-certificate/config.json").read_text()))

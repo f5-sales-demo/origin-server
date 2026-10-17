@@ -1,0 +1,26 @@
+#cloud-config
+package_update: true
+packages: [ca-certificates, curl, nginx, python3, sysstat, git]
+write_files:
+  - path: /usr/local/bin/bootstrap-origin
+    permissions: '0755'
+    content: |
+      #!/bin/bash
+      set -euo pipefail
+      stage=$(mktemp -d)
+      trap 'rm -rf "$stage"' EXIT
+      curl --fail --location --retry 3 --max-time 120 "https://raw.githubusercontent.com/f5-sales-demo/origin-server/${origin_commit}/scripts/install-release.sh" -o "$stage/install-release.sh"
+      printf '%s  %s\n' '${origin_installer_sha256}' "$stage/install-release.sh" | sha256sum --check --status
+      bash "$stage/install-release.sh" '${origin_commit}' '${origin_archive_sha256}' '${origin_python_installer_sha256}'
+  - path: /etc/origin-certificate/config.json
+    permissions: '0644'
+    encoding: b64
+    content: ${certificate_origin_config}
+  - path: /etc/origin-certificate/encrypted-material.json
+    permissions: '0644'
+    encoding: b64
+    content: ${certificate_origin_material}
+runcmd:
+  - [bash, /usr/local/bin/bootstrap-origin]
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, --now, origin-certificate.service]
