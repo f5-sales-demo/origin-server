@@ -20,6 +20,9 @@ from tests.origin_test_support import ensure, ensure_equal, expect_error
 SPEC = importlib.util.spec_from_file_location(
     "certificate_origin", Path(__file__).parents[1] / "scripts/certificate_origin.py"
 )
+if SPEC is None or SPEC.loader is None:
+    MESSAGE = "Certificate origin module is unavailable"
+    raise RuntimeError(MESSAGE)
 ORIGIN = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ORIGIN)
 
@@ -30,7 +33,9 @@ class TCPTests(unittest.TestCase):
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         try:
-            with socket.create_connection(server.server_address, timeout=5) as client:
+            with socket.create_connection(
+                ("127.0.0.1", server.server_address[1]), timeout=5
+            ) as client:
                 client.sendall(b"unique-challenge\n")
                 ensure_equal(
                     client.recv(1024), b"certificate-origin:unique-challenge\n"
@@ -43,8 +48,8 @@ class TCPTests(unittest.TestCase):
 @unittest.skipUnless(hasattr(os, "memfd_create"), "TLS memory files require Linux")
 class TLSOriginTests(unittest.TestCase):
     def setUp(self):
-        self.work = tempfile.TemporaryDirectory(prefix="origin-certificate-test-")
-        self.root = Path(self.work.name)
+        self.root = Path(tempfile.mkdtemp(prefix="origin-certificate-test-"))
+        self.addCleanup(shutil.rmtree, self.root)
         self.root.chmod(0o700)
         self.openssl(
             "req",
@@ -84,7 +89,6 @@ class TLSOriginTests(unittest.TestCase):
     def tearDown(self):
         self.server.shutdown()
         self.server.server_close()
-        self.work.cleanup()
 
     def openssl(self, *args):
         result = subprocess.run(  # noqa: S603 -- Fixed OpenSSL executable with synthetic test arguments.

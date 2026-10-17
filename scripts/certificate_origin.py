@@ -10,12 +10,13 @@ import logging
 import os
 import socketserver
 import ssl
+import sys
 import threading
 import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -64,10 +65,7 @@ def vault_material(vault: str, secret: str) -> dict[str, str]:
         or not parsed.hostname
         or not parsed.hostname.endswith(".vault.azure.net")
         or parsed.path not in ("", "/")
-        or parsed.query
-        or parsed.fragment
-        or parsed.username
-        or parsed.password
+        or any((parsed.query, parsed.fragment, parsed.username, parsed.password))
     ):
         message = "Expected an Azure Key Vault HTTPS origin"
         raise ValueError(message)
@@ -92,12 +90,21 @@ def vault_material(vault: str, secret: str) -> dict[str, str]:
     return json.loads(material["value"])
 
 
+class ConnectionFingerprint(Protocol):
+    """Public serving fingerprint attached to an exact TLS connection."""
+
+    origin_fingerprint: str
+
+
 def tls_context(material: dict[str, str]) -> tuple[ssl.SSLContext, str]:
     """Load TLS keys through an anonymous memory file; never write them to disk."""
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.minimum_version = ssl.TLSVersion.TLSv1_2
     context.verify_mode = ssl.CERT_REQUIRED
     context.load_verify_locations(cadata=material["client_ca"])
+    if sys.platform != "linux":
+        message = "Anonymous TLS key files require Linux"
+        raise RuntimeError(message)
     descriptor = os.memfd_create("origin-tls", os.MFD_CLOEXEC)
     try:
         payload = (material["certificate"] + "\n" + material["private_key"]).encode()
@@ -127,13 +134,19 @@ class Material:
         self.current = prepared
 
 
+class DiagnosticHTTPServer(http.server.ThreadingHTTPServer):
+    """Declare the public encrypted-material path for diagnostic handlers."""
+
+    material_file: str = ""
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     """Report actual authenticated peer identity, never request-header identity."""
 
     def log_message(self, *args: Any) -> None:
         """Suppress request and credential logging."""
 
-    def do_GET(self) -> None:
+    def do_GET(self) -> None:  # pylint: disable=invalid-name  # HTTP handler API.
         """Return a bounded challenge or published encrypted material."""
         parsed = urllib.parse.urlsplit(self.path)
         challenge = urllib.parse.parse_qs(parsed.query).get("challenge", [""])[0]
@@ -145,22 +158,25 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         peer = ""
         if isinstance(self.connection, ssl.SSLSocket):
-            peer = hashlib.sha256(
-                self.connection.getpeercert(binary_form=True)
-            ).hexdigest()
+            certificate = self.connection.getpeercert(binary_form=True)
+            if certificate is None:
+                self.send_error(403)
+                return
+            peer = hashlib.sha256(certificate).hexdigest()
         if parsed.path == "/material" and not peer:
             self.send_error(403)
             return
+        server = cast("DiagnosticHTTPServer", self.server)
         result = {
             "example": "certificate-origin",
             "challenge": challenge,
             "client_certificate_sha256": peer,
             "certificate_sha256": getattr(self.connection, "origin_fingerprint", ""),
-            "listener_port": self.server.server_port,
+            "listener_port": server.server_port,
         }
         if parsed.path == "/material":
             result["encrypted_material"] = json.loads(
-                Path(self.server.material_file).read_text()
+                Path(server.material_file).read_text()
             )
         data = json.dumps(result).encode()
         self.send_response(200)
@@ -171,7 +187,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(data)
 
 
-class TLSServer(http.server.ThreadingHTTPServer):
+class TLSServer(DiagnosticHTTPServer):
     """Use the current TLS material for each new connection."""
 
     def __init__(
@@ -194,12 +210,11 @@ class TLSServer(http.server.ThreadingHTTPServer):
         context, fingerprint = self.material.current
         try:
             secured = context.wrap_socket(connection, server_side=True)
-            secured.origin_fingerprint = fingerprint
+            cast("ConnectionFingerprint", secured).origin_fingerprint = fingerprint
         except Exception:
             connection.close()
             raise
-        else:
-            return secured, address
+        return secured, address
 
 
 class TCPHandler(socketserver.StreamRequestHandler):
@@ -224,12 +239,11 @@ def run(config: dict[str, Any]) -> None:
             material.refresh()
         except (OSError, ValueError, KeyError, TypeError):
             time.sleep(10)
-    servers = [
+    servers: list[socketserver.BaseServer] = [
         TLSServer((BIND, port), material, config["material_file"])
         for port in config["mtls_ports"]
     ]
-    plain = http.server.ThreadingHTTPServer((BIND, config["http_port"]), Handler)
-    plain.fingerprint = ""
+    plain = DiagnosticHTTPServer((BIND, config["http_port"]), Handler)
     plain.material_file = config["material_file"]
     servers.extend(
         [

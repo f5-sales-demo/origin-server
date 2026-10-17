@@ -28,8 +28,9 @@ the VM's managed identity has only the `Key Vault Secrets User` role on this vau
 
 The application retrieves the latest secret over verified HTTPS and loads its key through an
 anonymous Linux memory file. It never writes the key to the guest filesystem or logs request
-headers, peer certificates, tokens, or private material. The operator's Key Vault network rule and
-role permit Terraform to create and renew material; the VM accesses it through its subnet endpoint.
+headers, peer certificates, tokens, or private material. Key Vault has public network access disabled.
+The VM uses its private endpoint and private DNS zone. Terraform provisions material through an SSH
+proxy on that VM, using the operator's scoped Key Vault role.
 
 ## Configure
 
@@ -44,7 +45,7 @@ certificate_origin = {
   client_ca_file = "/private/origin/client-ca.pem"
   material_version = 1
   expires_at = "2027-01-01T00:00:00Z"
-  operator_ipv4_cidrs = ["192.0.2.10/32"]
+  provision_material = false
   mtls_ports = [18443, 19443]
   http_port = 18080
   tcp_port = 19000
@@ -56,11 +57,11 @@ Use the certificate's actual expiration for `expires_at`. Put only public encryp
 `encrypted_material`; never use it for plaintext credentials or keys. Listener ports must be
 distinct and must not overlap the existing applications.
 
-Set the ephemeral key input privately, then review the complete saved plan before applying:
+First review and apply the infrastructure plan with `provision_material = false`. This provisions
+the VM, private endpoint, DNS, and roles while the certificate application waits for material:
 
 ```bash
 umask 077
-export TF_VAR_certificate_private_key="$(cat /private/origin/server.key)"
 terraform init -upgrade
 terraform validate
 terraform plan -out=origin.plan
@@ -69,12 +70,41 @@ shasum -a 256 origin.plan
 terraform apply origin.plan
 terraform plan -out=followup.plan -detailed-exitcode
 terraform output certificate_origin_inventory
-unset TF_VAR_certificate_private_key
 ```
 
-Require exit `0` for the refresh-enabled follow-up plan. Preserve the reviewed immutable origin
-commit and archive checksums. A deployed VM, open port, or successful bootstrap does not establish
-certificate traffic qualification.
+Require exit `0` for the refresh-enabled follow-up plan. Verify the VM's SSH host fingerprint from
+Azure boot diagnostics before connecting. Start a local SSH proxy using the dedicated SSH key:
+
+```bash
+origin_ip="$(terraform output -raw public_ip)"
+proxy_socket="/private/origin/ssh-proxy.socket"
+ssh -M -S "$proxy_socket" -fNT -D 127.0.0.1:1080 \
+  -i /private/origin/ssh azureuser@"$origin_ip"
+export HTTPS_PROXY=socks5://127.0.0.1:1080
+origin_no_proxy="${NO_PROXY-}"
+export NO_PROXY="${NO_PROXY:+$NO_PROXY,}management.azure.com,login.microsoftonline.com,graph.microsoft.com"
+export TF_VAR_certificate_private_key="$(cat /private/origin/server.key)"
+```
+
+Set `provision_material = true`, review a fresh saved plan, and require only the intended Key Vault
+secret addition. Apply it through the proxy and obtain a zero-change follow-up plan:
+
+```bash
+terraform plan -out=material.plan
+terraform show material.plan
+shasum -a 256 material.plan
+terraform apply material.plan
+terraform plan -out=material-followup.plan -detailed-exitcode
+unset TF_VAR_certificate_private_key HTTPS_PROXY
+export NO_PROXY="$origin_no_proxy"
+ssh -S "$proxy_socket" -O exit azureuser@"$origin_ip"
+```
+
+Use the same private route for subsequent material renewal, refresh, and removal plans. Secret
+dependencies keep the VM and private endpoint available until material deletion completes during
+teardown; public Azure management requests bypass the proxy. Preserve the reviewed immutable origin
+commit and archive checksums. A VM, open port, or successful bootstrap does not establish certificate
+traffic qualification.
 
 ## Verify
 

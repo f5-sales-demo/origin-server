@@ -15,6 +15,10 @@ resource "azurerm_linux_virtual_machine" "main" {
       type = "SystemAssigned"
     }
   }
+  dynamic "boot_diagnostics" {
+    for_each = var.certificate_origin == null ? [] : [1]
+    content {}
+  }
 
   admin_ssh_key {
     username   = var.admin_username

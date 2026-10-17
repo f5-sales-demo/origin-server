@@ -5,7 +5,8 @@ variable "certificate_origin" {
     client_ca_file      = string
     material_version    = number
     expires_at          = string
-    operator_ipv4_cidrs = list(string)
+    operator_ipv4_cidrs = optional(list(string), [])
+    provision_material  = optional(bool, true)
     encrypted_material  = optional(map(string), {})
     mtls_ports          = optional(list(number), [18443, 19443])
     http_port           = optional(number, 18080)
@@ -25,7 +26,7 @@ variable "certificate_private_key" {
   default     = null
   description = "Private PEM key supplied again at plan/apply; only the write-only Key Vault input consumes it."
   validation {
-    condition     = var.certificate_origin == null || var.certificate_private_key != null
+    condition     = var.certificate_origin == null ? true : !var.certificate_origin.provision_material || var.certificate_private_key != null
     error_message = "Supply the ephemeral private key when enabling certificate diagnostics."
   }
 }
@@ -33,15 +34,16 @@ data "azurerm_client_config" "certificate_operator" {
   count = var.certificate_origin == null ? 0 : 1
 }
 resource "azurerm_key_vault" "certificate_origin" {
-  count                      = var.certificate_origin == null ? 0 : 1
-  name                       = var.certificate_origin.vault_name
-  location                   = azurerm_resource_group.main.location
-  resource_group_name        = azurerm_resource_group.main.name
-  tenant_id                  = data.azurerm_client_config.certificate_operator[0].tenant_id
-  sku_name                   = "standard"
-  rbac_authorization_enabled = true
-  purge_protection_enabled   = true
-  soft_delete_retention_days = 7
+  count                         = var.certificate_origin == null ? 0 : 1
+  name                          = var.certificate_origin.vault_name
+  location                      = azurerm_resource_group.main.location
+  resource_group_name           = azurerm_resource_group.main.name
+  tenant_id                     = data.azurerm_client_config.certificate_operator[0].tenant_id
+  sku_name                      = "standard"
+  rbac_authorization_enabled    = true
+  purge_protection_enabled      = true
+  soft_delete_retention_days    = 7
+  public_network_access_enabled = false
   network_acls {
     default_action             = "Deny"
     bypass                     = "AzureServices"
@@ -63,7 +65,7 @@ resource "azurerm_role_assignment" "certificate_runtime" {
   principal_id         = azurerm_linux_virtual_machine.main.identity[0].principal_id
 }
 resource "azurerm_key_vault_secret" "certificate_origin" {
-  count        = var.certificate_origin == null ? 0 : 1
+  count        = var.certificate_origin == null ? 0 : (var.certificate_origin.provision_material ? 1 : 0)
   name         = "certificate-origin-material"
   key_vault_id = azurerm_key_vault.certificate_origin[0].id
   value_wo = jsonencode({
@@ -74,7 +76,37 @@ resource "azurerm_key_vault_secret" "certificate_origin" {
   value_wo_version = var.certificate_origin.material_version
   expiration_date  = var.certificate_origin.expires_at
   content_type     = "application/json"
-  depends_on       = [azurerm_role_assignment.certificate_operator]
+  depends_on       = [azurerm_role_assignment.certificate_operator, azurerm_role_assignment.certificate_runtime, azurerm_private_endpoint.certificate_origin, azurerm_private_dns_zone_virtual_network_link.certificate_origin]
+}
+resource "azurerm_private_dns_zone" "certificate_origin" {
+  count               = var.certificate_origin == null ? 0 : 1
+  name                = "privatelink.vaultcore.azure.net"
+  resource_group_name = azurerm_resource_group.main.name
+}
+resource "azurerm_private_dns_zone_virtual_network_link" "certificate_origin" {
+  count                 = var.certificate_origin == null ? 0 : 1
+  name                  = "certificate-origin"
+  resource_group_name   = azurerm_resource_group.main.name
+  private_dns_zone_name = azurerm_private_dns_zone.certificate_origin[0].name
+  virtual_network_id    = azurerm_virtual_network.main.id
+  registration_enabled  = false
+}
+resource "azurerm_private_endpoint" "certificate_origin" {
+  count               = var.certificate_origin == null ? 0 : 1
+  name                = "pe-${var.certificate_origin.vault_name}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  subnet_id           = azurerm_subnet.main.id
+  private_service_connection {
+    name                           = "certificate-origin"
+    private_connection_resource_id = azurerm_key_vault.certificate_origin[0].id
+    subresource_names              = ["vault"]
+    is_manual_connection           = false
+  }
+  private_dns_zone_group {
+    name                 = "certificate-origin"
+    private_dns_zone_ids = [azurerm_private_dns_zone.certificate_origin[0].id]
+  }
 }
 locals {
   certificate_origin_config = var.certificate_origin == null ? "" : base64encode(jsonencode({

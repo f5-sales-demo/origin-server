@@ -92,7 +92,9 @@ def main() -> int:
             },
             {
                 "path": "/etc/systemd/system/origin-certificate.service",
-                "content": (source / "provisioning/certificate-origin.service").read_text(),
+                "content": (
+                    source / "provisioning/certificate-origin.service"
+                ).read_text(),
             },
             {
                 "path": "/opt/origin-server/applications.json",
