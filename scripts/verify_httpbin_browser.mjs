@@ -3,12 +3,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { captureScreenshot, evidenceMode } from './browser_evidence.mjs';
 
 const [base, output, prefix = '/httpbin/'] = process.argv.slice(2);
 if (!base || !output || !['/', '/httpbin/'].includes(prefix)) throw new Error('Declared HTTPBin route required');
 const origin = new URL(base);
 fs.mkdirSync(output, { recursive: true, mode: 0o700 });
-const receipt = { checks: [], errors: [], browser_closed: false, accepted: false };
+const receipt = { evidence_mode: evidenceMode, checks: [], errors: [], browser_closed: false, accepted: false };
 const browser = await chromium.launch({
   headless: true,
   ...(process.env.ORIGIN_CHROMIUM_PATH ? { executablePath: process.env.ORIGIN_CHROMIUM_PATH } : {}),
@@ -45,9 +46,7 @@ async function checked(name, terms) {
       }),
     prefix,
   );
-  const screenshot = name + '.png';
-  await page.screenshot({ path: path.join(output, screenshot), fullPage: true });
-  fs.chmodSync(path.join(output, screenshot), 0o600);
+  const screenshot = await captureScreenshot(page, output, name + '.png');
   receipt.checks.push({ name, passed: !escaped, screenshot });
 }
 try {
