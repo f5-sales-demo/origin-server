@@ -22,6 +22,31 @@ for line in ["ssn: str", "ssn = '123-45-6789'", "{'ssn': '123-45-6789'}"]:
     assert match is not None
     assert match.group("separator") in {":", "="}
 print("[OK] address-field match preserves the structured separator contract")
+assert module.safe_email("xorgctl-session@console.service")
+assert not module.safe_email("person@console.service")
+assert not module.safe_email("person@company.invalid")
+print("[OK] software unit identifiers remain distinct from contact addresses")
+for path, line in [
+    ("fixture.md", "Supported Namespace: system/shared"),
+    ("fixture.html", '<p class="mui-style-example">Supported Namespace: system/shared</p>'),
+]:
+    findings = set()
+    module.scan_text(path, line, findings)
+    assert not findings, (path, findings)
+for line in [
+    "Supported Namespace: system/private-namespace",
+    "Supported Namespace: system/shared-private-namespace",
+    "Supported Tenant: system/shared",
+    "Namespace: system/shared",
+    "Supported Namespace: system/shared, tenant: private-namespace",
+]:
+    findings = set()
+    module.scan_text("fixture.md", line, findings)
+    assert len(findings) == 1 and next(iter(findings)).category == "customer-identifier", findings
+findings = set()
+module.scan_text("fixture.md", "Supported Namespace: system/shared, email: person@company.invalid", findings)
+assert len(findings) == 1 and next(iter(findings)).category == "email", findings
+print("[OK] fixed supported-namespace prose preserves literal-identity enforcement")
 PYTEST
 
 FAIL=0
@@ -318,6 +343,42 @@ git -C "$repo" add -A
 git -C "$repo" commit -qm source-field-aliases
 assert_clean "source field aliases are schema names rather than personal values" "$repo" --scope head --mode enforce
 
+repo=$(new_repo source-field-display-labels)
+cat >"${repo}/labels.ts" <<'EOF'
+const labels = {
+  namespace: 'Namespace',
+  projectId: 'Project ID',
+  account_id: 'Account ID',
+};
+EOF
+git -C "$repo" add labels.ts
+git -C "$repo" commit -qm source-field-display-labels
+assert_clean "source field display labels are structural aliases" "$repo" --scope head --mode enforce
+
+repo=$(new_repo source-field-display-label-boundary)
+cat >"${repo}/fixture.ts" <<'EOF'
+const record = { namespace: 'private-customer' };
+// namespace: 'Namespace'
+const serialized = "{ projectId: 'Project ID' }";
+const composed = { namespace: 'Namespace' + '-customer' };
+EOF
+cat >"${repo}/data.json" <<'EOF'
+{"namespace": "Namespace", "projectId": "Project ID"}
+EOF
+git -C "$repo" add -A
+git -C "$repo" commit -qm source-field-display-label-boundary
+assert_violation "display labels remain enforced outside structural aliases" "$repo" --scope head --mode enforce
+if ! python3 - "${WORK}/stdout" <<'PYTEST'; then
+import sys
+from pathlib import Path
+output = Path(sys.argv[1]).read_text()
+assert all(f"fixture.ts:{line}" in output for line in range(1, 5)), output
+assert "data.json:1" in output, output
+PYTEST
+  echo "[FAIL] non-structural display labels remain enforced"
+  FAIL=1
+fi
+
 repo=$(new_repo source-field-alias-boundary)
 cat >"${repo}/fixture.ts" <<'EOF'
 const record = { first_name: "Private Person", account: "private-customer" };
@@ -405,6 +466,40 @@ EOF
 git -C "$repo" add fixture.ts
 git -C "$repo" commit -qm explicit-person-name
 assert_single_finding "explicit person-name fields remain enforced" "$repo" person-name high --scope head --mode enforce
+
+repo=$(new_repo repository-full-name)
+cat >"${repo}/fixture.json" <<'EOFJSON'
+{"login":"example-org","full_name":"example-org/example-repo","default_branch":"main"}
+EOFJSON
+cat >"${repo}/fixture.py" <<'EOFPY'
+result = {"text": '{"login":"example-org","full_name":"example-org/example-repo","default_branch":"main"}'}
+EOFPY
+cat >"${repo}/multiline.json" <<'EOFJSON'
+{
+  "full_name": "example-org/example-repo",
+  "default_branch": "main"
+}
+EOFJSON
+git -C "$repo" add fixture.json fixture.py multiline.json
+git -C "$repo" commit -qm repository-metadata
+assert_clean "repository full_name metadata is not a human identity" "$repo" --scope head --mode enforce
+assert_clean "serialized repository metadata is not a human identity" "$repo" --scope head --mode audit
+
+repo=$(new_repo repository-with-person-name)
+cat >"${repo}/fixture.json" <<'EOFJSON'
+{"full_name":"example-org/example-repo","default_branch":"main","owner":{"full_name":"Synthetic Person"}}
+EOFJSON
+git -C "$repo" add fixture.json
+git -C "$repo" commit -qm repository-person-metadata
+assert_single_finding "repository metadata does not exempt nested human full names" "$repo" person-name high --scope head --mode enforce
+
+repo=$(new_repo contextless-repository-shaped-name)
+cat >"${repo}/fixture.json" <<'EOFJSON'
+{"full_name":"example-org/example-repo"}
+EOFJSON
+git -C "$repo" add fixture.json
+git -C "$repo" commit -qm contextless-repository-shape
+assert_single_finding "repository-shaped full names without metadata remain enforced" "$repo" person-name high --scope head --mode enforce
 
 repo=$(new_repo documentation-expressions)
 cat >"${repo}/fixture.mdx" <<'EOF'
@@ -2307,6 +2402,33 @@ git -C "$repo" add fixture.ts
 git -C "$repo" commit -qm source-template-and-signature-expressions
 assert_clean "source template expressions and signatures are not YAML data" "$repo" --scope head --mode enforce
 
+repo=$(new_repo source-generated-identity-name)
+cat >"${repo}/fixture.ts" <<'EOF'
+const subscriptionName = `${serviceName}-subscription`;
+const subscriptionId = `${addonServiceName.replace(/[^a-z0-9-]/gi, '-').toLowerCase()}-subscription`;
+EOF
+git -C "$repo" add fixture.ts
+git -C "$repo" commit -qm generated-identity-name
+assert_clean "runtime templates with field-noun labels are generated names" "$repo" --scope head --mode enforce
+
+index=0
+while IFS= read -r expression; do
+  index=$((index + 1))
+  repo=$(new_repo "source-generated-identity-literal-${index}")
+  printf '%s\n' "$expression" >"${repo}/fixture.ts"
+  git -C "$repo" add fixture.ts
+  git -C "$repo" commit -qm generated-identity-literal
+  assert_customer_identifier "generated-name syntax retains literal identity case ${index}" "$repo" --scope head --mode enforce
+done <<'EOF'
+const subscriptionName = `${"private-customer"}-subscription`;
+const subscriptionName = `${serviceName}-private-customer`;
+const subscriptionName = `${serviceName}-subscription` + "private-customer";
+const subscriptionName = "${serviceName}-subscription";
+// subscriptionName = `${serviceName}-subscription`;
+const subscriptionName = `${serviceName}-subscription;
+const subscriptionName = `${`private-customer`}-subscription`;
+EOF
+
 repo=$(new_repo source-template-literal-composition)
 cat >"${repo}/fixture.ts" <<'EOF'
 const literal = `tenant:${"private-customer"}`;
@@ -2625,6 +2747,43 @@ assert_violation "inline suppression markers are not an escape hatch" "$repo" --
 
 mkdir -p "${WORK}/not-a-repository"
 assert_error "non-repository fails closed" "${WORK}/not-a-repository" --scope head --mode enforce
+
+repo=$(new_repo personalized-shell-blocks)
+cat >"${repo}/fixture.mdx" <<'EOF'
+<div data-xcsh-context="shell" data-xcsh-fields="XCSH_NAMESPACE">
+
+```bash
+operation=$1 kind=$2 namespace=$3 name=$4 result=$5
+jq -e --arg name "$name" --arg ns "$XCSH_NAMESPACE" --arg domain "$domain" '
+  .metadata.name == $name and .metadata.namespace == $ns and
+  .spec.mitigated_domain == $domain
+' response.json
+jq -er '
+  def rank: {mitigated_domain:1,namespace:6}[.];
+  sort_by(.kind | rank)[] | [.kind,.namespace,.name] | @tsv
+' ledger.json
+curl "https://example.com/api/web/namespaces/system/quota/usage?namespace=system"
+```
+
+</div>
+EOF
+git -C "$repo" add fixture.mdx
+git -C "$repo" commit -qm personalized-shell-blocks
+assert_clean "personalized shell dynamic values and API constants" "$repo" --scope head --mode enforce
+
+repo=$(new_repo personalized-shell-literal)
+cat >"${repo}/fixture.mdx" <<'EOF'
+<div data-xcsh-context="shell">
+
+```bash
+namespace=private-customer
+```
+
+</div>
+EOF
+git -C "$repo" add fixture.mdx
+git -C "$repo" commit -qm personalized-shell-literal
+assert_customer_identifier "personalized shell literal identities remain enforced" "$repo" --scope head --mode enforce
 
 if [ "$FAIL" -ne 0 ]; then
   echo "check-pii tests FAILED"
