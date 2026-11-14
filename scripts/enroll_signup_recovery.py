@@ -12,10 +12,10 @@ MARKER = "waap-catalog-signup-recovery"
 
 def enroll(public: str, directory: Path, kind: str = "signup") -> None:
     """Preserve other root SSH keys and constrain this dedicated key to one helper."""
-    if kind not in ("signup", "order"):
+    if kind not in ("signup", "order", "family"):
         message = "unknown synthetic recovery kind"
         raise ValueError(message)
-    marker = MARKER if kind == "signup" else "waap-catalog-order-recovery"
+    marker = MARKER if kind == "signup" else "waap-catalog-" + kind + "-recovery"
     helper = "/usr/local/bin/catalog-" + kind + "-recovery"
     if len(public) > KEY_LIMIT or not re.fullmatch(
         r"ssh-ed25519 [A-Za-z0-9+/=]{60,120}(?: [A-Za-z0-9-]+)?", public
@@ -43,8 +43,11 @@ def enroll(public: str, directory: Path, kind: str = "signup") -> None:
 
 if __name__ == "__main__":
     os.umask(0o077)
-    enroll(
-        sys.stdin.read(KEY_LIMIT + 1).strip(),
-        Path("/root/.ssh"),
-        "order" if Path(sys.argv[0]).name == "enroll-order-recovery" else "signup",
+    RECOVERY_KIND = (
+        "family"
+        if Path(sys.argv[0]).name == "enroll-family-recovery"
+        else "order"
+        if Path(sys.argv[0]).name == "enroll-order-recovery"
+        else "signup"
     )
+    enroll(sys.stdin.read(KEY_LIMIT + 1).strip(), Path("/root/.ssh"), RECOVERY_KIND)

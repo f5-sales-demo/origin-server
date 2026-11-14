@@ -26,10 +26,19 @@ def bind_juice_adapter(by_path: dict) -> None:
     by_path["/opt/origin-server/juice-shop-framing/preload.cjs"]["content"] = adapter
     digest = hashlib.sha256(adapter.encode()).hexdigest()
     content = compose_file["content"]
-    domain_config = 'NODE_CONFIG={"application":{"domain":"example.com"}}'
+    mapping = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "provisioning/juice-country-mapping.json"
+        ).read_text()
+    )
+    domain_config = "NODE_CONFIG=" + json.dumps(
+        {"application": {"domain": "example.com"}, "ctf": {"countryMapping": mapping}},
+        separators=(",", ":"),
+    )
     content = content.replace(
         "    - NODE_ENV=ctf\n",
-        "    - NODE_ENV=ctf\n    - '" + domain_config + "'\n",
+        "    - NODE_ENV=ctf\n    - '" + domain_config.replace("'", "''") + "'\n",
     )
     for index in range(1, 5):
         marker = f"    container_name: juice-shop-{index}\n"
@@ -38,6 +47,64 @@ def bind_juice_adapter(by_path: dict) -> None:
             marker + "    labels:\n      org.f5.demo.adapter-sha256: " + digest + "\n",
         )
     compose_file["content"] = content
+
+
+def bind_dvga_wsgi(root: Path, files: list[dict], by_path: dict) -> None:
+    """Declare the native GraphQL worker adapter in every DVGA image."""
+    files.append(
+        {
+            "path": "/opt/origin-server/dvga-adapter/dvga_wsgi.py",
+            "content": (root / "scripts/dvga_wsgi.py").read_text(),
+            "permissions": "0644",
+        }
+    )
+    files.append(
+        {
+            "path": "/opt/origin-server/dvga-adapter/dvga_startup.py",
+            "content": (root / "scripts/dvga_startup.py").read_text(),
+            "permissions": "0644",
+        }
+    )
+    dockerfile = by_path["/opt/origin-server/dvga-adapter/Dockerfile"]
+    dockerfile["content"] = dockerfile["content"].replace(
+        "COPY adapt.py /tmp/adapt.py",
+        "COPY adapt.py /tmp/adapt.py\nCOPY dvga_wsgi.py /opt/dvga/dvga_wsgi.py\n"
+        "COPY dvga_startup.py /opt/dvga/dvga_startup.py",
+    )
+    adapter = by_path["/opt/origin-server/dvga-adapter/adapt.py"]
+    adapter["content"] += """
+# Ordinary startup preserves native records; setup.py remains the explicit reset.
+source = app.read_text()
+needle = 'os.popen("python3 setup.py").read()'
+if source.count(needle) != 1:
+    raise ValueError('native DVGA startup initializer changed')
+replacement = ('from dvga_startup import initialize_database; '
+               'initialize_database(config.SQLALCHEMY_FILE, Path(__file__).resolve().with_name("setup.py"))')
+source = source.replace(needle, replacement)
+source = 'from pathlib import Path\\n' + source
+app.write_text(source)
+"""
+    needle = "app.wsgi_app = ProxyFix(app.wsgi_app, x_prefix=1)"
+    if adapter["content"].count(needle) != 1:
+        message = "Native DVGA application wrapper changed"
+        raise ValueError(message)
+    adapter["content"] = adapter["content"].replace(
+        needle,
+        "from dvga_wsgi import NativeGraphQLThreadIsolation\\n"
+        "app.wsgi_app = ProxyFix(NativeGraphQLThreadIsolation(app.wsgi_app), x_prefix=1)",
+    )
+
+    adapter["content"] = (
+        adapter["content"]
+        .replace(
+            "from gevent import subprocess as cooperative_subprocess",
+            "from dvga_wsgi import native_command_output",
+        )
+        .replace(
+            "cooperative_subprocess.Popen(cmd, shell=True, stdout=cooperative_subprocess.PIPE, text=True).communicate()[0]",
+            "native_command_output(cmd)",
+        )
+    )
 
 
 def bind_csd_assets(root: Path, files: list[dict], by_path: dict) -> None:
@@ -67,11 +134,26 @@ def bind_csd_assets(root: Path, files: list[dict], by_path: dict) -> None:
     )
 
 
+def bind_juice_raw_target(by_path: dict) -> None:
+    """Preserve encoded path segments for the native Juice Shop route decoder."""
+    nginx = by_path["/etc/nginx/nginx.conf"]
+    marker = "    upstream juice_shop {"
+    nginx["content"] = nginx["content"].replace(
+        marker,
+        "    map $request_uri $juice_native_uri {\n"
+        '        default "";\n'
+        "        ~^/juice-shop(/.*)$ $1;\n"
+        "    }\n" + marker,
+        1,
+    )
+
+
 def render(root: Path) -> list[dict]:
     """Reuse pinned provisioning files while deriving application declarations."""
     manifest = load_manifest(root / "provisioning/applications.json")
     files = json.loads((root / "provisioning/files.json").read_text())
     by_path = {item["path"]: item for item in files}
+    bind_dvga_wsgi(root, files, by_path)
     bind_csd_assets(root, files, by_path)
     bind_juice_adapter(by_path)
     app_list = manifest["applications"]
@@ -114,9 +196,12 @@ def render(root: Path) -> list[dict]:
             if "proxy_read_timeout_seconds" in app
             else ""
         )
+        # A URI suffix makes nginx decode/re-encode path segments before dispatch.
+        # Juice Shop's native parameter decoder must receive the original bytes.
+        upstream += "$juice_native_uri" if app["id"] == "juice-shop" else "/"
         routes.append(f"""    location = {prefix} {{ return 308 {app["prefix"]}; }}
     location {app["prefix"]} {{
-        proxy_pass {upstream}/;
+        proxy_pass {upstream};
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection $connection_upgrade;
@@ -128,6 +213,7 @@ def render(root: Path) -> list[dict]:
         proxy_redirect ~^/(?!{app["id"]}(?:/|$))(.*)$ {prefix}/$1;
         proxy_cookie_path / {app["prefix"]};
 {read_timeout}{affinity}    }}""")
+    bind_juice_raw_target(by_path)
     site = by_path["/etc/nginx/sites-available/origin-server"]["content"]
     second = site[site.index("server {", site.index("server {") + 1) :]
     health = json.dumps(

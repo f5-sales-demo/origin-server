@@ -118,6 +118,35 @@ def main() -> int:
             },
         ]
     )
+    files.extend(
+        [
+            {
+                "path": "/opt/origin-server/docker-packages.json",
+                "content": (source / "provisioning/docker-packages.json").read_text(),
+                "permissions": "0644",
+            },
+            {
+                "path": "/usr/local/bin/origin-install-docker-packages",
+                "content": (source / "scripts/install_docker_packages.py").read_text(),
+                "permissions": "0755",
+            },
+        ]
+    )
+    files.extend(
+        [
+            {
+                "path": "/opt/origin-server/dvwa-build-packages.json",
+                "content": (
+                    source / "provisioning/dvwa-build-packages.json"
+                ).read_text(),
+            },
+            {
+                "path": "/usr/local/bin/origin-prepare-dvwa-packages",
+                "permissions": "0755",
+                "content": (source / "scripts/prepare_dvwa_packages.py").read_text(),
+            },
+        ]
+    )
     files.append(
         {
             "path": "/usr/local/bin/crapi_signup_cleanup.py",
@@ -155,6 +184,13 @@ def main() -> int:
             "content": (source / "scripts/verify_crapi_browser.mjs").read_text(),
         }
     )
+    files.append(
+        {
+            "path": "/usr/local/bin/browser_evidence.mjs",
+            "permissions": "0644",
+            "content": (source / "scripts/browser_evidence.mjs").read_text(),
+        }
+    )
     for name in ("Dockerfile", "package.json", "package-lock.json"):
         files.append(
             {
@@ -163,6 +199,7 @@ def main() -> int:
             }
         )
     for name in (
+        "browser_evidence.mjs",
         "verify_content.mjs",
         "verify_crapi_browser.mjs",
         "verify_juice_browser.mjs",
@@ -188,12 +225,57 @@ def main() -> int:
     )
     for name, source_file in (
         ("catalog-order-recovery", "catalog_order_recovery.py"),
+        ("catalog-family-recovery", "catalog_family_recovery.py"),
+        ("enroll-family-recovery", "enroll_signup_recovery.py"),
         ("enroll-order-recovery", "enroll_signup_recovery.py"),
     ):
         files.append(
             {
                 "path": "/usr/local/bin/" + name,
                 "permissions": "0755",
+                "content": (source / "scripts" / source_file).read_text(),
+            }
+        )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_dvwa_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_dvwa_recovery.py").read_text(),
+        }
+    )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_restaurant_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_restaurant_recovery.py").read_text(),
+        }
+    )
+    files.append(
+        {
+            "path": "/opt/origin-server/juice-shop-framing/catalog-journal.cjs",
+            "permissions": "0644",
+            "content": (source / "scripts/juice_catalog_journal.cjs").read_text(),
+        }
+    )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_juice_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_juice_recovery.py").read_text(),
+        }
+    )
+    files.append(
+        {
+            "path": "/usr/local/bin/catalog_dvga_recovery.py",
+            "permissions": "0644",
+            "content": (source / "scripts/catalog_dvga_recovery.py").read_text(),
+        }
+    )
+    for source_file in ("catalog_crapi_recovery.py", "catalog_order_recovery.py"):
+        files.append(
+            {
+                "path": "/usr/local/bin/" + source_file,
+                "permissions": "0644",
                 "content": (source / "scripts" / source_file).read_text(),
             }
         )
