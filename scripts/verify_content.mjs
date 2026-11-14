@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { captureScreenshot, evidenceMode } from './browser_evidence.mjs';
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => (args.includes(name) ? args[args.indexOf(name) + 1] : fallback);
@@ -22,6 +23,7 @@ const launchBrowser = () =>
     ...(process.env.ORIGIN_CHROMIUM_PATH ? { executablePath: process.env.ORIGIN_CHROMIUM_PATH } : {}),
   });
 const receipt = {
+  evidence_mode: evidenceMode,
   schema_version: 1,
   started: new Date().toISOString(),
   manifest_sha256: crypto.createHash('sha256').update(manifestBytes).digest('hex'),
@@ -151,9 +153,11 @@ try {
               result.mutation_links.push(url);
             else if (navigation.includes(url) && !target.href.includes('#')) queue.push({ url });
           }
-          result.screenshot = `${app.id}-${crypto.createHash('sha256').update(item.url).digest('hex').slice(0, 16)}.png`;
-          await page.screenshot({ path: path.join(output, result.screenshot), fullPage: true });
-          fs.chmodSync(path.join(output, result.screenshot), 0o600);
+          result.screenshot = await captureScreenshot(
+            page,
+            output,
+            `${app.id}-${crypto.createHash('sha256').update(item.url).digest('hex').slice(0, 16)}.png`,
+          );
           result.passed =
             result.status === 200 &&
             result.content_assertion &&

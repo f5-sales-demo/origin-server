@@ -48,3 +48,9 @@ DVGA checks navigation, GraphQL, subscriptions and seeded pastes. RESTaurant che
 ReDoc, local assets, authentication and seeded roles.
 
 Mutation receipts must prove baseline/postconditions and exact restoration, including interruption recovery. Dispatch and HTTP status alone cannot prove those behaviors. Follow [Verify](../05-verify/) for complete serving-layer and rendered checks; final current-source, clean-rebuild and convergence acceptance remains open.
+
+## Text-only evidence
+
+Pass `--text-only` to `application_receipts.py` or `origin-browser-verify` to run the same functional, asset, navigation, and fixture-restoration checks without capturing screenshots. Receipts record `evidence_mode: "text-only"`, omit screenshot filenames, and keep visual acceptance false. Browser execution and application mutations still follow the existing scoped verification and recovery rules.
+
+Other callers retain the default private screenshot capture. Direct JavaScript verifier callers can select text-only evidence with `ORIGIN_EVIDENCE_MODE=text-only`.
