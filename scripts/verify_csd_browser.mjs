@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { captureScreenshot, evidenceMode } from './browser_evidence.mjs';
 
 const [base, output, prefix = '/csd-demo/'] = process.argv.slice(2);
 if (!base || !output || !['/', '/csd-demo/'].includes(prefix)) throw new Error('Declared CSD route required');
@@ -12,6 +13,7 @@ const fixture = crypto.randomUUID();
 fs.mkdirSync(output, { recursive: true, mode: 0o700 });
 fs.writeFileSync(path.join(output, 'fixture-journal.json'), JSON.stringify({ fixture }), { mode: 0o600 });
 const receipt = {
+  evidence_mode: evidenceMode,
   checks: [],
   errors: [],
   fixture_restored: false,
@@ -64,9 +66,7 @@ async function checked(name, terms) {
       }),
     prefix,
   );
-  const screenshot = `${name}.png`;
-  await page.screenshot({ path: path.join(output, screenshot), fullPage: true });
-  fs.chmodSync(path.join(output, screenshot), 0o600);
+  const screenshot = await captureScreenshot(page, output, `${name}.png`);
   receipt.checks.push({ name, passed: !escaped, screenshot });
 }
 let baseline;

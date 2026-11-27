@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { captureScreenshot, evidenceMode } from './browser_evidence.mjs';
 
 const [base, output, prefix = '/juice-shop/'] = process.argv.slice(2);
 if (!base || !output) throw new Error('Application origin and private output required');
@@ -11,6 +12,7 @@ const origin = new URL(base);
 if (!['/', '/juice-shop/'].includes(prefix)) throw new Error('Declared Juice Shop prefix required');
 fs.mkdirSync(output, { recursive: true, mode: 0o700 });
 const receipt = {
+  evidence_mode: evidenceMode,
   checks: [],
   errors: [],
   websocket_frames: 0,
@@ -103,9 +105,7 @@ async function rendered(name, selector, terms) {
   }
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(500);
-  const screenshot = `${name}.png`;
-  await page.screenshot({ path: path.join(output, screenshot), fullPage: true });
-  fs.chmodSync(path.join(output, screenshot), 0o600);
+  const screenshot = await captureScreenshot(page, output, `${name}.png`);
   receipt.checks.push({ name, passed: true, screenshot });
 }
 try {

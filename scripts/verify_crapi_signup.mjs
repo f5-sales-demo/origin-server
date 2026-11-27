@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import { captureScreenshot, evidenceMode } from './browser_evidence.mjs';
 
 const [base, output] = process.argv.slice(2);
 const origin = new URL(base);
@@ -21,7 +22,14 @@ const fixture = {
 const journal = () =>
   fs.writeFileSync(path.join(output, 'fixture-journal.json'), JSON.stringify(fixture), { mode: 0o600 });
 journal();
-const receipt = { expected_negative: [], checks: [], errors: [], browser_closed: false, accepted: false };
+const receipt = {
+  evidence_mode: evidenceMode,
+  expected_negative: [],
+  checks: [],
+  errors: [],
+  browser_closed: false,
+  accepted: false,
+};
 const browser = await chromium.launch({
   headless: true,
   ...(process.env.ORIGIN_CHROMIUM_PATH ? { executablePath: process.env.ORIGIN_CHROMIUM_PATH } : {}),
@@ -92,10 +100,9 @@ try {
     timeout: 15000,
   });
   await page.waitForTimeout(500);
-  await page.screenshot({ path: path.join(output, 'signup-success.png'), fullPage: true });
-  fs.chmodSync(path.join(output, 'signup-success.png'), 0o600);
+  const signupScreenshot = await captureScreenshot(page, output, 'signup-success.png');
   if (!(await finishedSignup)) throw new Error('Signup request completion failed');
-  receipt.checks.push({ name: 'signup-submit', passed: true, screenshot: 'signup-success.png' });
+  receipt.checks.push({ name: 'signup-submit', passed: true, screenshot: signupScreenshot });
   let messages = [];
   for (let attempt = 0; attempt < 15; attempt++) {
     const result = await context.request.get(new URL('/crapi/mailhog/api/v2/messages?limit=1000', origin).href);
@@ -207,9 +214,8 @@ try {
   await page.goto(new URL('/crapi/mailhog/', origin).href);
   await page.waitForFunction(() => document.body.innerText.includes('MailHog'), undefined, { timeout: 15000 });
   await page.waitForFunction((recipient) => document.body.innerText.includes(recipient), email, { timeout: 15000 });
-  await page.screenshot({ path: path.join(output, 'mailhog.png'), fullPage: true });
-  fs.chmodSync(path.join(output, 'mailhog.png'), 0o600);
-  receipt.checks.push({ name: 'mailhog-render', passed: true, screenshot: 'mailhog.png' });
+  const mailScreenshot = await captureScreenshot(page, output, 'mailhog.png');
+  receipt.checks.push({ name: 'mailhog-render', passed: true, screenshot: mailScreenshot });
 } catch (error) {
   receipt.rendered_text = (
     await page
